@@ -1,0 +1,22 @@
+---
+description: 利用者の平文の要望から genice3 用 YAML 設定を生成するときのルール
+globs: ["**/*.yaml", "**/config*.yaml", "**/genice*.yaml"]
+---
+
+# 平文 → genice3 YAML を書くとき
+
+利用者が「Ice Ih を 2x2x2 で GROMACS で」「A15 にメタン入れて」のように平文で要望を書いた場合、次の形式の YAML を生成する。
+
+## 必須の3セクション
+
+- **genice3**: seed, depol_loop, replication_factors, replication_matrix, target_polarization, assess_cages, debug, spot_anion, spot_cation
+- **unitcell**: name（必須）, shift, density, file（CIF時）, anion, cation
+- **exporter**: name（必須）, guest, spot_guest, water_model, shift
+
+## 参照
+
+- スキーマ詳細・例: `docs/NATURAL_LANGUAGE_TO_YAML_AI.md`
+- 既存例: `examples/config_example.yaml`, `examples/api/*.yaml`
+- プロンプト生成スクリプト: `scripts/text_to_genice_yaml.py`（`--openai` で API 呼び出し可能）
+
+指定されていない項目は省略する。unitcell.name / exporter.name が要望から決まらない場合は 1h と gromacs をデフォルトとする。

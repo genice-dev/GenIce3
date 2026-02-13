@@ -1,12 +1,28 @@
 ## ToDo
 
+### Polarized Ice の生成
+
+- [x] 検証のためのプラグインを準備。
+- [x] target_pol を与えるために引数を追加。
+- [ ] 動作検証コードを作成。
+
+- [ ] temp_README の作表の部分を改良。(生成側で header も作る)
+
+### Polarized Ice の生成
+
+- [x] 検証のためのプラグインを準備。
+- [x] target_pol を与えるために引数を追加。
+- [ ] 動作検証コードを作成。
+
+- [ ] temp_README の作表の部分を改良。(生成側で header も作る)
+
 - [x] reactive なデータ生成。無駄がなくていい。
 - [x] spot anion & cation
 - 目玉機能。この 2 つが完成するまでは公表できない。
   - [ ] group!
   - [ ] topological defects
-    - 指定方法を真剣に考える。本来なら、edgeを指定する必要がある。まあそれでいいか。-D 0 2 -L 4 5
-    - GenIce3 CLIに登録する必要はないと思う。APIで簡単に書ければ十分。 
+    - 指定方法を真剣に考える。本来なら、edge を指定する必要がある。まあそれでいいか。-D 0 2 -L 4 5
+    - GenIce3 CLI に登録する必要はないと思う。API で簡単に書ければ十分。
 - [x] Loader (CIF, mdanalysis)
 - [x] API レベルでの mdanalysis との連携方法。gro ファイルを経由するのが手っ取り早いのか。
 - [ ] Exporter を増やす。

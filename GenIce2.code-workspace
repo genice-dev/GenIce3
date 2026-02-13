@@ -4,13 +4,13 @@
 			"path": "."
 		},
 		{
-			"path": "../genice-cage"
+			"path": "../genice3-py3dmol"
 		},
 		{
-			"path": "../cycless"
+			"path": "../genice3-mdanalysis"
 		},
 		{
-			"path": "../graphstat"
+			"path": "../genice3-svg"
 		}
 	],
 	"settings": {}
