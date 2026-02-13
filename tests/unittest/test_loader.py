@@ -1,4 +1,4 @@
-from genice2.plugin import scan, safe_import
+from genice3.plugin import scan, safe_import
 from logging import getLogger, basicConfig, DEBUG
 
 

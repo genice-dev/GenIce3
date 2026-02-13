@@ -5,8 +5,8 @@ import pathlib
 def fix_engel_references(root_dir):
     # lattices ディレクトリと lattices/preparing ディレクトリを対象にする
     target_dirs = [
-        pathlib.Path(root_dir) / "genice2" / "lattices",
-        pathlib.Path(root_dir) / "genice2" / "lattices" / "preparing",
+        pathlib.Path(root_dir) / "genice3" / "unitcell",
+        pathlib.Path(root_dir) / "genice3" / "unitcell" / "preparing",
     ]
 
     for target_dir in target_dirs:

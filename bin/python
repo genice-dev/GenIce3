@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Poetry が "python" を呼ぶため、python3 へ振るラッパー（mac 等で python が無い場合用）
+exec python3 "$@"

@@ -26,4 +26,4 @@ def convert_symlinks(root_dir):
 
 
 if __name__ == "__main__":
-    convert_symlinks("genice2")
+    convert_symlinks("genice3")

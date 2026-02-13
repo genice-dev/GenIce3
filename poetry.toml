@@ -1,3 +1,7 @@
 [virtualenvs]
 in-project = false
-prefer-active-python = true
+# false = Poetry が python3 で venv を作り、その中に python ができる（推奨）
+# true  = いまの conda/システム Python を使う（その環境に python がないと lock でこける）
+prefer-active-python = false
+
+# [Errno 2] No such file or directory: 'python' が出る場合 → ./scripts/poetry-lock.sh で lock する

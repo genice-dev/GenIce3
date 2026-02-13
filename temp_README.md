@@ -35,11 +35,11 @@ Because of this, some module "aliases" do not work correctly. (e.g. `genice3 1h`
 GenIce is registered to [PyPI (Python Package Index)](https://pypi.python.org/pypi/GenIce).
 Install with pip3.
 
-    pip3 install genice2
+    pip3 install genice3
 
 ## Uninstallation
 
-    pip3 uninstall genice2
+    pip3 uninstall genice3
 
 ## Usage
 
@@ -85,7 +85,7 @@ For clathrate hydrates, you can prepare the lattice with cages partially occupie
 
         genice3 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p CS1 > cs1.gro
 
-- To make a CS2 clathrate hydrate structure of TIP5P water containing THF molecules in the large cage, while only one cage is filled with methane molecule, first, just run `genice2` without guest specifications:
+- To make a CS2 clathrate hydrate structure of TIP5P water containing THF molecules in the large cage, while only one cage is filled with methane molecule, first, just run `genice3` without guest specifications:
 
         genice3 CS2 > CS2.gro
 
@@ -319,7 +319,7 @@ Input plugins (a.k.a. lattice plugins) construct a crystal structure on demand.
 
 ## New in GenIce3
 
-GenIce2-MDAnalysis integration is now available. Try
+GenIce3-MDAnalysis integration is now available. Try
 
 ```shell
 % pip install genice2-mdanalysis
@@ -348,7 +348,7 @@ The core part of the new algorithm is separated as the TileCycles package.
 
 ### Colaboratory-ready!
 
-Now GenIce3 works on the [Google Colaboratory!](https://colab.research.google.com/github/vitroid/GenIce/blob/genice2/jupyter.ipynb)
+Now GenIce3 works on the [Google Colaboratory!](https://colab.research.google.com/github/vitroid/GenIce/blob/main/jupyter.ipynb)
 
 ## New ices
 
