@@ -111,6 +111,11 @@ citationlist_str = prefix(citationlist, "- ")
 version = project["tool"]["poetry"]["version"]
 exporter = format_table_markdown(get_exporter_format_rows())
 
+# Auto-generate references.md (full citation list)
+with open("references.md", "w", encoding="utf-8") as f:
+    f.write("# References\n\n")
+    f.write(citationlist_str)
+
 context = {
     **project,
     "usage": usage,

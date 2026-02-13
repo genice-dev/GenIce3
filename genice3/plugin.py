@@ -230,14 +230,14 @@ def plugin_descriptors(category, water=False, groups=("system", "extra", "local"
     return catalog
 
 
-def audit_name(name) -> str:
+def audit_name(name: str, category: str = "plugin") -> str:
     """
     Audit the mol name to avoid the access to unexpected files
     """
     match = re.match("^[A-Za-z0-9-_]+$", name)
     if match is not None:
         return name
-    match = re.match("^\[([A-Za-z0-9-_]+) .*\]$", name)
+    match = re.match(r"^\[([A-Za-z0-9-_]+) .*\]$", name)
     if match is not None:
         return match.group(1)
     raise ValueError(f"Dubious {category} name: {name}")
@@ -282,7 +282,7 @@ def safe_import(category, name):
     #     usage = True
     #     name = name[:-1]
 
-    module_name = audit_name(name)
+    module_name = audit_name(name, category)
 
     module = None
     fullname = f"{category}.{module_name}"

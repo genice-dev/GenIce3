@@ -191,8 +191,16 @@ SHORT_OPTION_MAP: Dict[str, str] = {
     "-c": "spot_cation",
     "-C": "config",
     "-e": "exporter",
+    "-g": "guest",
+    "-G": "spot_guest",
     "-h": "help",
     "-V": "version",
+}
+
+# オプションごとに消費する値の最大数（指定時のみ）。例: rep は 3 つだけ取り残りを unitcell に
+OPTION_MAX_VALUES: Dict[str, int] = {
+    "rep": 3,
+    "replication_factors": 3,
 }
 
 # フラグ型のオプション（値を持たない）
@@ -240,8 +248,12 @@ def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str
             i += 1
 
             # 値を取得（次の引数が-で始まっていなければ値として扱う）
+            # rep / replication_factors は整数3つのみ消費し、残りは unitcell 用に残す
             values: List[Any] = []
+            max_vals = OPTION_MAX_VALUES.get(key)
             while i < len(args) and not args[i].startswith("-"):
+                if max_vals is not None and len(values) >= max_vals:
+                    break
                 values.append(args[i])
                 i += 1
 
@@ -276,8 +288,12 @@ def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str
 
                 # 値を取得（次の引数が-で始まっていなければ値として扱う）
                 # フラグ型のオプション（-D, -Aなど）は値なし
+                # rep / replication_factors は整数3つのみ消費
                 values: List[Any] = []
+                max_vals = OPTION_MAX_VALUES.get(key)
                 while i < len(args) and not args[i].startswith("-"):
+                    if max_vals is not None and len(values) >= max_vals:
+                        break
                     values.append(args[i])
                     i += 1
 

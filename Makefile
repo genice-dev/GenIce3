@@ -1,8 +1,10 @@
 PIPNAME=genice3
 GITNAME=GenIce
 
-all: README.md
+all: README.md references.md
 	echo Hello.
+README.md references.md: temp_README.md Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.json pyproject.toml
+	python3 Utilities/replacer.py < temp_README.md > README.md
 %: temp_% Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.json pyproject.toml
 	python3 Utilities/replacer.py < $< > $@
 

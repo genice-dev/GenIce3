@@ -149,6 +149,11 @@ def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, An
         - water_modelが"foursite"などのmoleculeプラグイン名の場合、
           チェーン実行システムが自動的に該当するmoleculeプラグインを呼び出します。
     """
+    # README の --water と互換のため water を water_model に正規化
+    options = dict(options)
+    if "water" in options and "water_model" not in options:
+        options["water_model"] = options["water"]
+
     # オプションの型定義
     option_specs = {
         "guest": OPTION_TYPE_KEYVALUE,  # "A12=me" または {"A12": "me"} 形式

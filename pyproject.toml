@@ -41,17 +41,17 @@ dev = [
 genice3 = "genice3.cli.genice:main"
 
 [project.urls]
-"Homepage" = "https://github.com/vitroid/GenIce"
-"Bug Tracker" = "https://github.com/vitroid/GenIce/issues"
-"manual" = "https://vitroid.github.io/GenIce"
+"Homepage" = "https://github.com/genice-dev/GenIce3"
+"Bug Tracker" = "https://github.com/genice-dev/GenIce3/issues"
+"manual" = "https://genice-dev.github.io/GenIce3"
 
 [tool.genice.urls]
-repository = "https://github.com/vitroid/GenIce"
+repository = "https://github.com/genice-dev/GenIce3"
 logo = "https://raw.githubusercontent.com/vitroid/GenIce/develop/logo/genice-v0.png"
 
 [tool.poetry]
 name = "genice3"
-version = "3.0a2" # master version variable
+version = "3.0a3" # master version variable
 # 1st: major version
 # 2nd: minor version (refactorization)
 # 3rd: minor changes (new plugin, etc.)

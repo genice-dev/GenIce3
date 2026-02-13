@@ -22,6 +22,8 @@ Version {{version}}
 GenIce3 works well in interactive environments.
 [Try it](https://colab.research.google.com/github/genice-dev/GenIce3/blob/main/API.ipynb) on Google Colaboratory.
 
+Full documentation is available at the [manual](https://genice-dev.github.io/GenIce3).
+
 ## Requirements
 
 {% for item in tool.poetry.dependencies %}- {{item}} {{tool.poetry.dependencies[item]}}
@@ -46,7 +48,7 @@ pip3 uninstall genice3
 
 {{usage}}
 
-Use `./genice3.x` instead of `genice3` when running from the source tree.
+Give the unitcell name as the first argument, then options. Optional settings can be read from a YAML file with `-C path/to/config.yaml` (see the [manual](https://genice-dev.github.io/GenIce3) for the format). Use `./genice3.x` instead of `genice3` when running from the source tree.
 
 ## Examples
 
@@ -54,23 +56,23 @@ Use `./genice3.x` instead of `genice3` when running from the source tree.
   .gro format:
 
   ```shell
-  genice3 --water tip4p --rep 3 3 3  4 > ice4.gro
+  genice3 4 --water tip4p --rep 3 3 3 > ice4.gro
   ```
 
 - To generate a 2×2×4 supercell of CS2 clathrate hydrate with TIP4P water and THF in the large cages (united-atom model with a dummy site) in GROMACS .gro format:
 
   ```shell
-  genice3 -g 16=uathf6 --water tip4p --rep 2 2 4  CS2 > cs2-224.gro
+  genice3 CS2 -g 16=uathf6 --water tip4p --rep 2 2 4 > cs2-224.gro
   ```
 
 ## Basics
 
-The program generates various hydrogen-disordered ice structures without defects. The total dipole moment is set to zero unless you specify the `--depol_loop=0` or `-target_polarization` options. The minimal structure (with `--rep 1 1 1`) is not always a single unit cell, because handling the hydrogen-bond network topology of very small lattices under periodic boundary conditions is difficult. Note that the generated structure is not optimized for potential energy.
+The program generates various hydrogen-disordered ice structures without defects. The total dipole moment is set to zero unless you change the depolarization behavior with `--depol_loop` or `--target_polarization`. The minimal structure (with `--rep 1 1 1`) is not always a single unit cell, because handling the hydrogen-bond network topology of very small lattices under periodic boundary conditions is difficult. Note that the generated structure is not optimized for potential energy.
 
-- To generate a large supercell of ice Ih in XYZ format,
+- To generate a large supercell of ice Ih in CIF format,
 
   ```shell
-  genice3 --rep 8 8 8 1h -e xyz > 1hx888.xyz
+  genice3 1h --rep 8 8 8 -e cif > 1hx888.cif
   ```
 
 - To generate an ice V lattice with a different hydrogen order in CIF format, use the `-s` option to set the random seed.
@@ -79,10 +81,10 @@ The program generates various hydrogen-disordered ice structures without defects
   genice3 5 -s 1024 -e cif > 5-1024.cif
   ```
 
-- To generate an ice VI lattice at a different density with the TIP4P water model in GROMACS format, use the `--dens` option to set the density in g·cm<sup>−3</sup>.
+- To generate an ice VI lattice at a different density with the TIP4P water model in GROMACS format, use the `--density` option to set the density in g·cm<sup>−3</sup>, and `-e` to choose the exporter (e.g. `gromacs` or `g`).
 
   ```shell
-  genice3 6 --dens 1.00 --format g --water tip4p > 6d1.00.gro
+  genice3 6 --density 1.00 -e gromacs --water tip4p > 6d1.00.gro
   ```
 
 GenIce3 is modular: it loads unit cells from plugins in the `unitcell` folder, places water and guest molecules using plugins in the `molecules` folder, and writes output via plugins in the `exporter` folder. You can add your own plugins to extend GenIce3; many plugins accept options.
@@ -94,7 +96,7 @@ For clathrate hydrates, you can build lattices with cages partially occupied by 
 - To generate a CS1 clathrate hydrate with TIP4P water and CO₂ in GROMACS .gro format (60% of small cages filled with CO₂, 40% with methane):
 
   ```shell
-  genice3 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p CS1 > cs1.gro
+  genice3 CS1 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p > cs1.gro
   ```
 
 - To generate a CS2 clathrate hydrate with TIP5P water, THF in the large cages, and methane in one small cage: first run `genice3` without guest options:
@@ -152,7 +154,7 @@ _Note:_ Multiple occupancy is not supported. To model it, use a virtual molecule
 
 ## Doping ions
 
-Small ions can replace water molecules. Use the `--anion` and `--cation` options (or `-a` and `-c`) to assign anions and cations to specific water sites.
+Small ions can replace water molecules. Use the `-a` (spot_anion) and `-c` (spot_cation) options to assign anions and cations to specific water sites.
 
 The following places Na⁺ at water 0 and Cl⁻ at water 1 in the replicated lattice; hydrogen bonds around the ions are adjusted accordingly.
 
@@ -164,7 +166,7 @@ _Note 1:_ The number of cations and anions must be equal, or the ice rule cannot
 
 _Note 2:_ Protonic defects (H<sub>3</sub>O<sup>+</sup> and OH<sup>−</sup>) are not yet implemented.
 
-## Semiclathrate hydrates
+<!-- ## Semiclathrate hydrates
 
 _Under construction, sorry._
 
@@ -173,7 +175,7 @@ _Under construction, sorry._
 Assume the water molecule to be replaced by the TBA nitrogen has index 0. Place the nitrogen as a cation and replace water molecule 2 with the counter-ion Br.
 
 ```shell
-genice3 HS1 -c 0=N -a 2=Br --depol=optimal > HS1.gro
+genice3 HS1 -c 0=N -a 2=Br > HS1.gro
 ```
 
 Example output:
@@ -190,30 +192,28 @@ INFO     Cages adjacent to dopant 2: {0, 9, 2, 13}
 INFO     Cages adjacent to dopant 0: {0, 9, 2, 7}
 ```
 
-The nitrogen is in cages 0, 9, 2, and 7 (their types appear in the output). Place the Bu⁻ group (the minus sign denotes the group, not a charge) in those cages adjacent to dopant 0.
+The nitrogen is in cages 0, 9, 2, and 7 (their types appear in the output). Place the Bu⁻ group (the minus sign denotes the group, not a charge) in those cages adjacent to dopant 0. (The `-H` option and exact syntax may depend on the build; see the source or plugin docs if available.)
 
 ```shell
-genice3 HS1 -c 0=N -a 2=Br -H 0=Bu-:0 -H 9=Bu-:0 -H 2=Bu-:0 -H 7=Bu-:0 --depol=optimal > HS1.gro
+genice3 HS1 -c 0=N -a 2=Br > HS1.gro
 ```
-
-The `-H` option has the form `-H (cage_id)=(group_name):(root)`, where the root is the nitrogen site given by `-c` (cation).
 
 ### Placement of TBAB in the lattice module
 
 _Under preparation_
 
-It is often easier if the semiclathrate lattice is defined with molecular ions already in place. The procedure for building such a custom module is described elsewhere.
+It is often easier if the semiclathrate lattice is defined with molecular ions already in place. The procedure for building such a custom module is described elsewhere. -->
 
 ## Output formats
 
 {{exporter}}
 
-Installing the [`genice2-mdanalysis`](https://github.com/genice-dev/genice-mdanalysis) package adds support for many formats used by molecular dynamics software. For example:
+Installing the [`genice2-mdanalysis`](https://github.com/genice-dev/genice-mdanalysis) package adds support for many formats used by molecular dynamics software. Use the `-e` (exporter) option. For example:
 
 ```shell
 % pip install genice2-mdanalysis
-% genice3 1c -f 'mdanalysis[1c.pdb]'
-% genice3 1h -f 'mdanalysis[1h.xtc]'
+% genice3 1c -e 'mdanalysis[1c.pdb]'
+% genice3 1h -e 'mdanalysis[1h.xtc]'
 ```
 
 All the supported file types are listed in the [MDAnalysis web page](https://docs.mdanalysis.org/stable/documentation_pages/coordinates/init.html#supported-coordinate-formats).
@@ -273,7 +273,7 @@ Select a water model with the `--water` option.
 
 You can add custom guest molecules by placing plugins in a `molecules` directory in the current working directory.
 
-# Extra plugins
+## Extra plugins
 
 Additional plugins are available on the Python Package Index (PyPI). For example, to install the RDF plugin and compute radial distribution functions:
 
@@ -282,7 +282,7 @@ pip install genice2-rdf
 ```
 
 ```shell
-genice3 TS1 -f _RDF > TS1.rdf.txt
+genice3 TS1 -e _RDF > TS1.rdf.txt
 ```
 
 <!-- ## Output and analysis plugins
@@ -307,14 +307,16 @@ Input plugins (unitcell plugins) construct a crystal structure on demand.
 
 ## References
 
-{{citationlist}}
+See [references.md](references.md) for the full reference list.
 
 ## Algorithms and citation
 
+If you use GenIce in your work, please cite as described in [CITATION.cff](CITATION.cff) or the papers below.
+
 The algorithms for generating depolarized, hydrogen-disordered ice are described in the following papers:
 
-M. Matsumoto, T. Yagasaki, and H. Tanaka,"GenIce: Hydrogen-Disordered
-Ice Generator", J. Comput. Chem. 39, 61-64 (2017). [DOI: 10.1002/jcc.25077](http://doi.org/10.1002/jcc.25077)
+> M. Matsumoto, T. Yagasaki, and H. Tanaka,"GenIce: Hydrogen-Disordered
+> Ice Generator", _J. Comput. Chem._ **39**, 61-64 (2017). [DOI: 10.1002/jcc.25077](http://doi.org/10.1002/jcc.25077)
 
 ```bibtex
 @article{Matsumoto:2017bk,
@@ -327,7 +329,7 @@ Ice Generator", J. Comput. Chem. 39, 61-64 (2017). [DOI: 10.1002/jcc.25077](http
 }
 ```
 
-M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures.”, J. Chem. Phys. 160, 094101 (2024). [DOI:10.1063/5.0198056](https://doi.org/10.1063/5.0198056)
+> M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures.”, _J. Chem. Phys._ **160**, 094101 (2024). [DOI:10.1063/5.0198056](https://doi.org/10.1063/5.0198056)
 
 ```bibtex
 @article{Matsumoto:2024,
@@ -345,3 +347,7 @@ M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm fo
 GenIce has been available as open source software on GitHub ({{tool.genice.urls.repository}}) since 2015.
 Feedback, suggestions for improvements and enhancements, bug fixes, etc. are sincerely welcome.
 Developers and test users are also welcome. If you have any ice that is publicly available but not included in GenIce, please let us know.
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
