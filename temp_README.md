@@ -4,6 +4,8 @@
 
 {{tool.poetry.description}}
 
+**Quick start:** To generate a hydrogen-disordered ice structure, use the unitcell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument. Example: `genice3 1h -e gromacs > ice.gro`
+
 Version {{version}}
 
 ## New in GenIce3
@@ -48,7 +50,7 @@ pip3 uninstall genice3
 
 {{usage}}
 
-Give the unitcell name as the first argument, then options. Optional settings can be read from a YAML file with `-C path/to/config.yaml` (see the [manual](https://genice-dev.github.io/GenIce3) for the format). Use `./genice3.x` instead of `genice3` when running from the source tree.
+Give the unitcell name as the first argument (see the [Ice structures](#ice-structures) table for symbols such as `1h`, `4`, `CS2`), then options. Optional settings can be read from a YAML file with `-C path/to/config.yaml` (see the [manual](https://genice-dev.github.io/GenIce3) for the format). Use `./genice3.x` instead of `genice3` when running from the source tree.
 
 ## Examples
 

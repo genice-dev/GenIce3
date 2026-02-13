@@ -4,7 +4,9 @@
 
 A Swiss army knife to generate hydrogen-disordered ice structures.
 
-Version 3.0a2
+**Quick start:** To generate a hydrogen-disordered ice structure, use the unitcell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument. Example: `genice3 1h -e gromacs > ice.gro`
+
+Version 3.0a3
 
 ## New in GenIce3
 
@@ -80,7 +82,7 @@ Arguments:
   UNITCELL                  Unitcell plugin name (required)
 ```
 
-Give the unitcell name as the first argument, then options. Optional settings can be read from a YAML file with `-C path/to/config.yaml` (see the [manual](https://genice-dev.github.io/GenIce3) for the format). Use `./genice3.x` instead of `genice3` when running from the source tree.
+Give the unitcell name as the first argument (see the [Ice structures](#ice-structures) table for symbols such as `1h`, `4`, `CS2`), then options. Optional settings can be read from a YAML file with `-C path/to/config.yaml` (see the [manual](https://genice-dev.github.io/GenIce3) for the format). Use `./genice3.x` instead of `genice3` when running from the source tree.
 
 ## Examples
 
@@ -429,8 +431,8 @@ If you use GenIce in your work, please cite as described in [CITATION.cff](CITAT
 
 The algorithms for generating depolarized, hydrogen-disordered ice are described in the following papers:
 
-M. Matsumoto, T. Yagasaki, and H. Tanaka,"GenIce: Hydrogen-Disordered
-Ice Generator", J. Comput. Chem. 39, 61-64 (2017). [DOI: 10.1002/jcc.25077](http://doi.org/10.1002/jcc.25077)
+> M. Matsumoto, T. Yagasaki, and H. Tanaka,"GenIce: Hydrogen-Disordered
+> Ice Generator", _J. Comput. Chem._ **39**, 61-64 (2017). [DOI: 10.1002/jcc.25077](http://doi.org/10.1002/jcc.25077)
 
 ```bibtex
 @article{Matsumoto:2017bk,
@@ -443,7 +445,7 @@ Ice Generator", J. Comput. Chem. 39, 61-64 (2017). [DOI: 10.1002/jcc.25077](http
 }
 ```
 
-M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures.”, J. Chem. Phys. 160, 094101 (2024). [DOI:10.1063/5.0198056](https://doi.org/10.1063/5.0198056)
+> M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures.”, _J. Chem. Phys._ **160**, 094101 (2024). [DOI:10.1063/5.0198056](https://doi.org/10.1063/5.0198056)
 
 ```bibtex
 @article{Matsumoto:2024,
@@ -461,8 +463,6 @@ M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm fo
 GenIce has been available as open source software on GitHub (https://github.com/genice-dev/GenIce3) since 2015.
 Feedback, suggestions for improvements and enhancements, bug fixes, etc. are sincerely welcome.
 Developers and test users are also welcome. If you have any ice that is publicly available but not included in GenIce, please let us know.
-
-To regenerate README.md and references.md from the template (e.g. after changing citations or plugin options), run `make README.md` from the repository root (or `poetry run python3 Utilities/replacer.py < temp_README.md > README.md`).
 
 ## License
 
