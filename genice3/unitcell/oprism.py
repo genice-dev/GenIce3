@@ -3,9 +3,9 @@
 Generate a hydrogen-ordered prism ice. (Cylindrical ice)
 
 Usage:
-    genice2 oprism       A prism of default sides and rows (6,10)
-    genice2 oprism[5]    A pentagonal prism of 10 rows.
-    genice2 oprism[8,6]  An octagonal prism of 6 rows.
+    genice3 oprism       A prism of default sides and rows (6,10)
+    genice3 oprism[5]    A pentagonal prism of 10 rows.
+    genice3 oprism[8,6]  An octagonal prism of 6 rows.
 
 Options:
     [sides[,rows]]    Number of sides and rows.

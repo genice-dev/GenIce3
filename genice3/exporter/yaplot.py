@@ -21,7 +21,7 @@ desc = {
     "ref": {"Codes": "https://github.com/vitroid/Yaplot"},
     "brief": "Yaplot.",
     "usage": """
-Usage: genice2 icename -f yaplot[options]
+Usage: genice3 icename -f yaplot[options]
 
 options:
     H=x   Set the radius of H to be x.

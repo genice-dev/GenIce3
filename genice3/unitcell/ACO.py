@@ -1,6 +1,6 @@
 """
 
-Command line: /Volumes/workarea/venvs/genice2/bin/genice zeolite[ACO] -f python
+Command line: genice3 zeolite[ACO] -f python
 Reshaping the unit cell.
   i:[1 0 0]
   j:[0 1 0]

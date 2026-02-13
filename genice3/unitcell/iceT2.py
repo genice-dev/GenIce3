@@ -1,6 +1,6 @@
 """
 
-Command line: /Users/matto/anaconda3/envs/genice/bin/genice2 T2D --dens 1.5127 -f p
+Command line: genice3 T2D --dens 1.5127 -f p
 Reshaping the unit cell.
   i:[1 0 0]
   j:[0 1 0]

@@ -47,10 +47,10 @@ tests/genice3/
 
 ### 前提条件
 
-**プロジェクトのルートディレクトリ（`GenIce2`）で実行する必要があります。**
+**プロジェクトのルートディレクトリ（`GenIce3`）で実行する必要があります。**
 
 ```
-/Users/matto/Dropbox/gitbox/GenIce2/  ← ここで実行
+/path/to/GenIce3/  ← ここで実行
 ├── genice3/                          ← genice3モジュール
 │   ├── __init__.py
 │   ├── genice.py
@@ -75,8 +75,8 @@ source .venv/bin/activate
 **推奨方法: プロジェクトのルートディレクトリで実行**
 
 ```bash
-# プロジェクトのルートディレクトリ（GenIce2）で実行
-cd /Users/matto/Dropbox/gitbox/GenIce2
+# プロジェクトのルートディレクトリ（GenIce3）で実行
+cd /path/to/GenIce3
 
 # すべてのテストを実行
 pytest tests/genice3/ -v
@@ -123,7 +123,7 @@ pytest tests/genice3/test_core.py::test_genice3_initialization -v
 
    ```bash
    pwd
-   # /Users/matto/Dropbox/gitbox/GenIce2 である必要がある
+   # プロジェクトルート（GenIce3）である必要がある
    ```
 
 2. **`pytest.ini`が存在するか確認**

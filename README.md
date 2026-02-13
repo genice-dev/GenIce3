@@ -1,12 +1,12 @@
 ![Logo](https://raw.githubusercontent.com/vitroid/GenIce/develop/logo/genice-v0.png)
 
-# GenIce2
+# GenIce3
 
 A Swiss army knife to generate hydrogen-disordered ice structures.
 
-Version 2.2.9
+Version 3.0a2
 
-## New in GenIce2.2
+## New in GenIce3
 
 - The core algorithm and its API are in a separate module, [`genice-core`](https://github.com/genice-dev/genice-core).
 
@@ -30,22 +30,22 @@ The new GenIce works very well with interactive execution.
 
 
 **Note**: The package management system `poetry`, new in GenIce version 2.1, ignores all symlinks in package directories.
-Because of this, some module "aliases" do not work correctly. (e.g. `genice2 1h` does not work, but `genice ice1h` does, because `1h.py` is an alias for `ice1h.py` .)
+Because of this, some module "aliases" do not work correctly. (e.g. `genice3 1h` does not work, but `genice3 ice1h` does, because `1h.py` is an alias for `ice1h.py` .)
 
 ## Installation
 
 GenIce is registered to [PyPI (Python Package Index)](https://pypi.python.org/pypi/GenIce).
 Install with pip3.
 
-    pip3 install genice2
+    pip3 install genice3
 
 ## Uninstallation
 
-    pip3 uninstall genice2
+    pip3 uninstall genice3
 
 ## Usage
 
-    usage: genice2 [-h] [--version] [--rep REP REP REP] [--reshape RESHAPE]
+    usage: genice3 [-h] [--version] [--rep REP REP REP] [--reshape RESHAPE]
                    [--shift SHIFT SHIFT SHIFT] [--dens DENS] [--add_noise percent]
                    [--seed SEED] [--format name] [--water model] [--guest 14=me]
                    [--Guest 13=me] [--Group 13=bu-:0] [--anion 3=Cl]
@@ -361,19 +361,19 @@ Install with pip3.
                             small.
 
 
-Use `./genice.x` instead of `genice2` if you want to use it inside the source tree.
+Use `./genice.x` instead of `genice3` if you want to use it inside the source tree.
 
 ## Examples
 
 - To make a 3x3x3 units of a hydrogen-disordered ice IV (4) of TIP4P water in GROMACS
   .gro format:
 
-          genice2 --water tip4p --rep 3 3 3  4 > ice4.gro
+          genice3 --water tip4p --rep 3 3 3  4 > ice4.gro
 
 - To make a 2x2x4 units of CS2 clathrate hydrate structure of TIP4P water containing THF (united atom with a dummy site) in the large cage in GROMACS
   .gro format:
 
-          genice2 -g 16=uathf6 --water tip4p --rep 2 2 4  CS2 > cs2-224.gro
+          genice3 -g 16=uathf6 --water tip4p --rep 2 2 4  CS2 > cs2-224.gro
 
 ## Basics
 
@@ -381,15 +381,15 @@ The program generates various ice lattice with proton disorder and without defec
 
 - To get a large repetition of ice Ih in XYZ format,
 
-        genice2 --rep 8 8 8 1h --format xyz > 1hx888.xyz
+        genice3 --rep 8 8 8 1h --format xyz > 1hx888.xyz
 
 - To get a ice V lattice of different hydrogen order in CIF format, use `-s` option to specify the random seed.
 
-        genice2 5 -s 1024 --format cif > 5-1024.cif
+        genice3 5 -s 1024 --format cif > 5-1024.cif
 
 - To obtain an ice VI lattice with different density and with TIP4P water model in gromacs format, use `--dens x` option to specify the density in g cm<sup>-3</sup>.
 
-        genice2 6 --dens 1.00 --format g --water tip4p > 6d1.00.gro
+        genice3 6 --dens 1.00 --format g --water tip4p > 6d1.00.gro
 
 GenIce is a modular program; it reads a unit cell data from a lattice plugin defined in the lattices folder, put water and guest molecules using a molecule plugin defined in the molecules/ folder, and output in various formats using a format plugin defined in the formats/ folder. You can write your plugins to extend GenIce. Some plugins also accept options.
 
@@ -399,11 +399,11 @@ For clathrate hydrates, you can prepare the lattice with cages partially occupie
 
 - To make a CS1 clathrate hydrate structure of TIP4P water containing CO2 in GROMACS .gro format: (60% of small cages are filled with co2 and 40% are methane)
 
-        genice2 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p CS1 > cs1.gro
+        genice3 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p CS1 > cs1.gro
 
-- To make a CS2 clathrate hydrate structure of TIP5P water containing THF molecules in the large cage, while only one cage is filled with methane molecule, first, just run `genice2` without guest specifications:
+- To make a CS2 clathrate hydrate structure of TIP5P water containing THF molecules in the large cage, while only one cage is filled with methane molecule, first, just run `genice3` without guest specifications:
 
-        genice2 CS2 > CS2.gro
+        genice3 CS2 > CS2.gro
 
   The list of cages will be output as follows:
 
@@ -413,15 +413,15 @@ For clathrate hydrates, you can prepare the lattice with cages partially occupie
 
   This indicates that there are two types of cages named `12` and `16`. Fill the `16` cages with THF and put a methane molecule in the `0`th cage of type `12` as follows:
 
-        genice2 CS2 -g 16=uathf -G 0=me > CS2.gro
+        genice3 CS2 -g 16=uathf -G 0=me > CS2.gro
 
 Although only a few kinds of guest molecules are preset, you can easily prepare new guest molecules as a module. Here is an example of the ethylene oxide molecule.
 
 ```python
 import numpy as np
-import genice2.molecules
+import genice3.molecules
 
-class Molecule(genice2.molecules.Molecule):
+class Molecule(genice3.molecules.Molecule):
     def __init__(self):
         # United-atom EO model with a dummy site
         LOC = 0.1436 # nm
@@ -453,7 +453,7 @@ Small ions may replace the host molecules. In that case, you can use `-a` and `-
 
 The following example replaces the `0`th water molecule (in the replicated lattice) with Na cation and `1`st water molecule with Cl anion. The hydrogen bonds around the ions are organized appropriately.
 
-    genice2 CS2 --depol=optimal -c 0=Na -a 1=Cl > CS2.gro
+    genice3 CS2 --depol=optimal -c 0=Na -a 1=Cl > CS2.gro
 
 _Note 1_: The numbers of cations and anions must be the same. Otherwise, the ice rule is never satisfied and the program does not stop.
 
@@ -467,7 +467,7 @@ _Note 3_: Protonic defects (H<sub>3</sub>O<sup>+</sup> and OH<sup>-</sup>) are n
 
 Let us assume that the id of the water molecule to be replaced by nitrogen of the TBA as zero. Place the nitrogen as a cation and also replace the water 2 by the counter-ion Br.
 
-    genice2 HS1 -c 0=N -a 2=Br --depol=optimal > HS1.gro
+    genice3 HS1 -c 0=N -a 2=Br --depol=optimal > HS1.gro
 
 Then you will see the following info.
 
@@ -486,7 +486,7 @@ INFO     Cages adjacent to dopant 0: {0, 9, 2, 7}
 It indicates that the nitrogen is surrounded by cages with ids 0, 9, 2, and 7. Types for these cages can also be found in the info. Then, we put the Bu- group (minus does not mean ions) in these cages adjacent to dopant 0.
 
 ```shell
-genice2 HS1 -c 0=N -a 2=Br -H 0=Bu-:0 -H 9=Bu-:0 -H 2=Bu-:0 -H 7=Bu-:0 --depol=optimal > HS1.gro
+genice3 HS1 -c 0=N -a 2=Br -H 0=Bu-:0 -H 9=Bu-:0 -H 2=Bu-:0 -H 7=Bu-:0 --depol=optimal > HS1.gro
 ```
 
 Here the option `-H` specifies the group by `-H (cage id)=(group name):(root)`, and the root is the nitrogen that is specified by `-c` (cation) option.
@@ -527,8 +527,8 @@ By installing the [`genice2-mdanalysis`](https://github.com/vitroid/genice-mdana
 
 ```shell
 % pip install genice2-mdanalysis
-% genice2 1c -f 'mdanalysis[1c.pdb]'
-% genice2 1h -f 'mdanalysis[1h.xtc]'
+% genice3 1c -f 'mdanalysis[1c.pdb]'
+% genice3 1h -f 'mdanalysis[1h.xtc]'
 ```
 
 All the supported file types are listed in the [MDAnalysis web page](https://docs.mdanalysis.org/stable/documentation_pages/coordinates/init.html#supported-coordinate-formats).
@@ -685,13 +685,13 @@ For example, you can install RDF plugin by the following command,
 
 And use it as an output format to get the radial distribution functions.
 
-    % genice2 TS1 -f _RDF > TS1.rdf.txt
+    % genice3 TS1 -f _RDF > TS1.rdf.txt
 
 ## Output and analysis plugins
 
 Analysis plugin is a kind of output plugin (specified with -f option).
 
-| pip name                                                             | GenIce2 option         | Description                                                                                                         | output format                               | requirements              |
+| pip name                                                             | GenIce3 option         | Description                                                                                                         | output format                               | requirements              |
 | -------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------- |
 | [`genice2-cage`](https://github.com/vitroid/genice-cage)             | `-f _cage`             | Detect cages and quasi-polyhedra (vitrites).                                                                        | text, json, gromacs                         | `cycless`                 |
 | [`genice2-rdf`](https://github.com/vitroid/genice-rdf)               | `-f _RDF`              | Radial distribution functions.                                                                                      | text                                        |                           |
@@ -703,17 +703,17 @@ Analysis plugin is a kind of output plugin (specified with -f option).
 
 Input plugins (a.k.a. lattice plugins) construct a crystal structure on demand.
 
-| pip name                                               | GenIce2 usage                                       | Description                                                                       | requirements |
+| pip name                                               | GenIce3 usage                                       | Description                                                                       | requirements |
 | ------------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------ |
-| [`genice2-cif`](https://github.com/vitroid/genice-cif) | `genice2 cif[ITT.cif]`<br /> `genice2 zeolite[ITT]` | Read a local CIF file as an ice structure.<br />Read a structure from Zeolite DB. | `cif2ice`    |
+| [`genice2-cif`](https://github.com/vitroid/genice-cif) | `genice3 cif[ITT.cif]`<br /> `genice3 zeolite[ITT]` | Read a local CIF file as an ice structure.<br />Read a structure from Zeolite DB. | `cif2ice`    |
 
-## New in GenIce2.1
+## New in GenIce3
 
-GenIce2-MDAnalysis integration is now available. Try
+GenIce3-MDAnalysis integration is now available. Try
 
 ```shell
 % pip install genice2-mdanalysis
-% genice2 1h -r 4 4 4 -f "mdanalysis[1h.pdb]"
+% genice3 1h -r 4 4 4 -f "mdanalysis[1h.pdb]"
 ```
 
 to generate a PDB file.
@@ -730,7 +730,7 @@ to generate a PDB file.
 
 ### Faster, faster, faster.
 
-Combinations of the new algorithm and other improvements in coding, the processing time of GenIce2 is about five times faster than that of GenIce1.
+Combinations of the new algorithm and other improvements in coding, the processing time of GenIce3 is about five times faster than that of GenIce1.
 
 ### Core algorithm is separated.
 
@@ -738,7 +738,7 @@ The core part of the new algorithm is separated as the TileCycles package.
 
 ### Colaboratory-ready!
 
-Now GenIce2 works on the [Google Colaboratory!](https://colab.research.google.com/github/vitroid/GenIce/blob/genice2/jupyter.ipynb)
+Now GenIce3 works on the [Google Colaboratory!](https://colab.research.google.com/github/vitroid/GenIce/blob/main/jupyter.ipynb)
 
 ## New ices
 
@@ -746,7 +746,7 @@ Many new ice structures are added.
 
 ## Integration with MDAnalysis
 
-GenIce2 is now integrated with MDAnalysis.
+GenIce3 is now integrated with MDAnalysis.
 
 ## References
 

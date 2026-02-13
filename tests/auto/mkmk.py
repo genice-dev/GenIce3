@@ -5,7 +5,7 @@ import glob
 import os
 
 sys.path.append("../..")
-from genice2 import plugin
+from genice3 import plugin
 from logging import getLogger, basicConfig, DEBUG, INFO
 
 
@@ -69,9 +69,9 @@ def make_test(ice: str, tests: dict, formatters: dict):
             target = f"{ice}{module_options}"
             logger.debug(f"Target: {target}")
             # if testmode:
-            rule = f"{product}.diff: {product} ../../genice2/lattices/{ice}.py {formatter_path}\n"
+            rule = f"{product}.diff: {product} ../../genice3/unitcell/{ice}.py {formatter_path}\n"
             rule += f"\t$(GENICE) {target} {genice_options} | diff - $<\n\ttouch $@\n"
-            rule += f"{product}: ../../genice2/lattices/{ice}.py  {formatter_path}\n"
+            rule += f"{product}: ../../genice3/unitcell/{ice}.py  {formatter_path}\n"
             rule += f"\t$(GENICE) {target} {genice_options} > $@\n"
             yield product, rule
 
@@ -89,7 +89,7 @@ additional_options = [
 
 def formatter_list():
     formatter_paths = {}
-    for filepath in glob.glob("../../genice2/formats/*.py"):
+    for filepath in glob.glob("../../genice3/exporter/*.py"):
         if not os.path.islink(filepath):
             formatter_prefix = os.path.basename(filepath).split(".")[0]
             if formatter_prefix in ("raw", "null", "__init__", "_KG"):
@@ -98,7 +98,7 @@ def formatter_list():
     return formatter_paths
 
 
-result = plugin.scan("lattice")
+result = plugin.scan("unitcell")
 # preinstalled (system) plugins only
 ices = result["system"]
 tests = result["tests"]
@@ -125,7 +125,7 @@ for ice in ices:
         rules += rule
 
 print("GENICE=../../genice.x")
-# print("GENICE=genice2")
+# print("GENICE=genice3")
 targets = compose_long_line_from_list(products_prepare)
 print("TARGETS=", *targets)
 print("prepare: $(TARGETS)")

@@ -2,9 +2,9 @@
 Generate a hydrogen-disordered honeycomb bilayer ice.
 
 Usage:
-  genice2 bilayer                     Default size (6,6)
-  genice2 bilayer[size=6,10]          Larger size
-  genice2 bilayer[size=6,10:sw=0.2]   With Stone-Wales defects
+  genice3 bilayer                     Default size (6,6)
+  genice3 bilayer[size=6,10]          Larger size
+  genice3 bilayer[size=6,10:sw=0.2]   With Stone-Wales defects
 
 Options:
   size=x,y   x must be a multiple of 3.

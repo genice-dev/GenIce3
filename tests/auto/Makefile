@@ -3,7 +3,7 @@ test:
 	make -f Makefile.rules test
 
  
-Makefile.rules: $(wildcard ../../genice2/*.py) mkmk.py
+Makefile.rules: $(wildcard ../../genice3/*.py) mkmk.py
 	python3 mkmk.py > $@
 
 # 比較元(autotest-ref)のbranchで実行してファイルを準備する。

@@ -8,7 +8,7 @@ import networkx as nx
 
 desc = {
     "ref": {"11i": "Hirsch 2004"},
-    "usage": "genice2 11i[num]\n\n'num' specifies the structure in Table 1 of the Ref. [Hirsch 2004]",
+    "usage": "genice3 11i[num]\n\n'num' specifies the structure in Table 1 of the Ref. [Hirsch 2004]",
     "brief": "Sixteen candidates for Ice XI.",
     "test": (
         {"args": "1", "options": "--depol=none"},

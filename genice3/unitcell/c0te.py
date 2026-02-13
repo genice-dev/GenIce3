@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-Usage: genice2 c0te
+Usage: genice3 c0te
 """
 
 from genice3.util import (

@@ -1,6 +1,6 @@
 """
 
-Command line: /Users/matto/anaconda3/envs/genice/bin/genice2 5 -r 1 1 3 -f reshape[1,0,0,0,1,0,1,0,1]
+Command line: genice3 5 -r 1 1 3 -f reshape[1,0,0,0,1,0,1,0,1]
 Reshaping the unit cell.
   i:[1 0 0]
   j:[0 1 0]

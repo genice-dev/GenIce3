@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-Usage: genice2 c2te
+Usage: genice3 c2te
 """
 import genice3.unitcell
 from logging import getLogger

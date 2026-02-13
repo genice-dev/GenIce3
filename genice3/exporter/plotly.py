@@ -14,7 +14,7 @@ desc = {
     "ref": {"Codes": "https://github.com/vitroid/Yaplot"},
     "brief": "Plot the topology with Matplotlib.",
     "usage": """
-Usage: genice2 icename -f matplotlib[options]
+Usage: genice3 icename -f matplotlib[options]
 
 options:
     type=x  Set the plot type

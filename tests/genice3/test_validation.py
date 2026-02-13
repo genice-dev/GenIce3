@@ -216,10 +216,10 @@ def validate_reproducibility(unitcell_name: str, seed: int = 1) -> bool:
     output1 = output_file1.getvalue()
 
     # 2回目の実行
-    genice2 = GenIce3(seed=seed)
-    genice2.unitcell = UnitCell(unitcell_name)
+    run2 = GenIce3(seed=seed)
+    run2.unitcell = UnitCell(unitcell_name)
     output_file2 = StringIO()
-    Exporter("gromacs").dump(genice2, output_file2, water_model="4site")
+    Exporter("gromacs").dump(run2, output_file2, water_model="4site")
     output2 = output_file2.getvalue()
 
     # 出力が完全に一致

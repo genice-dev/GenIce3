@@ -91,7 +91,7 @@ def serialize(molecules: List[Molecule]):
 
 
 # ============================================================================
-# CIF-like data processing functions (moved from genice2.CIF)
+# CIF-like data processing functions
 # ============================================================================
 
 

@@ -1,5 +1,5 @@
 """
-Command line: ./genice2.x 4 -f reshape[1,1,1,1,-1,0,1,1,-2]
+Command line: genice3 4 -f reshape[1,1,1,1,-1,0,1,1,-2]
 Reshaping the unit cell.
   i:[1 1 1]
   j:[ 1 -1  0]

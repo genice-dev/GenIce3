@@ -1,6 +1,6 @@
 """
 
-Command line: /Users/matto/miniforge3/bin/genice2 xdtc2 -f reshape
+Command line: genice3 xdtc2 -f reshape
 Reshaping the unit cell.
   i:[1 0 0]
   j:[0 1 0]

@@ -2,13 +2,13 @@
 import sys
 import os
 
-# from genice2.tool import line_replacer
+# from genice3.tool import line_replacer
 # import distutils.core
 from logging import getLogger, INFO, basicConfig
 from jinja2 import Environment, FileSystemLoader
 import json
-import genice2
-from genice2.plugin import plugin_descriptors
+import genice3
+from genice3.plugin import plugin_descriptors
 import toml
 
 
