@@ -11,6 +11,16 @@ desc = {
     "usage": "Kirkwood G is a convenient index for testing the long-range order.",
 }
 
+format_desc = {
+    "aliases": ["_KG"],
+    "application": "Kirkwood G(r)",
+    "extension": "",
+    "water": "",
+    "solute": "",
+    "hb": "",
+    "remarks": "Statistical test suite 2: Calculate G(r) for checking long-range disorder in molecular orientations.",
+}
+
 
 # It should be expressed as a function of distance.
 

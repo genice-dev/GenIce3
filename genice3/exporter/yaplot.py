@@ -28,6 +28,16 @@ options:
 """,
 }
 
+format_desc = {
+    "aliases": ["y", "yaplot"],
+    "application": "[Yaplot](https://github.com/vitroid/Yaplot)",
+    "extension": ".yap",
+    "water": "Atomic positions",
+    "solute": "Atomic positions",
+    "hb": "o",
+    "remarks": "It renders molecular configurations and the HB network.",
+}
+
 
 def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
     "Draw the cell in Yaplot format."

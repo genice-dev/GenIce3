@@ -18,6 +18,16 @@ from genice3.exporter import (
     parse_water_model_option,
 )
 
+format_desc = {
+    "aliases": ["cif"],
+    "application": "CIF",
+    "extension": ".cif",
+    "water": "Atomic positions",
+    "solute": "Atomic positions",
+    "hb": "none",
+    "remarks": "Experimental",
+}
+
 
 # def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 # オプションがないので関数自体を準備しない。呼ぶ側が判断してくれ。

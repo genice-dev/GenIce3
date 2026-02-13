@@ -19,6 +19,21 @@ else:
     from importlib.metadata import entry_points
 
 
+def _is_water_module(module, category):
+    """Return True if the module is a water model (for molecule plugins)."""
+    if category != "molecule":
+        return False
+    if "water" in module.__dict__:
+        return True
+    if hasattr(module, "Molecule"):
+        try:
+            m = module.Molecule()
+            return getattr(m, "is_water", False)
+        except Exception:
+            pass
+    return False
+
+
 def scan(category):
     """
     Scan available plugins.
@@ -51,7 +66,7 @@ def scan(category):
                     refs[mod] = module.desc["ref"]
                 if "test" in module.desc:
                     tests[mod] = module.desc["test"]
-            iswater[mod] = "water" in module.__dict__
+            iswater[mod] = _is_water_module(module, category)
         except BaseException:
             pass
 
@@ -69,7 +84,7 @@ def scan(category):
                     refs[ep.name] = module.desc["ref"]
                 if "test" in module.desc:
                     tests[mod] = module.desc["test"]
-            iswater[ep.name] = "water" in module.__dict__
+            iswater[ep.name] = _is_water_module(module, category)
         except BaseException:
             pass
     logger.info(mods)
@@ -88,7 +103,7 @@ def scan(category):
                 refs[mod] = module.desc["ref"]
             if "test" in module.desc:
                 tests[mod] = module.desc["test"]
-        iswater[mod] = "water" in module.__dict__
+        iswater[mod] = _is_water_module(module, category)
     logger.info(mods)
     modules["local"] = mods
     modules["desc"] = desc
@@ -333,6 +348,66 @@ def Group(name, **kwargs):
     Shortcut for safe_import.
     """
     return safe_import("group", name).Group(**kwargs)
+
+
+def get_exporter_format_rows(category="exporter", groups=("system", "extra", "local")):
+    """
+    Collect format_desc from all exporter plugins and return rows for the README table.
+
+    Each exporter module may define a ``format_desc`` dict with keys:
+      aliases: list of option names (e.g. ["g", "gromacs"])
+      application: str (markdown allowed)
+      extension: str (e.g. ".gro")
+      water: str (e.g. "Atomic positions")
+      solute: str
+      hb: str (e.g. "none", "o", "auto")
+      remarks: str
+
+    Returns a list of dicts with keys name, application, extension, water, solute, hb, remarks.
+    """
+    logger = getLogger()
+    mods = scan(category)
+    rows = []
+    seen = set()
+
+    for group in groups:
+        for name in mods.get(group, []):
+            if name in seen:
+                continue
+            try:
+                if group == "system":
+                    mod = importlib.import_module(f"genice3.{category}.{name}")
+                elif group == "extra":
+                    mod = None
+                    for ep in entry_points(group=f"genice3_{category}"):
+                        if ep.name == name:
+                            mod = ep.load()
+                            break
+                    if mod is None:
+                        continue
+                else:
+                    try:
+                        mod = importlib.import_module(f"{category}.{name}")
+                    except ModuleNotFoundError:
+                        continue
+                if not hasattr(mod, "format_desc"):
+                    continue
+                fd = mod.format_desc
+                aliases = fd.get("aliases", [name])
+                name_col = ", ".join(f"`{a}`" for a in aliases)
+                rows.append({
+                    "name": name_col,
+                    "application": fd.get("application", ""),
+                    "extension": fd.get("extension", ""),
+                    "water": fd.get("water", ""),
+                    "solute": fd.get("solute", ""),
+                    "hb": fd.get("hb", ""),
+                    "remarks": fd.get("remarks", ""),
+                })
+                seen.add(name)
+            except Exception as e:
+                logger.debug(f"Skip {name} for format table: {e}")
+    return rows
 
 
 if __name__ == "__main__":

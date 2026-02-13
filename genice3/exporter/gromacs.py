@@ -20,6 +20,16 @@ from genice3.cli.pool_parser import (
     OPTION_TYPE_KEYVALUE,
 )
 
+format_desc = {
+    "aliases": ["g", "gromacs"],
+    "application": "[Gromacs](http://www.gromacs.org)",
+    "extension": ".gro",
+    "water": "Atomic positions",
+    "solute": "Atomic positions",
+    "hb": "none",
+    "remarks": "Default format.",
+}
+
 
 def _to_gro(
     cellmat: np.ndarray,

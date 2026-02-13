@@ -25,6 +25,16 @@ options:
 """,
 }
 
+format_desc = {
+    "aliases": ["plotly"],
+    "application": "[Plotly](https://plotly.com/python/)",
+    "extension": ".html",
+    "water": "Atomic positions",
+    "solute": "Atomic positions",
+    "hb": "o",
+    "remarks": "Interactive 3D visualization.",
+}
+
 
 def draw_graph(g: nx.Graph, pos: dict, fixed: nx.DiGraph = None, dopant: list = []):
     # draw the graph with edges and labels in 3D

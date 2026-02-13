@@ -20,6 +20,16 @@ from genice3.cli.pool_parser import (
     OPTION_TYPE_KEYVALUE,
 )
 
+format_desc = {
+    "aliases": ["lammps", "lmp"],
+    "application": "[LAMMPS](https://www.lammps.org/)",
+    "extension": ".lammps",
+    "water": "Atomic positions",
+    "solute": "Atomic positions",
+    "hb": "none",
+    "remarks": "Yet to be verified.",
+}
+
 
 def _to_lammps_data(
     cellmat: np.ndarray,

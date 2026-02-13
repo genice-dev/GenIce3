@@ -13,6 +13,15 @@ desc = {
 }
 
 
+format_desc = {
+    "aliases": ["_pol"],
+    "application": "Polarization",
+    "extension": "",
+    "water": "",
+    "solute": "",
+    "hb": "none",
+    "remarks": "Calculate the polarization of the ice.",
+}
 
 
 def calculate(genice: GenIce3) -> np.ndarray:

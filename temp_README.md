@@ -8,104 +8,122 @@ Version {{version}}
 
 ## New in GenIce3
 
-- コマンドライン
-  - オプションの指定方法が統一されました。
-  - オプションを config ファイルからも読みこめるようになりました。
-- API
-  - API 経由の利用が大幅に改善されました。
-- アルゴリズム
-  - Reactive プログラムの書法を採用。そのために`DependencyEngine`を開発しました。
-  - 必要なデータを指示するだけで、データ生成プロセスが Automagically に準備され実行されます。
+- **Command line**
+  - Option syntax is now unified.
+  - Options can also be read from config files.
+- **API**
+  - The API has been significantly improved.
+- **Algorithm**
+  - A reactive programming style is used; the `DependencyEngine` was developed for this purpose.
+  - Once you specify the required data, the data generation pipeline is prepared and run automatically.
 
 ## Demo
 
-The new GenIce3 works very well with interactive execution.
-[Try instantly](https://colab.research.google.com/github/vitroid/GenIce/blob/main/jupyter.ipynb) on Google Colaboratory.
+GenIce3 works well in interactive environments.
+[Try it](https://colab.research.google.com/github/genice-dev/GenIce3/blob/main/API.ipynb) on Google Colaboratory.
 
 ## Requirements
 
-{% for item in tool.poetry.dependencies %}- {{item}}{{tool.poetry.dependencies[item]}}
+{% for item in tool.poetry.dependencies %}- {{item}} {{tool.poetry.dependencies[item]}}
 {% endfor %}
-
-**Note**: The package management system `poetry`, new in GenIce version 2.1, ignores all symlinks in package directories.
-Because of this, some module "aliases" do not work correctly. (e.g. `genice3 1h` does not work, but `genice ice1h` does, because `1h.py` is an alias for `ice1h.py` .)
 
 ## Installation
 
-GenIce is registered to [PyPI (Python Package Index)](https://pypi.python.org/pypi/GenIce).
-Install with pip3.
+GenIce3 is registered on [PyPI (Python Package Index)](https://pypi.org/project/genice3/).
+Install with pip:
 
-    pip3 install genice3
+```shell
+pip3 install genice3
+```
 
 ## Uninstallation
 
-    pip3 uninstall genice3
+```shell
+pip3 uninstall genice3
+```
 
 ## Usage
 
 {{usage}}
 
-Use `./genice.x` instead of `genice3` if you want to use it inside the source tree.
+Use `./genice3.x` instead of `genice3` when running from the source tree.
 
 ## Examples
 
-- To make a 3x3x3 units of a hydrogen-disordered ice IV (4) of TIP4P water in GROMACS
+- To generate a 3×3×3 supercell of hydrogen-disordered ice IV (4) with TIP4P water in GROMACS
   .gro format:
 
-          genice3 --water tip4p --rep 3 3 3  4 > ice4.gro
+  ```shell
+  genice3 --water tip4p --rep 3 3 3  4 > ice4.gro
+  ```
 
-- To make a 2x2x4 units of CS2 clathrate hydrate structure of TIP4P water containing THF (united atom with a dummy site) in the large cage in GROMACS
-  .gro format:
+- To generate a 2×2×4 supercell of CS2 clathrate hydrate with TIP4P water and THF in the large cages (united-atom model with a dummy site) in GROMACS .gro format:
 
-          genice3 -g 16=uathf6 --water tip4p --rep 2 2 4  CS2 > cs2-224.gro
+  ```shell
+  genice3 -g 16=uathf6 --water tip4p --rep 2 2 4  CS2 > cs2-224.gro
+  ```
 
 ## Basics
 
-The program generates various ice lattice with proton disorder and without defect. The total dipole moment is always set to zero (except in the case you specify `--depol` option). The minimal structure (with --rep 1 1 1 option) is not always the unit cell of the lattice because it is difficult to deal with the hydrogen bond network topology of tiny lattice under periodic boundary condition. Note that the generated structure is not optimal according to the potential energy.
+The program generates various hydrogen-disordered ice structures without defects. The total dipole moment is set to zero unless you specify the `--depol_loop=0` or `-target_polarization` options. The minimal structure (with `--rep 1 1 1`) is not always a single unit cell, because handling the hydrogen-bond network topology of very small lattices under periodic boundary conditions is difficult. Note that the generated structure is not optimized for potential energy.
 
-- To get a large repetition of ice Ih in XYZ format,
+- To generate a large supercell of ice Ih in XYZ format,
 
-        genice3 --rep 8 8 8 1h --format xyz > 1hx888.xyz
+  ```shell
+  genice3 --rep 8 8 8 1h -e xyz > 1hx888.xyz
+  ```
 
-- To get a ice V lattice of different hydrogen order in CIF format, use `-s` option to specify the random seed.
+- To generate an ice V lattice with a different hydrogen order in CIF format, use the `-s` option to set the random seed.
 
-        genice3 5 -s 1024 --format cif > 5-1024.cif
+  ```shell
+  genice3 5 -s 1024 -e cif > 5-1024.cif
+  ```
 
-- To obtain an ice VI lattice with different density and with TIP4P water model in gromacs format, use `--dens x` option to specify the density in g cm<sup>-3</sup>.
+- To generate an ice VI lattice at a different density with the TIP4P water model in GROMACS format, use the `--dens` option to set the density in g·cm<sup>−3</sup>.
 
-        genice3 6 --dens 1.00 --format g --water tip4p > 6d1.00.gro
+  ```shell
+  genice3 6 --dens 1.00 --format g --water tip4p > 6d1.00.gro
+  ```
 
-GenIce is a modular program; it reads a unit cell data from a lattice plugin defined in the lattices folder, put water and guest molecules using a molecule plugin defined in the molecules/ folder, and output in various formats using a format plugin defined in the formats/ folder. You can write your plugins to extend GenIce. Some plugins also accept options.
+GenIce3 is modular: it loads unit cells from plugins in the `unitcell` folder, places water and guest molecules using plugins in the `molecules` folder, and writes output via plugins in the `exporter` folder. You can add your own plugins to extend GenIce3; many plugins accept options.
 
 ## Clathrate hydrates
 
-For clathrate hydrates, you can prepare the lattice with cages partially occupied by various guest molecules.
+For clathrate hydrates, you can build lattices with cages partially occupied by guest molecules.
 
-- To make a CS1 clathrate hydrate structure of TIP4P water containing CO2 in GROMACS .gro format: (60% of small cages are filled with co2 and 40% are methane)
+- To generate a CS1 clathrate hydrate with TIP4P water and CO₂ in GROMACS .gro format (60% of small cages filled with CO₂, 40% with methane):
 
-        genice3 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p CS1 > cs1.gro
+  ```shell
+  genice3 -g 12=co2*0.6+me*0.4 -g 14=co2 --water tip4p CS1 > cs1.gro
+  ```
 
-- To make a CS2 clathrate hydrate structure of TIP5P water containing THF molecules in the large cage, while only one cage is filled with methane molecule, first, just run `genice3` without guest specifications:
+- To generate a CS2 clathrate hydrate with TIP5P water, THF in the large cages, and methane in one small cage: first run `genice3` without guest options:
 
-        genice3 CS2 > CS2.gro
+  ```shell
+  genice3 CS2 > CS2.gro
+  ```
 
-  The list of cages will be output as follows:
+  The cage list will be printed, for example:
 
-        INFO   Cage types: ['12', '16']
-        INFO   Cage type 12: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183}
-        INFO   Cage type 16: {136, 137, 138, 139, 140, 141, 142, 143, 16, 17, 18, 19, 20, 21, 22, 23, 160, 161, 162, 163, 164, 165, 166, 167, 40, 41, 42, 43, 44, 45, 46, 47, 184, 185, 186, 187, 188, 189, 190, 191, 64, 65, 66, 67, 68, 69, 70, 71, 88, 89, 90, 91, 92, 93, 94, 95, 112, 113, 114, 115, 116, 117, 118, 119}
+  ```text
+  INFO   Cage types: ['12', '16']
+  INFO   Cage type 12: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183}
+  INFO   Cage type 16: {136, 137, 138, 139, 140, 141, 142, 143, 16, 17, 18, 19, 20, 21, 22, 23, 160, 161, 162, 163, 164, 165, 166, 167, 40, 41, 42, 43, 44, 45, 46, 47, 184, 185, 186, 187, 188, 189, 190, 191, 64, 65, 66, 67, 68, 69, 70, 71, 88, 89, 90, 91, 92, 93, 94, 95, 112, 113, 114, 115, 116, 117, 118, 119}
+  ```
 
-  This indicates that there are two types of cages named `12` and `16`. Fill the `16` cages with THF and put a methane molecule in the `0`th cage of type `12` as follows:
+  This shows two cage types, `12` and `16`. To fill type `16` with THF and put methane in cage `0` of type `12`:
 
-        genice3 CS2 -g 16=uathf -G 0=me > CS2.gro
+  ```shell
+  genice3 CS2 -g 16=uathf -G 0=me > CS2.gro
+  ```
 
-Although only a few kinds of guest molecules are preset, you can easily prepare new guest molecules as a module. Here is an example of the ethylene oxide molecule.
+Only a few guest molecules are included by default; you can add more by writing a plugin. Here is an example for ethylene oxide.
 
 ```python
 import numpy as np
-import genice3.molecules
+import genice3.molecule
 
-class Molecule(genice3.molecules.Molecule):
+class Molecule(genice3.molecule.Molecule):
     def __init__(self):
         # United-atom EO model with a dummy site
         LOC = 0.1436 # nm
@@ -113,47 +131,52 @@ class Molecule(genice3.molecules.Molecule):
 
         Y = (LOC**2 - (LCC/2)**2)**0.5
 
-        self.sites = np.array([[ 0.,    0., 0. ],
-                               [-LCC/2, Y,  0. ],
-                               [+LCC/2, Y,  0. ],])
+        sites = np.array([[ 0.,    0., 0. ],
+                          [-LCC/2, Y,  0. ],
+                          [+LCC/2, Y,  0. ],])
 
         mass = np.array([16,14,14])
         # center of mass
         CoM = mass @ self.sites / np.sum(mass)
-        self.sites -= CoM
+        sites -= CoM
 
-        self.atoms_  = ["O","C","C"]
-        self.labels_ = ["Oe","Ce","Ce"]
-        self.name_   = "EO"
+        atoms  = ["O","C","C"]
+        labels = ["Oe","Ce","Ce"]
+        name   = "EO"
+        super().__init__(sites=sites, labels=labels, name=name, is_water=is_water)
 ```
 
-Write the code in eo.py. Make a folder named `molecules` in the current working directory and put it in.
+Save this as `eo.py` in a `molecules` folder in your current directory.
 
-_Note_: multiple occupancy is not implemented. If it is required, make a module of a virtual molecule that contains multiple molecules.
+_Note:_ Multiple occupancy is not supported. To model it, use a virtual molecule that represents several molecules.
 
 ## Doping ions
 
-Small ions may replace the host molecules. In that case, you can use `-a` and `-c` options to replace the specified water molecules with anions and cations.
+Small ions can replace water molecules. Use the `--anion` and `--cation` options (or `-a` and `-c`) to assign anions and cations to specific water sites.
 
-The following example replaces the `0`th water molecule (in the replicated lattice) with Na cation and `1`st water molecule with Cl anion. The hydrogen bonds around the ions are organized appropriately.
+The following places Na⁺ at water 0 and Cl⁻ at water 1 in the replicated lattice; hydrogen bonds around the ions are adjusted accordingly.
 
-    genice3 CS2 --depol=optimal -c 0=Na -a 1=Cl > CS2.gro
+```shell
+genice3 CS2 -c 0=Na -a 1=Cl > CS2.gro
+```
 
-_Note 1_: The numbers of cations and anions must be the same. Otherwise, the ice rule is never satisfied and the program does not stop.
+_Note 1:_ The number of cations and anions must be equal, or the ice rule cannot be satisfied and the program may not terminate.
 
-_Note 2_: The option `--depol=optimal` is also required because it is impossible to completely depolarize the structure containing ions.
-
-_Note 3_: Protonic defects (H<sub>3</sub>O<sup>+</sup> and OH<sup>-</sup>) are not yet implemented.
+_Note 2:_ Protonic defects (H<sub>3</sub>O<sup>+</sup> and OH<sup>−</sup>) are not yet implemented.
 
 ## Semiclathrate hydrates
 
+_Under construction, sorry._
+
 ### Placement of a tetrabutylammonium ion (testing)
 
-Let us assume that the id of the water molecule to be replaced by nitrogen of the TBA as zero. Place the nitrogen as a cation and also replace the water 2 by the counter-ion Br.
+Assume the water molecule to be replaced by the TBA nitrogen has index 0. Place the nitrogen as a cation and replace water molecule 2 with the counter-ion Br.
 
-    genice3 HS1 -c 0=N -a 2=Br --depol=optimal > HS1.gro
+```shell
+genice3 HS1 -c 0=N -a 2=Br --depol=optimal > HS1.gro
+```
 
-Then you will see the following info.
+Example output:
 
 ```
 INFO   Hints:
@@ -167,47 +190,25 @@ INFO     Cages adjacent to dopant 2: {0, 9, 2, 13}
 INFO     Cages adjacent to dopant 0: {0, 9, 2, 7}
 ```
 
-It indicates that the nitrogen is surrounded by cages with ids 0, 9, 2, and 7. Types for these cages can also be found in the info. Then, we put the Bu- group (minus does not mean ions) in these cages adjacent to dopant 0.
+The nitrogen is in cages 0, 9, 2, and 7 (their types appear in the output). Place the Bu⁻ group (the minus sign denotes the group, not a charge) in those cages adjacent to dopant 0.
 
 ```shell
 genice3 HS1 -c 0=N -a 2=Br -H 0=Bu-:0 -H 9=Bu-:0 -H 2=Bu-:0 -H 7=Bu-:0 --depol=optimal > HS1.gro
 ```
 
-Here the option `-H` specifies the group by `-H (cage id)=(group name):(root)`, and the root is the nitrogen that is specified by `-c` (cation) option.
+The `-H` option has the form `-H (cage_id)=(group_name):(root)`, where the root is the nitrogen site given by `-c` (cation).
 
 ### Placement of TBAB in the lattice module
 
 _Under preparation_
 
-It is more convenient if the lattice of the semiclathrate hydrate contains molecular ions in the appropriate locations in advance. Here we explain the way to make the special module for semclathrates.
+It is often easier if the semiclathrate lattice is defined with molecular ions already in place. The procedure for building such a custom module is described elsewhere.
 
 ## Output formats
 
-| Name                     | Application                                                                                                           | extension    | water            | solute           | HB   | remarks                                                                                                                      |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------- | ---------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `cif`, `cif2`            | CIF                                                                                                                   | `.cif`       | Atomic positions | Atomic positions | none | Experimental                                                                                                                 |
-| `g`, `gromacs`           | [Gromacs](http://www.gromacs.org)                                                                                     | `.gro`       | Atomic positions | Atomic positions | none | Default format.                                                                                                              |
-| `m`, `mdview`            | MDView                                                                                                                | `.mdv`       | Atomic positions | Atomic positions | auto |
-| `mdv_au`                 | MDView                                                                                                                | `.mdv`       | Atomic positions | Atomic positions | auto | In atomic unit.                                                                                                              |
-| `o`, `openscad`          | [OpenSCAD](http://www.openscad.org)                                                                                   | `.scad`      | Center of mass   | none             | o    | See tests/art/openscad for usage.                                                                                            |
-| `povray`                 | Povray                                                                                                                | `.pov`       | Atomic positions | Atomic Positions | o    |
-| `towhee`                 | TowHee                                                                                                                | `.coords`(?) | Atomic positions | Atomic positions | none |
-| `xyz`                    | XYZ                                                                                                                   | `.xyz`       | Atomic positions | Atomic positions | none | Experimental                                                                                                                 |
-| `exyz`                   | [extended XYZ](http://open-babel.readthedocs.io/en/latest/FileFormats/Extended_XYZ_cartesian_coordinates_format.html) | `.xyz`       | Atomic positions | Atomic positions | none | Extended XYZ format defined in Open Babel                                                                                    |
-| `exyz2`                  | [extended XYZ](http://libatoms.github.io/QUIP/io.html#extendedxyz)                                                    | `.xyz`       | Atomic positions | Atomic positions | none | Extended XYZ format defined in QUIP                                                                                          |
-| `y`, `yaplot`            | [Yaplot](https://github.com/vitroid/Yaplot)                                                                           | `.yap`       | Atomic positions | Atomic positions | o    | It renders molecular configurations and the HB network.                                                                      |
-| `e`, `euler`             | Euler angles                                                                                                          | `.nx3a`      | Rigid rotor      | none             | none |
-| `q`, `quaternion`        | Quaternions                                                                                                           | `.nx4a`      | Rigid rotor      | none             | none |
-| `d`, `digraph`           | Digraph                                                                                                               | `.ngph`      | none             | none             | o    |
-| `graph`                  | Graph                                                                                                                 | `.ngph`      | none             | none             | o    | Experimental.                                                                                                                |
-| `c`, `com`               | CenterOfMass                                                                                                          | `.ar3a`      | Center of mass   | none             | none |
-| `r`, `rcom`              | Relative CoM                                                                                                          | `.ar3r`      | Center of mass   | none             | none | In fractional coordinate system.                                                                                             |
-| `p`, `python`, `reshape` | Python module                                                                                                         | `.py`        | Center of mass   | none             | none | Under development.                                                                                                           |
-| `_ringstat`              | Ring phase statistics                                                                                                 |              |                  |                  |      | Statistical test suite 1: Check the appearance frequencies of the ring phases as a test for the intermediate-range disorder. |
-| `rings`                  | [Yaplot](https://github.com/vitroid/Yaplot)                                                                           | `.yap`       | center of mass   | none             | o    | It renders HB rings.                                                                                                         |
-| `_KG`                    | Kirkwood G(r)                                                                                                         |              |                  |                  |      | Statistical test suite 2: Calculate G(r) for checking long-range disorder in molecular orientations.                         |
+{{exporter}}
 
-By installing the [`genice2-mdanalysis`](https://github.com/vitroid/genice-mdanalysis) package separately, you can generate files in many formats for a large number of molecular dynamics package softwares. E.g.
+Installing the [`genice2-mdanalysis`](https://github.com/genice-dev/genice-mdanalysis) package adds support for many formats used by molecular dynamics software. For example:
 
 ```shell
 % pip install genice2-mdanalysis
@@ -217,36 +218,29 @@ By installing the [`genice2-mdanalysis`](https://github.com/vitroid/genice-mdana
 
 All the supported file types are listed in the [MDAnalysis web page](https://docs.mdanalysis.org/stable/documentation_pages/coordinates/init.html#supported-coordinate-formats).
 
-You can prepare your file formats. Create a folder named `formats` in the current working directory and put the plugins in it.
+You can add custom output formats by placing exporter plugins in an `exporter` directory under the current working directory.
 
-Internally, there are seven stages to generate an ice structure.
+Ice generation runs in seven stages:
 
-1. Cell repetition.
-2. Random graph generation and replication.
-3. Apply ice rule.
-4. Depolarize.
-5. Determine orientations of the water molecules.
-6. Place atoms in water molecules.
-7. Place atoms in guests.
+1. Cell repetition
+2. Random graph generation and replication
+3. Apply the ice rule
+4. Depolarize
+5. Orient water molecules
+6. Place atoms in water molecules
+7. Place atoms in guest molecules
 
-In the format plugin, you define the hook functions that are invoked after processing each stage.
+Exporter plugins define hooks that run after each stage.
 
 ## Ice structures
 
-| Symbol | <div style="width:300px">Description</div> |
-| ------ | ------------------------------------------ |
-
 {{ices}}
 
-Ice names with double quotations are not experimentally verified.
+Names in quotation marks have not been experimentally verified.
 
-You can prepare your own ice structures. Create a folder named `lattices` in the current working directory and put the plugins in it.
+You can add custom ice structures by placing unit-cell plugins in a `unitcell` directory. [cif2ice](https://github.com/vitroid/cif2ice) can fetch CIF files from the [IZA structure database](http://www.iza-structure.org/databases) and help you create a lattice module.
 
-[cif2ice](https://github.com/vitroid/cif2ice) is a tool to retrieve a
-cif file of zeolite from [IZA structure database](http://www.iza-structure.org/databases) and prepare a lattice
-module in the path above.
-
-Note: Different names are given in different nomenclature.
+Note: Different naming conventions are used in the literature.
 
 | CH/FI | CH  | ice | FK    | Zeo | Foam          |
 | ----- | --- | --- | ----- | --- | ------------- |
@@ -265,39 +259,33 @@ FI: Filled ices; CH: Clathrate hydrates; FK:Frank-Kasper duals; Zeo: Zeolites; F
 
 -: No correspondence; \*: Non-FK types.
 
-Please ask [vitroid@gmail.com](mailto:vitroid@gmail.com) to add new ice structures.
+To request new ice structures, contact [vitroid@gmail.com](mailto:vitroid@gmail.com).
 
 ## Water models
 
-A water model can be chosen with `--water` option.
-
-| symbol | type |
-| ------ | ---- |
+Select a water model with the `--water` option.
 
 {{waters}}
 
 ## Guest molecules
 
-| symbol | type |
-| ------ | ---- |
-
 {{guests}}
 
-You can prepare your own guest molecules. Create a folder named `molecules` in the current working directory and put the plugins in it.
+You can add custom guest molecules by placing plugins in a `molecules` directory in the current working directory.
 
 # Extra plugins
 
-Some extra plugins are available via python package index using pip command.
+Additional plugins are available on the Python Package Index (PyPI). For example, to install the RDF plugin and compute radial distribution functions:
 
-For example, you can install RDF plugin by the following command,
+```shell
+pip install genice2-rdf
+```
 
-    % pip install genice2-rdf
+```shell
+genice3 TS1 -f _RDF > TS1.rdf.txt
+```
 
-And use it as an output format to get the radial distribution functions.
-
-    % genice3 TS1 -f _RDF > TS1.rdf.txt
-
-## Output and analysis plugins
+<!-- ## Output and analysis plugins
 
 Analysis plugin is a kind of output plugin (specified with -f option).
 
@@ -307,90 +295,53 @@ Analysis plugin is a kind of output plugin (specified with -f option).
 | [`genice2-rdf`](https://github.com/vitroid/genice-rdf)               | `-f _RDF`              | Radial distribution functions.                                                                                      | text                                        |                           |
 | [`genice2-svg`](https://github.com/vitroid/genice-svg)               | `-f svg`<br />`-f png` | 2D graphics in SVG format.<br /> ... in PNG format.                                                                 | SVG<br />PNG                                | `svgwrite`                |
 | [`genice2-twist`](https://github.com/vitroid/genice-twist)           | `-f twist`             | Calculate the twist order parameter (and visualize) [Matsumoto 2019]                                                | text (@BTWC)<br />SVG<br />PNG <br />yaplot | `twist-op`, `genice2-svg` |
-| [`genice2-mdanalysis`](https://github.com/vitroid/genice-mdanalysis) | `-f mdanalysis`        | Output the atoms in various file formats that are served by [MDAnalysis](https://github.com/MDAnalysis/mdanalysis). | text, binary                                | `mdanalysis`              |
+| [`genice2-mdanalysis`](https://github.com/vitroid/genice-mdanalysis) | `-f mdanalysis`        | Output the atoms in various file formats that are served by [MDAnalysis](https://github.com/MDAnalysis/mdanalysis). | text, binary                                | `mdanalysis`              | -->
 
-## Input plugins
+<!-- ## Input plugins
 
-Input plugins (a.k.a. lattice plugins) construct a crystal structure on demand.
+Input plugins (unitcell plugins) construct a crystal structure on demand.
 
 | pip name                                               | GenIce3 usage                                       | Description                                                                       | requirements |
 | ------------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------ |
-| [`genice2-cif`](https://github.com/vitroid/genice-cif) | `genice3 cif[ITT.cif]`<br /> `genice3 zeolite[ITT]` | Read a local CIF file as an ice structure.<br />Read a structure from Zeolite DB. | `cif2ice`    |
-
-## New in GenIce3
-
-GenIce3-MDAnalysis integration is now available. Try
-
-```shell
-% pip install genice2-mdanalysis
-% genice3 1h -r 4 4 4 -f "mdanalysis[1h.pdb]"
-```
-
-to generate a PDB file.
-
-## Changes from GenIce1
-
-### Novel algorithm to make a structure obeying the ice rules in Stage 3.
-
-- We have devised a completely new algorithm for orienting water molecules so that they obey ice rules. This algorithm can be applied only to defect-free ice. The algorithm runs in the following steps.
-  1. First, based on the distances between neighboring molecules, the structure of the hydrogen-bond network is represented by a 4-connected undirected graph.
-  2. The undirected graph is then randomly tiled with cycles. That is, we draw many cycles in the network so that all edges belong to only one of the cycles. It is always possible to a 4-connected regular graph.
-  3. By directing each cycle, we can immediately obtain a directed graph that satisfies the ice rule. We can choose two orientations for each cycle so that the total polarization of the entire system is as small as possible.
-  4. In rare cases, complete depolarization may not be possible. In such cases, it is depolarized in Stage 4.
-
-### Faster, faster, faster.
-
-Combinations of the new algorithm and other improvements in coding, the processing time of GenIce3 is about five times faster than that of GenIce1.
-
-### Core algorithm is separated.
-
-The core part of the new algorithm is separated as the TileCycles package.
-
-### Colaboratory-ready!
-
-Now GenIce3 works on the [Google Colaboratory!](https://colab.research.google.com/github/vitroid/GenIce/blob/main/jupyter.ipynb)
-
-## New ices
-
-Many new ice structures are added.
-
-## Integration with MDAnalysis
-
-GenIce3 is now integrated with MDAnalysis.
+| [`genice2-cif`](https://github.com/vitroid/genice-cif) | `genice3 cif[ITT.cif]`<br /> `genice3 zeolite[ITT]` | Read a local CIF file as an ice structure.<br />Read a structure from Zeolite DB. | `cif2ice`    | -->
 
 ## References
 
 {{citationlist}}
 
-## Algorithms and how to cite them.
+## Algorithms and citation
 
-The algorithms to make a depolarized hydrogen-disordered ice are explained in these papers:
+The algorithms for generating depolarized, hydrogen-disordered ice are described in the following papers:
 
 M. Matsumoto, T. Yagasaki, and H. Tanaka,"GenIce: Hydrogen-Disordered
 Ice Generator", J. Comput. Chem. 39, 61-64 (2017). [DOI: 10.1002/jcc.25077](http://doi.org/10.1002/jcc.25077)
 
-    @article{Matsumoto:2017bk,
-        author = {Matsumoto, Masakazu and Yagasaki, Takuma and Tanaka, Hideki},
-        title = {GenIce: Hydrogen-Disordered Ice Generator},
-        journal = {Journal of Computational Chemistry},
-    	volume = {39},
-    	pages = {61-64},
-        year = {2017}
-    }
+```bibtex
+@article{Matsumoto:2017bk,
+    author = {Matsumoto, Masakazu and Yagasaki, Takuma and Tanaka, Hideki},
+    title = {GenIce: Hydrogen-Disordered Ice Generator},
+    journal = {Journal of Computational Chemistry},
+    volume = {39},
+    pages = {61-64},
+    year = {2017}
+}
+```
 
 M. Matsumoto, T. Yagasaki, and H. Tanaka, “GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures.”, J. Chem. Phys. 160, 094101 (2024). [DOI:10.1063/5.0198056](https://doi.org/10.1063/5.0198056)
 
-    @article{Matsumoto:2024,
-        author = {Matsumoto, Masakazu and Yagasaki, Takuma and Tanaka, Hideki},
-        title = {GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures},
-        journal = {Journal of Chemical Physics},
-        volume = {160},
-        pages = {094101},
-        year = {2024}
-    }
+```bibtex
+@article{Matsumoto:2024,
+    author = {Matsumoto, Masakazu and Yagasaki, Takuma and Tanaka, Hideki},
+    title = {GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures},
+    journal = {Journal of Chemical Physics},
+    volume = {160},
+    pages = {094101},
+    year = {2024}
+}
+```
 
 ## How to contribute
 
-GenIce has been available as open source software on GitHub({{project.urls.Homepage}}) since 2015.
+GenIce has been available as open source software on GitHub ({{tool.genice.urls.repository}}) since 2015.
 Feedback, suggestions for improvements and enhancements, bug fixes, etc. are sincerely welcome.
 Developers and test users are also welcome. If you have any ice that is publicly available but not included in GenIce, please let us know.
