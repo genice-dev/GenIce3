@@ -1,39 +1,36 @@
-# 改造したあとのbranchで実行する。
-test:
-	make -f Makefile.rules test
+NTHREADS=8
+LIMIT=1000
+REFERENCE=1
 
- 
-Makefile.rules: $(wildcard ../../genice3/*.py) mkmk.py
+# 回帰テスト: 現在の出力を reference/ と比較
+test: Makefile.rules
+	$(MAKE) -f Makefile.rules -k test
+
+# 参照出力を更新（意図した変更時のみ。更新後は git add reference/ してコミット）
+update-reference: Makefile.rules
+	$(MAKE) -f Makefile.rules update-reference
+
+# 発見ベース: genice3 を実行して成功した組み合わせを discoveries.json に記録
+# make discover              # 全組み合わせ
+# make discover LIMIT=100     # 成功100件まで
+# make discover REFERENCE=1   # 成功時に reference/ へ出力を保存
+discover: option_sets.py
+	python3 discover.py -o discoveries.json \
+		$(if $(LIMIT),--limit $(LIMIT)) \
+		$(if $(REFERENCE),--reference)
+
+# 発見ベース: discoveries.json から Makefile.rules を生成
+Makefile.rules.discover: discoveries.json
+	python3 generate_rules.py discoveries.json -o Makefile.rules.discover
+
+# 従来方式: mkmk.py から Makefile.rules を生成（固定オプション）
+Makefile.rules: mkmk.py ../../genice3/plugin.py
 	python3 mkmk.py > $@
 
-# 比較元(autotest-ref)のbranchで実行してファイルを準備する。
-prepare: Makefile.rules
-	make -f Makefile.rules -k prepare 
-
 clean:
-	-rm *.diff
+	-rm -f *.diff
+	-rm -f *.log
 
 distclean: clean
-	-rm @*
-	-rm *._KG
-	-rm *._ringstat
-	-rm *.cif
-	-rm *.cif2
-	-rm *.com
-	-rm *.digraph
-	-rm *.euler
-	-rm *.exmol
-	-rm *.exyz
-	-rm *.graph
-	-rm *.gromacs
-	-rm *.mdview
-	-rm *.output
-	-rm *.povray
-	-rm *.python
-	-rm *.quaternion
-	-rm *.rcom
-	-rm *.rings
-	-rm *.towhee
-	-rm *.xyz
-	-rm *.yaplot
+	-rm reference/
 	-rm Makefile.rules

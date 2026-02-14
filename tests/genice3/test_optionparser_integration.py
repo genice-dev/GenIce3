@@ -12,23 +12,24 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from genice3.cli.pool_parser import PoolBasedParser
+from genice3.cli.options import GENICE3_OPTION_DEFS
 
 
 def test_basic_parsing():
     """基本的なパースのテスト"""
-    parser = PoolBasedParser()
+    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
     parser.parse_args(["A15", "--exporter", "gromacs", "--rep", "2", "2", "2"])
     result = parser.get_result()
 
     assert result["unitcell"]["name"] == "A15"
     assert result["exporter"]["name"] == "gromacs"
-    assert result["base_options"]["replication_factors"] == ("2", "2", "2")
+    assert result["base_options"]["replication_factors"] == (2, 2, 2)
     print("✓ 基本パーステスト成功")
 
 
 def test_complex_parsing():
     """複雑なパースのテスト"""
-    parser = PoolBasedParser()
+    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
     parser.parse_args(
         [
             "A15",
@@ -50,7 +51,7 @@ def test_complex_parsing():
 
     assert result["unitcell"]["name"] == "A15"
     assert result["exporter"]["name"] == "gromacs"
-    assert result["base_options"]["seed"] == "42"
+    assert result["base_options"]["seed"] == 42
     assert result["base_options"]["spot_anion"] == {"1": "Cl"}
     assert result["base_options"]["spot_cation"] == {"5": "Na"}
     print("✓ 複雑なパーステスト成功")
@@ -58,7 +59,7 @@ def test_complex_parsing():
 
 def test_validation():
     """バリデーションのテスト"""
-    parser = PoolBasedParser()
+    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
     parser.parse_args(["A15", "--exporter", "gromacs"])
     is_valid, errors = parser.validate()
     assert is_valid, f"バリデーションエラー: {errors}"
@@ -67,7 +68,7 @@ def test_validation():
 
 def test_missing_unitcell():
     """unitcellが指定されていない場合のテスト"""
-    parser = PoolBasedParser()
+    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
     parser.parse_args(["--exporter", "gromacs"])
     is_valid, errors = parser.validate()
     assert not is_valid, "unitcellが指定されていない場合はエラーになるべき"

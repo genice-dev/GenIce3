@@ -13,6 +13,7 @@ if str(project_root) not in sys.path:
 
 import pytest
 from io import StringIO
+from genice3 import ConfigurationError
 from genice3.genice import GenIce3
 from genice3.plugin import UnitCell, Exporter, Molecule
 from tests.genice3.test_validation import (
@@ -149,7 +150,7 @@ def test_unitcell_options():
 
 
 def test_ion_doping():
-    """イオン置換のテスト"""
+    """イオン置換のテスト（水素無秩序氷）"""
     genice = GenIce3(seed=1)
     genice.unitcell = UnitCell("1h")
 
@@ -160,3 +161,19 @@ def test_ion_doping():
     # グラフが生成できることを確認
     graph = genice.graph
     assert graph.number_of_nodes() > 0
+
+
+def test_ion_doping_rejected_on_hydrogen_ordered_ice():
+    """水素秩序氷（ice11）ではイオン置換が拒否される（spot_anion/spot_cation）"""
+    genice = GenIce3(seed=1)
+    genice.unitcell = UnitCell("11")
+    genice.spot_anions = {0: "Cl"}
+
+    with pytest.raises(ConfigurationError, match="not supported"):
+        _ = genice.digraph  # fixedEdges が呼ばれるタイミングで拒否される
+
+
+def test_ion_doping_rejected_on_hydrogen_ordered_ice_via_unitcell_options():
+    """水素秩序氷（XIc-a）ではイオン置換が拒否される（unitcell anion/cation オプション）"""
+    with pytest.raises(ConfigurationError, match="not supported"):
+        UnitCell("XIc-a", anion={0: "Cl"})
