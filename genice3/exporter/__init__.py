@@ -40,7 +40,7 @@ def parse_spot_guest_option(arg: dict) -> Dict[int, Molecule]:
                 "Use '?' to display cage information. "
                 "This option triggers a survey of cage positions and types."
             )
-        result[int(label)] = safe_import("molecule", molecule).Molecule()
+        result[label] = safe_import("molecule", molecule).Molecule()
     return result
 
 
