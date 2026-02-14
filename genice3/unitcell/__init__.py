@@ -8,11 +8,27 @@ from genice3.cage import assess_cages
 from typing import Dict, Any, Tuple
 from genice3.molecule.one import Molecule
 from genice3.cli.pool_parser import (
+    OptionDef,
     parse_options_generic,
     OPTION_TYPE_STRING,
     OPTION_TYPE_TUPLE,
     OPTION_TYPE_KEYVALUE,
 )
+
+
+# unitcell 共通オプション定義。追加・削除はここだけ行えばよい。
+UNITCELL_OPTION_DEFS = (
+    OptionDef("shift", parse_type=OPTION_TYPE_TUPLE),
+    OptionDef("density", parse_type=OPTION_TYPE_STRING),
+    OptionDef("anion", parse_type=OPTION_TYPE_KEYVALUE),
+    OptionDef("cation", parse_type=OPTION_TYPE_KEYVALUE),
+)
+
+# 型変換後の後処理（shift→floatタプル、density→float）
+UNITCELL_POST_PROCESSORS = {
+    "shift": lambda x: tuple(float(v) for v in x),
+    "density": lambda x: float(x) if isinstance(x, str) else x,
+}
 
 
 def ion_processor(arg: dict) -> Dict[int, Molecule]:
@@ -40,39 +56,25 @@ class UnitCell:
     @staticmethod
     def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        unitcellプラグインの共通オプションを処理
+        unitcell 共通オプションを型変換して処理する。
 
-        この関数は、動的プラグインチェーン実行システムから呼び出されます。
-        すべてのunitcellプラグインが基底クラスのUnitCell.__init__に受け取る
-        オプション（shift, density, anion, cation）を処理します。
+        対象は UNITCELL_OPTION_DEFS で定義。shift / density / anion / cation。
+        後処理は UNITCELL_POST_PROCESSORS で shift→float タプル、density→float に変換。
 
         Args:
-            options: オプションの辞書（設定ファイルの値が初期値として含まれる可能性がある）
-                - shift: 単位胞のシフト（タプル形式、例: (0.1, 0.1, 0.1)）
-                - density: 密度（文字列形式、例: "0.8"）
-                - anion: アニオン置換（key=value形式、例: "15=Cl" または {"15": "Cl"}）
-                - cation: カチオン置換（key=value形式、例: "21=Na" または {"21": "Na"}）
+            options: プラグインに渡されたオプション辞書。
 
         Returns:
-            (処理したオプション, 処理しなかったオプション) のタプル
-            - 処理したオプション: unitcellプラグインが処理したオプション（shift, density, anion, cation）
-            - 処理しなかったオプション: 次のプラグイン（例: exporterプラグイン）に渡すオプション
+            (処理したオプション, 処理しなかったオプション)。未処理は次のプラグインへ。
         """
-        # オプションの型定義
         option_specs = {
-            "shift": OPTION_TYPE_TUPLE,
-            "density": OPTION_TYPE_STRING,
-            "anion": OPTION_TYPE_KEYVALUE,
-            "cation": OPTION_TYPE_KEYVALUE,
+            d.name: d.parse_type
+            for d in UNITCELL_OPTION_DEFS
+            if d.parse_type is not None
         }
-
-        # 後処理関数（数値への変換など）
-        post_processors = {
-            "shift": lambda x: tuple(float(v) for v in x),
-            "density": lambda x: float(x) if isinstance(x, str) else x,
-        }
-
-        return parse_options_generic(options, option_specs, post_processors)
+        return parse_options_generic(
+            options, option_specs, UNITCELL_POST_PROCESSORS
+        )
 
     def __init__(
         self,

@@ -15,6 +15,7 @@ from genice3.exporter import (
     parse_water_model_option,
 )
 from genice3.cli.pool_parser import (
+    OptionDef,
     parse_options_generic,
     OPTION_TYPE_STRING,
     OPTION_TYPE_KEYVALUE,
@@ -142,42 +143,35 @@ def _to_lammps_data(
     return s
 
 
+# lammps プラグインが受け取るオプション定義。追加・削除はここだけ行えばよい。
+LAMMPS_OPTION_DEFS = (
+    OptionDef("guest", parse_type=OPTION_TYPE_KEYVALUE),
+    OptionDef("spot_guest", parse_type=OPTION_TYPE_KEYVALUE),
+    OptionDef("water_model", parse_type=OPTION_TYPE_STRING),
+)
+
+
 def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    lammpsプラグインのオプションを処理
+    lammps プラグインのオプションを型変換して処理する。
 
-    この関数は、動的プラグインチェーン実行システムから呼び出されます。
-    コマンドライン引数や設定ファイルから受け取ったオプションのうち、
-    lammpsプラグインが処理すべきオプション（guest, spot_guest, water_model）を
-    処理し、それ以外は次のプラグイン（例: moleculeプラグイン）に渡すために返します。
+    対象は LAMMPS_OPTION_DEFS で定義。water は water_model のエイリアスとして正規化する。
 
     Args:
-        options: オプションの辞書（設定ファイルの値が初期値として含まれる可能性がある）
-            - guest: ゲスト分子の指定（例: {"A12": "me", "A14": "et"} または ["A12=me", "A14=et"]）
-            - spot_guest: 特定のケージに配置するゲスト分子（例: {"0": "foursite"} または "0=foursite"）
-            - water_model: 水分子モデル名（例: "3site", "foursite"）
+        options: プラグインに渡されたオプション辞書。
 
     Returns:
-        (処理したオプション, 処理しなかったオプション) のタプル
-        - 処理したオプション: lammpsプラグインが処理したオプション（guest, spot_guest, water_model）
-        - 処理しなかったオプション: 次のプラグインに渡すオプション（例: type）
-
-    注意:
-        - typeオプションはfoursiteなどのmoleculeプラグインのオプションであり、
-          この関数では処理せず、処理しなかったオプションとして返します。
-        - water_modelが"foursite"などのmoleculeプラグイン名の場合、
-          チェーン実行システムが自動的に該当するmoleculeプラグインを呼び出します。
+        (処理したオプション, 処理しなかったオプション)。未処理は次のプラグインへ。
     """
-    # オプションの型定義
-    option_specs = {
-        "guest": OPTION_TYPE_KEYVALUE,  # "A12=me" または {"A12": "me"} 形式
-        "spot_guest": OPTION_TYPE_KEYVALUE,  # "0=foursite" または {"0": "foursite"} 形式
-        "water_model": OPTION_TYPE_STRING,  # "3site", "foursite" など
-    }
+    options = dict(options)
+    if "water" in options and "water_model" not in options:
+        options["water_model"] = options["water"]
 
-    # parse_options_genericを使用してオプションを処理
-    # これにより、guestとspot_guestは辞書形式に変換され、
-    # water_modelは文字列として処理されます
+    option_specs = {
+        d.name: d.parse_type
+        for d in LAMMPS_OPTION_DEFS
+        if d.parse_type is not None
+    }
     return parse_options_generic(options, option_specs)
 
 

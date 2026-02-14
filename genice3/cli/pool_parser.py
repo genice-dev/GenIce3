@@ -4,7 +4,8 @@
 PoolBasedParserを使用した動的プラグインチェーン実行システムを提供。
 """
 
-from typing import Dict, List, Any, Union, Optional, Set, Tuple, Callable
+from dataclasses import dataclass
+from typing import Dict, List, Any, Union, Optional, Set, Tuple, Callable, Sequence
 from logging import getLogger, DEBUG, INFO
 from pathlib import Path
 
@@ -18,12 +19,7 @@ logger = getLogger(__name__)
 _plugin_cache: Dict[Tuple[str, str], Callable] = {}
 
 # YAMLライブラリのインポート
-try:
-    import yaml
-
-    YAML_AVAILABLE = True
-except ImportError:
-    YAML_AVAILABLE = False
+import yaml
 
 
 # ============================================================================
@@ -69,29 +65,39 @@ class OptionPool:
 
 
 # ============================================================================
-# 基底レベルのオプション定義
+# オプション定義（1箇所で管理し、以下から派生する定数を導出）
 # ============================================================================
 
-# 基底レベル（genice3）が認識するオプション
-BASE_LEVEL_OPTIONS: Set[str] = {
-    "rep",
-    "replication_factors",
-    "replication_matrix",
-    "seed",
-    "depol_loop",
-    "target_polarization",
-    "assess_cages",
-    "debug",
-    "spot_anion",
-    "spot_cation",
-    "config",
-    "exporter",  # exporter名も基底レベルで処理
-    "unitcell",  # unitcell名も基底レベルで処理
-}
+
+@dataclass(frozen=True)
+class OptionDef:
+    """CLI で認識するオプションの定義。長い形式・短い形式・フラグ・最大値数・パース型・ヘルプをまとめて持つ。"""
+
+    name: str  # 長い形式の名前（--name の name）
+    short: Optional[str] = None  # 短い形式（例: "-s"）
+    is_flag: bool = False  # 値を持たないフラグか
+    max_values: Optional[int] = None  # 消費する値の最大数（rep など）
+    level: str = "base"  # "base": 基底レベル, "plugin": プラグインに渡す
+    parse_type: Optional[str] = None  # parse_base_options での型: OPTION_TYPE_STRING / TUPLE / FLAG / KEYVALUE。None は型変換しない（config, exporter 等）
+    metavar: Optional[str] = None  # ヘルプ用（例: "INTEGER", "TEXT", "FLOAT FLOAT FLOAT"）
+    help_text: Optional[str] = None  # --help に表示する説明文
+    help_format: Optional[str] = None  # 省略時は short/name/metavar から組み立て。例: "--rep, --replication_factors INT INT INT"
+
+
+def _option_defs_to_maps(
+    option_defs: Sequence[OptionDef],
+) -> Tuple[Dict[str, str], Dict[str, int], Set[str]]:
+    """OptionDef の列から short_map, max_values, flag_options を組み立てる（汎用）。"""
+    short_map = {d.short: d.name for d in option_defs if d.short is not None}
+    max_values = {
+        d.name: d.max_values for d in option_defs if d.max_values is not None
+    }
+    flag_options = {d.name for d in option_defs if d.is_flag}
+    return short_map, max_values, flag_options
 
 
 # ============================================================================
-# コマンドライン引数と設定ファイルのパース関数（PoolBasedParserに依存しない）
+# コマンドライン引数と設定ファイルのパース関数（option_defs を外から受け取る）
 # ============================================================================
 
 
@@ -105,9 +111,6 @@ def load_config_file(yaml_path: str) -> Dict[str, Any]:
     Returns:
         YAMLファイルの内容をそのまま返す（YAMLの構造がそのまま内部データ構造になる）
     """
-    if not YAML_AVAILABLE:
-        return {}
-
     config_file = Path(yaml_path)
     if not config_file.exists():
         return {}
@@ -182,43 +185,21 @@ def parse_bracketed_plugin(arg: str) -> Tuple[str, Dict[str, Any]]:
     return plugin_name, options
 
 
-# 短縮形オプションから長い形式へのマッピング
-SHORT_OPTION_MAP: Dict[str, str] = {
-    "-D": "debug",
-    "-s": "seed",
-    "-A": "assess_cages",
-    "-a": "spot_anion",
-    "-c": "spot_cation",
-    "-C": "config",
-    "-e": "exporter",
-    "-g": "guest",
-    "-G": "spot_guest",
-    "-h": "help",
-    "-V": "version",
-}
-
-# オプションごとに消費する値の最大数（指定時のみ）。例: rep は 3 つだけ取り残りを unitcell に
-OPTION_MAX_VALUES: Dict[str, int] = {
-    "rep": 3,
-    "replication_factors": 3,
-}
-
-# フラグ型のオプション（値を持たない）
-FLAG_OPTIONS: Set[str] = {"debug"}
-
-
 def _collect_option_values(
-    args: List[str], start_index: int, key: str
+    args: List[str],
+    start_index: int,
+    key: str,
+    option_max_values: Dict[str, int],
 ) -> Tuple[List[Any], int]:
     """
     オプションに続く引数から値を収集する。
-    - で始まる引数が出るまで、または OPTION_MAX_VALUES に達するまで消費する。
+    - で始まる引数が出るまで、または option_max_values に達するまで消費する。
 
     Returns:
         (収集した値のリスト, 次の未消費インデックス)
     """
     values: List[Any] = []
-    max_vals = OPTION_MAX_VALUES.get(key)
+    max_vals = option_max_values.get(key)
     i = start_index
     while i < len(args) and not args[i].startswith("-"):
         if max_vals is not None and len(values) >= max_vals:
@@ -228,7 +209,9 @@ def _collect_option_values(
     return values, i
 
 
-def _values_to_option_value(values: List[Any], key: str) -> Any:
+def _values_to_option_value(
+    values: List[Any], key: str, flag_options: Set[str]
+) -> Any:
     """
     収集した値リストをオプション値に変換する。
     0個: フラグなら True、それ以外は None
@@ -236,7 +219,7 @@ def _values_to_option_value(values: List[Any], key: str) -> Any:
     2個以上: タプル
     """
     if len(values) == 0:
-        return True if key in FLAG_OPTIONS else None
+        return True if key in flag_options else None
     if len(values) == 1:
         return values[0]
     return tuple(values)
@@ -262,12 +245,16 @@ def _parse_one_long_option(
     arg: str,
     cmdline_dict: Dict[str, Any],
     cmdline_specified_keys: Set[str],
+    option_max_values: Dict[str, int],
+    flag_options: Set[str],
 ) -> int:
     """--で始まる1オプションを処理。戻り値は次のインデックス。"""
     key = arg[2:]
     cmdline_specified_keys.add(key)
-    values, next_i = _collect_option_values(args, i + 1, key)
-    value = _values_to_option_value(values, key)
+    values, next_i = _collect_option_values(
+        args, i + 1, key, option_max_values
+    )
+    value = _values_to_option_value(values, key, flag_options)
     _merge_option_into_dict(cmdline_dict, key, value)
     return next_i
 
@@ -278,30 +265,39 @@ def _parse_one_short_option(
     arg: str,
     cmdline_dict: Dict[str, Any],
     cmdline_specified_keys: Set[str],
+    short_option_map: Dict[str, str],
+    option_max_values: Dict[str, int],
+    flag_options: Set[str],
 ) -> int:
-    """-で始まる1オプションを処理。SHORT_OPTION_MAP に無ければスキップ。戻り値は次のインデックス。"""
-    if arg not in SHORT_OPTION_MAP:
+    """-で始まる1オプションを処理。short_option_map に無ければスキップ。戻り値は次のインデックス。"""
+    if arg not in short_option_map:
         return i + 1
-    key = SHORT_OPTION_MAP[arg]
+    key = short_option_map[arg]
     cmdline_specified_keys.add(key)
-    values, next_i = _collect_option_values(args, i + 1, key)
-    value = _values_to_option_value(values, key)
+    values, next_i = _collect_option_values(
+        args, i + 1, key, option_max_values
+    )
+    value = _values_to_option_value(values, key, flag_options)
     _merge_option_into_dict(cmdline_dict, key, value)
     return next_i
 
 
-def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str]]:
+def parse_command_line_to_dict(
+    args: List[str], option_defs: Sequence[OptionDef]
+) -> Tuple[Dict[str, Any], Set[str]]:
     """
-    コマンドライン引数をパースしてフラットな辞書に変換
+    コマンドライン引数をパースしてフラットな辞書に変換。
 
     Args:
         args: コマンドライン引数のリスト（--configは除外済みであること）
+        option_defs: 認識するオプションの定義（呼び出し元で渡す。genice3 の場合は options.GENICE3_OPTION_DEFS）
 
     Returns:
         (cmdline_dict, cmdline_specified_keys)のタプル
-        - cmdline_dict: パース済みのフラットなオプション辞書
-        - cmdline_specified_keys: コマンドラインで指定されたキーのセット
     """
+    short_map, option_max_values, flag_options = _option_defs_to_maps(
+        option_defs
+    )
     cmdline_dict: Dict[str, Any] = {}
     cmdline_specified_keys: Set[str] = set()
     unitcell_arg = None
@@ -310,12 +306,10 @@ def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str
     while i < len(args):
         arg = args[i]
 
-        # --configオプションは既に処理済みなのでスキップ
         if arg == "--config" or arg == "-C":
             i += 2
             continue
 
-        # unitcell名の位置引数（最初の非オプション引数）
         if unitcell_arg is None and not arg.startswith("-"):
             cmdline_dict["unitcell"] = arg
             unitcell_arg = arg
@@ -324,11 +318,24 @@ def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str
 
         if arg.startswith("--"):
             i = _parse_one_long_option(
-                args, i, arg, cmdline_dict, cmdline_specified_keys
+                args,
+                i,
+                arg,
+                cmdline_dict,
+                cmdline_specified_keys,
+                option_max_values,
+                flag_options,
             )
         elif arg.startswith("-") and arg != "-":
             i = _parse_one_short_option(
-                args, i, arg, cmdline_dict, cmdline_specified_keys
+                args,
+                i,
+                arg,
+                cmdline_dict,
+                cmdline_specified_keys,
+                short_map,
+                option_max_values,
+                flag_options,
             )
         else:
             i += 1
@@ -517,8 +524,7 @@ def load_plugin(category: str, name: str) -> Optional[Callable]:
             _plugin_cache[cache_key] = parse_func
             return parse_func
         elif category == "base":
-            # baseオプションの場合、CLI固有のparse_base_optionsを使用
-            from genice3.cli.genice import parse_base_options
+            from genice3.cli.options import parse_base_options
 
             parse_func = parse_base_options
             _plugin_cache[cache_key] = parse_func
@@ -538,6 +544,7 @@ def build_options_dict(
     config_dict: Dict[str, Any],
     cmdline_dict: Dict[str, Any],
     cmdline_specified_keys: Set[str],
+    base_level_options: Set[str],
 ) -> Dict[str, Any]:
     """
     YAML設定とコマンドライン引数から階層的なオプション辞書を構築
@@ -546,44 +553,33 @@ def build_options_dict(
         config_dict: YAMLファイルから読み込んだ辞書（YAMLの構造をそのまま保持）
         cmdline_dict: コマンドライン引数からパースしたフラットな辞書
         cmdline_specified_keys: コマンドラインで指定されたキーのセット
+        base_level_options: 基底レベルで扱うオプション名の集合（genice3 の場合は option_defs から parse_args 内で導出）
 
     Returns:
-        階層的なオプション辞書（YAMLの構造に対応）:
-        {
-            "genice3": {...},  # genice3セクションのオプション
-            "unitcell": {...},  # unitcellセクション（nameを含むすべてのオプション）
-            "exporter": {...}   # exporterセクション（nameを含むすべてのオプション）
-        }
+        階層的なオプション辞書（YAMLの構造に対応）
     """
-    from genice3.cli.genice import parse_base_options
+    from genice3.cli.options import parse_base_options
 
-    # 1. genice3オプションを構築（YAMLから読み込んだgenice3オプションにコマンドラインをマージ）
     genice3_options = config_dict.get("genice3", {}).copy()
 
-    # コマンドラインで指定されたgenice3レベルのオプションで上書き
-    for key in BASE_LEVEL_OPTIONS:
+    for key in base_level_options:
         if key in cmdline_dict:
             if key == "rep":
-                # repはreplication_factorsのエイリアス
                 genice3_options["replication_factors"] = cmdline_dict[key]
             elif key not in ("config", "exporter", "unitcell"):
                 genice3_options[key] = cmdline_dict[key]
 
-    # parse_base_optionsでgenice3レベルオプションを処理（統合された辞書を返す）
     genice3_options = parse_base_options(genice3_options)
 
-    # 2. プラグインのオプションを構築
     plugin_types = ["unitcell", "exporter"]
     options_dict: Dict[str, Any] = {
         "genice3": genice3_options,
     }
 
-    # BASE_LEVEL_OPTIONS以外のコマンドライン引数オプションを取得
-    # （これらはプラグインのオプションとして扱われる）
     plugin_cmdline_options = {
         k: v
         for k, v in cmdline_dict.items()
-        if k not in BASE_LEVEL_OPTIONS and k not in plugin_types
+        if k not in base_level_options and k not in plugin_types
     }
 
     for plugin_type in plugin_types:
@@ -758,21 +754,23 @@ def execute_plugin_chain(
 
 def parse_args(
     args: List[str],
+    option_defs: Sequence[OptionDef],
 ) -> Tuple[Dict[str, Any], List[Tuple[str, Dict[str, Any], Dict[str, Any]]]]:
     """
     コマンドライン引数をパース
 
     Args:
         args: コマンドライン引数のリスト（sys.argv[1:]相当）
+        option_defs: 認識するオプションの定義（genice3 の場合は options.GENICE3_OPTION_DEFS）
 
     Returns:
         (options_dict, plugin_results) のタプル
-        - options_dict: 階層的なオプション辞書
-        - plugin_results: プラグイン実行結果のリスト
-
-    注意: --configオプションが指定されている場合は、最初に処理される必要があります。
     """
-    # まず--configオプションを探して、設定ファイルを先に読み込む
+    base_level_options = {d.name for d in option_defs if d.level == "base"} | {
+        "unitcell",
+        "exporter",
+    }
+
     config_dict: Dict[str, Any] = {}
     i = 0
     while i < len(args):
@@ -781,7 +779,6 @@ def parse_args(
             i += 1
             if i < len(args):
                 config_path = args[i]
-                # 設定ファイルを読み込んで階層的な辞書として取得
                 config_dict = load_config_file(config_path)
             i += 1
         else:
@@ -789,10 +786,10 @@ def parse_args(
 
     logger.debug(f"config_dict: {config_dict}")
 
-    # コマンドライン引数をフラットな辞書に変換
-    cmdline_dict, cmdline_specified_keys = parse_command_line_to_dict(args)
+    cmdline_dict, cmdline_specified_keys = parse_command_line_to_dict(
+        args, option_defs
+    )
 
-    # デバッグモードで、コマンドライン引数パース直後の状態を表示
     if logger.isEnabledFor(DEBUG):
         logger.debug("=" * 60)
         logger.debug("コマンドライン引数パース直後の状態:")
@@ -801,8 +798,12 @@ def parse_args(
         logger.debug(f"  cmdline_specified_keys: {cmdline_specified_keys}")
         logger.debug("=" * 60)
 
-    # オプション辞書を構築（階層的な辞書を作成）
-    options_dict = build_options_dict(config_dict, cmdline_dict, cmdline_specified_keys)
+    options_dict = build_options_dict(
+        config_dict,
+        cmdline_dict,
+        cmdline_specified_keys,
+        base_level_options,
+    )
 
     logger.info(
         f"The original options_dict: {cmdline_dict}\n{cmdline_specified_keys}\n{config_dict}\n{options_dict}"
@@ -892,26 +893,21 @@ def validate_result(options_dict: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
 class PoolBasedParser:
     """
-    プールベースのオプションパーサー（後方互換性のためのラッパークラス）
+    プールベースのオプションパーサー（option_defs で認識するオプションを指定する）
 
-    このクラスは、新しい関数ベースのAPIのラッパーとして機能します。
-    新しいコードでは、直接関数（parse_args, build_result, validate_result）を使用することを推奨します。
+    genice3 では options.GENICE3_OPTION_DEFS を渡す。
     """
 
-    def __init__(self):
+    def __init__(self, option_defs: Sequence[OptionDef]):
+        self.option_defs = tuple(option_defs)
         self.options_dict: Dict[str, Any] = {}
         self.plugin_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]] = []
 
     def parse_args(self, args: List[str]) -> None:
-        """
-        コマンドライン引数をパース
-
-        Args:
-            args: コマンドライン引数のリスト（sys.argv[1:]相当）
-
-        注意: --configオプションが指定されている場合は、最初に処理される必要があります。
-        """
-        self.options_dict, self.plugin_results = parse_args(args)
+        """コマンドライン引数をパース"""
+        self.options_dict, self.plugin_results = parse_args(
+            args, self.option_defs
+        )
 
     def get_result(self) -> Dict[str, Any]:
         """
