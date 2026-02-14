@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # プロジェクトのルートディレクトリをPythonパスに追加
-project_root = Path(__file__).resolve().parent.parent.parent
+project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -16,7 +16,7 @@ from io import StringIO
 from genice3 import ConfigurationError
 from genice3.genice import GenIce3
 from genice3.plugin import UnitCell, Exporter, Molecule
-from tests.genice3.test_validation import (
+from tests.test_validation import (
     validate_comprehensive,
     validate_basic_execution,
     validate_output_format,
