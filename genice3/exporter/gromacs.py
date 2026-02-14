@@ -167,7 +167,8 @@ def dumps(
             - プラグイン側では既に辞書形式になっている
     """
     logger = getLogger("gromacs.dump")
-    assert name in ["gromacs", ""]
+    if name not in ("gromacs", ""):
+        raise ValueError(f"name must be 'gromacs' or '', got: {name}")
     guest_info = parse_guest_option(guest)
     spot_guest_info = parse_spot_guest_option(spot_guest)
     water_model = parse_water_model_option(water_model)

@@ -89,10 +89,11 @@ def _assume_water_orientations(
 
     logger = getLogger()
     # just for a test of pure water
-    assert len(coord) == digraph.number_of_nodes(), (
-        len(coord),
-        digraph.number_of_nodes(),
-    )
+    if len(coord) != digraph.number_of_nodes():
+        raise ValueError(
+            f"coord length ({len(coord)}) must match digraph node count "
+            f"({digraph.number_of_nodes()})"
+        )
     if len(dopants):
         logger.info(f"  {dopants} dopants")
     # 通常の氷であればアルゴリズムを高速化できる。
@@ -290,7 +291,11 @@ def replica_vectors(replication_matrix: np.ndarray) -> np.ndarray:
 
     vecs = np.array(list(vecs))
     vol = abs(np.linalg.det(replication_matrix))
-    assert np.allclose(vol, len(vecs)), (vol, vecs)
+    if not np.allclose(vol, len(vecs)):
+        raise ValueError(
+            f"replication_matrix determinant ({vol}) must equal number of "
+            f"replica vectors ({len(vecs)})"
+        )
     return vecs
 
 

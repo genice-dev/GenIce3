@@ -53,8 +53,8 @@ def assume_tetrahedral_vectors(v):
     Given: known vectors.
     Returns: assumed vectors
     """
-
-    assert len(v) > 0
+    if len(v) == 0:
+        raise ValueError("at least one known vector is required")
 
     if len(v) == 3:
         return [-(v[0] + v[1] + v[2])]
@@ -342,9 +342,11 @@ def waters_and_pairs(
             hydrogens.append(pos)
 
     if not partial_order:
-        assert (
-            len(oxygens) * 2 == len(hydrogens) or len(hydrogens) == 0
-        ), f"H {len(oxygens) * 2}: O {len(hydrogens)}"
+        if len(oxygens) * 2 != len(hydrogens) and len(hydrogens) != 0:
+            raise ValueError(
+                f"hydrogen count must be 2×oxygen count or 0: "
+                f"O={len(oxygens)}, H={len(hydrogens)}"
+            )
     cell *= np.array(rep)
 
     oo = [

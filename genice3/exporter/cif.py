@@ -68,7 +68,8 @@ def dump(
 ):
     "Output in CIF format."
     logger = getLogger()
-    assert name in ["cif", ""]
+    if name not in ("cif", ""):
+        raise ValueError(f"name must be 'cif' or '', got: {name}")
 
     a, b, c, A, B, C = cellshape(genice.cell)
     s = _format_cell_shape(a, b, c, A, B, C)

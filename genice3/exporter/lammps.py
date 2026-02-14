@@ -195,7 +195,8 @@ def dumps(
         name: プラグイン名（"lammps"または""）
     """
     logger = getLogger("lammps.dump")
-    assert name in {"lammps", ""}
+    if name not in ("lammps", ""):
+        raise ValueError(f"name must be 'lammps' or '', got: {name}")
     guest_info = parse_guest_option(guest)
     spot_guest_info = parse_spot_guest_option(spot_guest)
     water_model = parse_water_model_option(water_model)

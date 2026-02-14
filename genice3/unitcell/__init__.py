@@ -31,6 +31,11 @@ UNITCELL_POST_PROCESSORS = {
 }
 
 
+def _is_subgraph(G: nx.Graph, H: nx.DiGraph) -> bool:
+    """H（有向）の全辺がG（無向）に含まれるかチェックする。"""
+    return all(G.has_edge(u, v) for u, v in H.edges())
+
+
 def ion_processor(arg: dict) -> Dict[int, Molecule]:
     # keyとvalueを変換するのみ
     result: Dict[int, Molecule] = {}
@@ -72,9 +77,7 @@ class UnitCell:
             for d in UNITCELL_OPTION_DEFS
             if d.parse_type is not None
         }
-        return parse_options_generic(
-            options, option_specs, UNITCELL_POST_PROCESSORS
-        )
+        return parse_options_generic(options, option_specs, UNITCELL_POST_PROCESSORS)
 
     def __init__(
         self,
@@ -153,6 +156,11 @@ class UnitCell:
             self.cell /= scale
 
         self.fixed = fixed
+        if not _is_subgraph(self.graph, fixed):
+            raise ConfigurationError(
+                "All edges in fixed must be contained in graph. "
+                "Found fixed edge not in graph."
+            )
 
         # ケージの調査は遅延評価（reactive）にする
         self._cages = None  # 遅延評価用
