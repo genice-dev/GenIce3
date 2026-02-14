@@ -20,7 +20,9 @@ import networkx as nx
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
+    def __init__(self, **kwargs):
         atoms = """
         O1 0.2541(6)  0.5629(5) 0.2517(5)
         O2 0.4771(6)  0.7992(5) 0.4089(5)
@@ -81,4 +83,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             graph=nx.Graph(fixed),
             fixed=nx.DiGraph(fixed),
+            **kwargs,
         )

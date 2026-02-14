@@ -15,7 +15,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     PCOD8007225単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         waters = np.array(
             [
@@ -102,5 +102,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             lattice_sites=waters,
             coord=coord,
             bondlen=0.276 * 1.2,
-            # **kwargs,
+            **kwargs,
         )

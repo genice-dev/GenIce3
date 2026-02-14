@@ -9,7 +9,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    def __init__(self, **kwargs):
         cell = cellvectors(
             a=15.621810598341442, b=15.621810598341442, c=25.483106896463806, C=120.0
         )
@@ -121,4 +121,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             bondlen=bondlen,
             density=density,
+            **kwargs,
         )

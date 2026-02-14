@@ -52,6 +52,9 @@ class UnitCell:
     もし内容を変更したいなら、新たなUnitCellオブジェクトを作成して、GenIce3に与える。
     """
 
+    # 水素秩序氷（全水素結合の向きが固定）では False に上書き。イオンドープ不可。
+    SUPPORTS_ION_DOPING: bool = True
+
     # 単位胞タイプごとに必要なパラメータのセットを定義
     # このセットに含まれるパラメータは既知として扱われる
     REQUIRED_CELL_PARAMS: set[str] = set()
@@ -166,6 +169,10 @@ class UnitCell:
         self._cages = None  # 遅延評価用
 
         # anion, cationは単位胞内でのイオンの位置を示すので、番号が単位胞の水分子数未満でなければならない。
+        if (anion or cation) and not self.SUPPORTS_ION_DOPING:
+            raise ConfigurationError(
+                "Ion doping is not supported for hydrogen-ordered ices."
+            )
         if any(label >= len(self.lattice_sites) for label in anion):
             raise ValueError(
                 "Anion labels must be less than the number of water molecules."

@@ -15,7 +15,9 @@ class UnitCell(genice3.unitcell.UnitCell):
     ice11単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
+    def __init__(self, **kwargs):
         graph = None  # pairsがない場合は自動生成
 
         waters = np.fromstring(
@@ -88,4 +90,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             fixed=nx.DiGraph(fixed_pairs),
             graph=nx.Graph(fixed_pairs),
+            **kwargs,
         )

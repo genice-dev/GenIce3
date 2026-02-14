@@ -24,7 +24,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    def __init__(self, **kwargs):
         logger = getLogger()
 
         # Ref. 2atom
@@ -74,4 +74,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             density=density,
             coord=coord,
             bondlen=0.3,
+            **kwargs,
         )

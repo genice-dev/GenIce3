@@ -19,7 +19,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    def __init__(self, **kwargs):
         atoms = """
     O1       0.7281    0.0539    0.0698
     O2       0.1309    0.2618    0.1075
@@ -94,4 +94,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             lattice_sites=waters,
             density=density,
             coord=coord,
+            **kwargs,
         )

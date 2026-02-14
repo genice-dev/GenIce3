@@ -962,5 +962,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             bondlen=bondlen,
             density=density,
-            # **kwargs,
+            **kwargs,
         )

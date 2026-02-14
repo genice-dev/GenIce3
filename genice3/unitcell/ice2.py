@@ -27,6 +27,8 @@ class UnitCell(genice3.unitcell.UnitCell):
     ice2単位胞を定義するクラス。
     """
 
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
     def __init__(self, **kwargs):
         logger = getLogger()
 

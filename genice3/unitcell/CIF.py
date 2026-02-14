@@ -17,6 +17,13 @@ from genice3.cli.pool_parser import (
     OPTION_TYPE_STRING,
 )
 
+desc = {
+    "ref": {},
+    "usage": "file=CIF file, osite=O site, hsite=H site",
+    "brief": "Load a CIF file and create a unit cell.",
+    "test": ({"options": "--file ../../cif/MEP.cif --osite T"},),
+}
+
 
 # CIF unitcell プラグインが受け取るオプション定義。追加・削除はここだけ行えばよい。
 CIF_OPTION_DEFS = (
@@ -40,9 +47,7 @@ def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, An
         (処理したオプション, 処理しなかったオプション)。未処理は次のプラグインへ。
     """
     option_specs = {
-        d.name: d.parse_type
-        for d in CIF_OPTION_DEFS
-        if d.parse_type is not None
+        d.name: d.parse_type for d in CIF_OPTION_DEFS if d.parse_type is not None
     }
     return parse_options_generic(options, option_specs)
 
@@ -63,8 +68,14 @@ class UnitCell(genice3.unitcell.UnitCell):
             osite = "O"
 
         # download(URL, fNameIn)
-
-        atoms, box = read_cif.read_and_process(file, make_rect_box=False)
+        # cif2ice はファイルを開けない場合に sys.exit(0) を呼ぶため、
+        # SystemExit(0) を補足して例外に変換（exit code 1 にする）
+        try:
+            atoms, box = read_cif.read_and_process(file, make_rect_box=False)
+        except SystemExit as e:
+            if e.code in (0, None):
+                raise ValueError(f"Failed to open CIF file '{file}'") from e
+            raise
         # pattern matching
         oatoms = np.array([a[1:] for a in atoms if re.match(osite, a[0])])
         logger.info(f"{osite=} {oatoms.shape=} {atoms}")

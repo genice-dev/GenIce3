@@ -14,7 +14,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     ice17単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         waters = np.fromstring(
             """
         0.677211836339 -0.109412115924 0.692291816468
@@ -47,4 +47,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             bondlen=bondlen,
             density=density,
+            **kwargs,
         )

@@ -15,7 +15,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     CRN1単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         pairs_str = """
         0 991
         0 793
@@ -3049,5 +3049,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             # bondlen=bondlen,
             density=density,
-            # **kwargs,
+            **kwargs,
         )

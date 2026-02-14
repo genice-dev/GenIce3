@@ -19,6 +19,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
     def __init__(self, **kwargs):
         atoms = """
         O1 0.2382 0.7981 0.3422

@@ -10,8 +10,8 @@ desc = {
     "brief": "Hydrogen-disordered ice Ih.",
     "test": (
         {"options": "--assess_cages"},
-        {"options": "--guest 12=me"},
-        {"options": "--spot_guest 12=me"},
+        {"options": "--guest A12=me"},
+        {"options": "--spot_guest A12=me"},
         {
             "options": "--anion 1=Br --cation 3=N --depol=optimal -H 9=Bu:3 -H 11=Bu:3 -H 13=Bu:3 -H 7=Bu:3"
         },
@@ -28,8 +28,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     HS1単位胞を定義するクラス。
     """
 
-    def __init__(self):
-
+    def __init__(self, **kwargs):
         waters = np.fromstring(
             """
         -8.67219264749 8.15592694143 5.8771666665
@@ -130,5 +129,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             bondlen=bondlen,
             density=density,
-            # **kwargs,
+            **kwargs,
         )

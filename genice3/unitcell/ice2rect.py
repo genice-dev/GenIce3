@@ -11,12 +11,12 @@ from cif2ice import cellvectors
 
 
 class UnitCell(genice3.unitcell.UnitCell):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
     """
     ice2rect単位胞を定義するクラス。
     """
 
-    def __init__(self):
-
+    def __init__(self, **kwargs):
         waters = np.fromstring(
             """
         1.8266 2.4421 0.9143
@@ -376,4 +376,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             density=(1.2 / 1.8156024347818442 * 1.7934241115908336),
             fixed=nx.DiGraph(fixed_pairs),
             graph=nx.Graph(fixed_pairs),
+            **kwargs,
         )

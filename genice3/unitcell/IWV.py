@@ -15,7 +15,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     IWV単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         graph = None  # pairsがない場合は自動生成
 
         waters = np.array(
@@ -77,5 +77,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             lattice_sites=waters,
             coord=coord,
             bondlen=0.276 * 1.2,
-            # **kwargs,
+            **kwargs,
         )

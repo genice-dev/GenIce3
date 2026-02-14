@@ -2,6 +2,12 @@ import genice3.unitcell
 import numpy as np
 from cif2ice import cellvectors
 
+desc = {
+    "ref": {},
+    "usage": "No options available.",
+    "brief": "Most popular Ice I (hexagonal). ",
+}
+
 
 class UnitCell(genice3.unitcell.UnitCell):
     """

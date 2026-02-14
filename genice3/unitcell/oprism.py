@@ -29,6 +29,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷（六角柱など全辺固定）
     def __init__(self, **kwargs):
         logger = getLogger()
         # global sides, rows, bondlen, density, cell, waters, coord

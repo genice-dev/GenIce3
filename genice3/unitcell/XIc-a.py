@@ -16,6 +16,7 @@ from cif2ice import cellvectors
 
 
 class UnitCell(genice3.unitcell.UnitCell):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
     """
     XIc-a単位胞を定義するクラス。
     """

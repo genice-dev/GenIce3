@@ -22,7 +22,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     Struct25単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         pairs_str = """
         98 271
         25 252
@@ -979,5 +979,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             # bondlen=bondlen,
             density=density,
-            # **kwargs,
+            **kwargs,
         )

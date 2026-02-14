@@ -21,7 +21,8 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+    def __init__(self, **kwargs):
         atoms = """
         O 0   0.25       0.1071(12)
         D 0   0.4157(15) 0.1935(8)
@@ -86,4 +87,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             graph=nx.Graph(fixed),
             fixed=nx.DiGraph(fixed),
+            **kwargs,
         )

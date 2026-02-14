@@ -22,7 +22,8 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+    def __init__(self, **kwargs):
         logger = getLogger()
 
         # From Table 2 of Salzmann 2006
@@ -79,4 +80,5 @@ D15 0.8472(3) 0.3248(3) 0.4010(6) 2.03(1) 1.0000
             density=density,
             graph=nx.Graph(pairs),
             fixed=nx.DiGraph(fixed),
+            **kwargs,
         )

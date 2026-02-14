@@ -15,7 +15,9 @@ class UnitCell(genice3.unitcell.UnitCell):
     ice9単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
+    def __init__(self, **kwargs):
         waters = np.fromstring(
             """
         0.895 0.105 0.750
@@ -77,4 +79,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             bondlen=bondlen,
             density=density,
             fixed=fixed,
+            **kwargs,
         )

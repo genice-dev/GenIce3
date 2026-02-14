@@ -17,7 +17,8 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
+    def __init__(self, **kwargs):
         logger = getLogger()
 
         # only the hydrogen atoms whose locations are confirmed are listed.
@@ -71,4 +72,5 @@ x,y,z
             coord=coord,
             graph=nx.Graph(pairs),
             fixed=nx.DiGraph(fixed),
+            **kwargs,
         )

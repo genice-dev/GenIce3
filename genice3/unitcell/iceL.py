@@ -25,8 +25,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
-    def __init__(self):
-
+    def __init__(self, **kwargs):
         atoms = """
         O1 0.3488 0.9861 0.3123
         O2 0.9710 0.6650 0.0774
@@ -67,4 +66,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             density=density,
             coord=coord,
             bondlen=0.3,
+            **kwargs,
         )

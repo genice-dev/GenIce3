@@ -20,6 +20,7 @@ desc = {
 
 
 class UnitCell(genice3.unitcell.UnitCell):
+    SUPPORTS_ION_DOPING = False  # 水素秩序氷
     def __init__(self, **kwargs):
         logger = getLogger()
 

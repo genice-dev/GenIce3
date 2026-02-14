@@ -10,7 +10,7 @@ class UnitCell(genice3.unitcell.UnitCell):
     DOH単位胞を定義するクラス。
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         graph = None  # pairsがない場合は自動生成
 
         waters = np.fromstring(
@@ -106,5 +106,5 @@ class UnitCell(genice3.unitcell.UnitCell):
             coord=coord,
             bondlen=bondlen,
             density=density,
-            # **kwargs,
+            **kwargs,
         )
