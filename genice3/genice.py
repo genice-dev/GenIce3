@@ -468,6 +468,11 @@ def fixedEdges(
     Returns:
         nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ
     """
+    if (spot_anions or spot_cations) and not unitcell.SUPPORTS_ION_DOPING:
+        raise ConfigurationError(
+            "Ion doping (spot_anion/spot_cation) is not supported for "
+            "hydrogen-ordered ices."
+        )
     dg = _replicate_fixed_edges(graph, unitcell.fixed, len(unitcell.lattice_sites))
     for label in spot_anions:
         for nei in graph.neighbors(label):
@@ -1019,17 +1024,9 @@ class GenIce3:
     def guest_molecules(
         self, guests: Dict[str, List[GuestSpec]], spot_guests: Dict[int, Molecule]
     ) -> List[Molecule]:
-
-        # self.cagesがNoneの場合は、そもそもケージの調査をしていない可能性がある。
-        # ケージの調査は本来はunitcellで行うべきことだが、そこまで依存関係で辿れない。
-
-        # if self.cages is None:
-        #     #
-        #     if len(guests) > 0:
-        #         raise ConfigurationError("Cages are not defined.")
-        #     if len(spot_guests) > 0:
-        #         raise ConfigurationError("Spot guests are not defined.")
-        #     return []
+        # 通常の氷（ゲストなし）ではケージ不要 → assess_cages を呼ばない
+        if not guests and not spot_guests:
+            return []
 
         all_labels = [spec.label for spec in self.cages.specs]
         # guest_specで指定されているのに存在しない種類のケージはエラーにする。
