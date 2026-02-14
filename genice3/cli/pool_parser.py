@@ -207,6 +207,89 @@ OPTION_MAX_VALUES: Dict[str, int] = {
 FLAG_OPTIONS: Set[str] = {"debug"}
 
 
+def _collect_option_values(
+    args: List[str], start_index: int, key: str
+) -> Tuple[List[Any], int]:
+    """
+    オプションに続く引数から値を収集する。
+    - で始まる引数が出るまで、または OPTION_MAX_VALUES に達するまで消費する。
+
+    Returns:
+        (収集した値のリスト, 次の未消費インデックス)
+    """
+    values: List[Any] = []
+    max_vals = OPTION_MAX_VALUES.get(key)
+    i = start_index
+    while i < len(args) and not args[i].startswith("-"):
+        if max_vals is not None and len(values) >= max_vals:
+            break
+        values.append(args[i])
+        i += 1
+    return values, i
+
+
+def _values_to_option_value(values: List[Any], key: str) -> Any:
+    """
+    収集した値リストをオプション値に変換する。
+    0個: フラグなら True、それ以外は None
+    1個: その値
+    2個以上: タプル
+    """
+    if len(values) == 0:
+        return True if key in FLAG_OPTIONS else None
+    if len(values) == 1:
+        return values[0]
+    return tuple(values)
+
+
+def _merge_option_into_dict(cmdline_dict: Dict[str, Any], key: str, value: Any) -> None:
+    """
+    オプションを辞書にマージする。
+    同じキーが既にある場合はリストにまとめる（複数回指定対応）。
+    """
+    if key in cmdline_dict:
+        existing = cmdline_dict[key]
+        if not isinstance(existing, list):
+            cmdline_dict[key] = [existing]
+        cmdline_dict[key].append(value)
+    else:
+        cmdline_dict[key] = value
+
+
+def _parse_one_long_option(
+    args: List[str],
+    i: int,
+    arg: str,
+    cmdline_dict: Dict[str, Any],
+    cmdline_specified_keys: Set[str],
+) -> int:
+    """--で始まる1オプションを処理。戻り値は次のインデックス。"""
+    key = arg[2:]
+    cmdline_specified_keys.add(key)
+    values, next_i = _collect_option_values(args, i + 1, key)
+    value = _values_to_option_value(values, key)
+    _merge_option_into_dict(cmdline_dict, key, value)
+    return next_i
+
+
+def _parse_one_short_option(
+    args: List[str],
+    i: int,
+    arg: str,
+    cmdline_dict: Dict[str, Any],
+    cmdline_specified_keys: Set[str],
+) -> int:
+    """-で始まる1オプションを処理。SHORT_OPTION_MAP に無ければスキップ。戻り値は次のインデックス。"""
+    if arg not in SHORT_OPTION_MAP:
+        return i + 1
+    key = SHORT_OPTION_MAP[arg]
+    cmdline_specified_keys.add(key)
+    values, next_i = _collect_option_values(args, i + 1, key)
+    value = _values_to_option_value(values, key)
+    _merge_option_into_dict(cmdline_dict, key, value)
+    return next_i
+
+
 def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str]]:
     """
     コマンドライン引数をパースしてフラットな辞書に変換
@@ -229,97 +312,24 @@ def parse_command_line_to_dict(args: List[str]) -> Tuple[Dict[str, Any], Set[str
 
         # --configオプションは既に処理済みなのでスキップ
         if arg == "--config" or arg == "-C":
-            i += 2  # --config とその値をスキップ
+            i += 2
             continue
 
-        # unitcell名の位置引数を処理（最初の位置引数のみ）
-        # bracket形式などはパースせず、そのまま辞書に入れる
-        # - または -- で始まる場合は位置引数ではない
+        # unitcell名の位置引数（最初の非オプション引数）
         if unitcell_arg is None and not arg.startswith("-"):
             cmdline_dict["unitcell"] = arg
             unitcell_arg = arg
             i += 1
             continue
 
-        # --で始まるオプション（長い形式）を処理
         if arg.startswith("--"):
-            key = arg[2:]  # --を削除
-            cmdline_specified_keys.add(key)
-            i += 1
-
-            # 値を取得（次の引数が-で始まっていなければ値として扱う）
-            # rep / replication_factors は整数3つのみ消費し、残りは unitcell 用に残す
-            values: List[Any] = []
-            max_vals = OPTION_MAX_VALUES.get(key)
-            while i < len(args) and not args[i].startswith("-"):
-                if max_vals is not None and len(values) >= max_vals:
-                    break
-                values.append(args[i])
-                i += 1
-
-            # 値が1つの場合はそのまま、複数の場合はタプル
-            # フラグ型オプションの場合はTrue、それ以外で値がない場合はNone
-            if len(values) == 0:
-                if key in FLAG_OPTIONS:
-                    value = True  # フラグ型オプション
-                else:
-                    value = None  # 値が必要だが指定されていない
-            elif len(values) == 1:
-                value = values[0]
-            else:
-                value = tuple(values)
-
-            # 同じオプションが複数回指定された場合はリストに変換
-            if key in cmdline_dict:
-                existing = cmdline_dict[key]
-                if not isinstance(existing, list):
-                    cmdline_dict[key] = [existing]
-                cmdline_dict[key].append(value)
-            else:
-                cmdline_dict[key] = value
-        # -で始まるオプション（短縮形式）を処理
+            i = _parse_one_long_option(
+                args, i, arg, cmdline_dict, cmdline_specified_keys
+            )
         elif arg.startswith("-") and arg != "-":
-            # 短縮形オプションを長い形式に変換
-            short_arg = arg
-            if short_arg in SHORT_OPTION_MAP:
-                key = SHORT_OPTION_MAP[short_arg]
-                cmdline_specified_keys.add(key)
-                i += 1
-
-                # 値を取得（次の引数が-で始まっていなければ値として扱う）
-                # フラグ型のオプション（-D, -Aなど）は値なし
-                # rep / replication_factors は整数3つのみ消費
-                values: List[Any] = []
-                max_vals = OPTION_MAX_VALUES.get(key)
-                while i < len(args) and not args[i].startswith("-"):
-                    if max_vals is not None and len(values) >= max_vals:
-                        break
-                    values.append(args[i])
-                    i += 1
-
-                # 値が1つの場合はそのまま、複数の場合はタプル
-                # フラグ型オプションの場合はTrue、それ以外で値がない場合はNone
-                if len(values) == 0:
-                    if key in FLAG_OPTIONS:
-                        value = True  # フラグ型オプション
-                    else:
-                        value = None  # 値が必要だが指定されていない
-                elif len(values) == 1:
-                    value = values[0]
-                else:
-                    value = tuple(values)
-
-                # 同じオプションが複数回指定された場合はリストに変換
-                if key in cmdline_dict:
-                    existing = cmdline_dict[key]
-                    if not isinstance(existing, list):
-                        cmdline_dict[key] = [existing]
-                    cmdline_dict[key].append(value)
-                else:
-                    cmdline_dict[key] = value
-            else:
-                # 認識されない短縮形オプションはスキップ
-                i += 1
+            i = _parse_one_short_option(
+                args, i, arg, cmdline_dict, cmdline_specified_keys
+            )
         else:
             i += 1
 

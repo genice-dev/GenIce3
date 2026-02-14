@@ -4,7 +4,7 @@
 
 {{tool.poetry.description}}
 
-**Quick start:** To generate a hydrogen-disordered ice structure, use the unitcell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument. Example: `genice3 1h -e gromacs > ice.gro`
+**Quick start:** To generate a hydrogen-disordered ice structure, use the unitcell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument. Example: `genice3 1h > ice.gro`
 
 Version {{version}}
 

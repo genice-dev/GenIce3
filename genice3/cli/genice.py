@@ -206,32 +206,101 @@ HELP_CONFIG = (
 )
 
 
+# ヘルプ整形: 先頭2スペース＋オプション書式が24文字超なら改行。説明は28〜72桁で折り返し。
+_HELP_OPTION_MAX = 24  # 2スペース＋オプションがこの桁数までなら1行に
+_HELP_DESC_START = 28  # 説明開始桁（1-based）
+_HELP_DESC_END = 72
+_HELP_DESC_WIDTH = _HELP_DESC_END - _HELP_DESC_START + 1  # 45
+
+
+def _wrap_desc(text: str, width: int) -> list[str]:
+    """説明文を width 文字で折り返した行リストを返す"""
+    words = text.split()
+    lines: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for w in words:
+        need = len(w) + (1 if current else 0)
+        if current_len + need <= width:
+            current.append(w)
+            current_len += need
+        else:
+            if current:
+                lines.append(" ".join(current))
+            current = [w]
+            current_len = len(w)
+    if current:
+        lines.append(" ".join(current))
+    return lines
+
+
+def _opt_line(option: str, description: str) -> list[str]:
+    """オプション1件を指定ルールで整形。2スペース＋オプションが24文字超なら改行。説明は28〜72桁で折り畳み。"""
+    head_len = 2 + len(option)  # 先頭2スペース＋オプション
+    desc_lines = _wrap_desc(description, _HELP_DESC_WIDTH)
+    indent = " " * (_HELP_DESC_START - 1)  # 説明行の左インデント（27スペース）
+
+    if head_len > _HELP_OPTION_MAX:
+        # オプションだけ1行、説明は次の行から28桁目から
+        out = ["  " + option]
+        for line in desc_lines:
+            out.append(indent + line)
+        return out
+    # オプション＋説明を同じ行から（オプション後に空白を入れて28桁目に合わせる）
+    pad = _HELP_DESC_START - 1 - head_len  # 2 + len(option) + pad == 27
+    out = ["  " + option + " " * pad + desc_lines[0]]
+    for line in desc_lines[1:]:
+        out.append(indent + line)
+    return [""] + out
+
+
 def print_help():
     """ヘルプメッセージを表示"""
     print("Usage: genice3 [OPTIONS] UNITCELL")
     print()
     print("Options:")
-    print(f"  -h, --help                Show this message and exit.")
-    print(f"  --version, -V             {HELP_VERSION}")
-    print(f"  -D, --debug               {HELP_DEBUG}")
-    print(f"  --depol_loop INTEGER      {HELP_DEPOL_LOOP}")
-    print(f"  --target_polarization FLOAT FLOAT FLOAT")
-    print(f"                           {HELP_TARGET_POLARIZATION}")
-    print(f"  --replication_matrix INT INT INT INT INT INT INT INT INT")
-    print(f"                           {HELP_REPLICATION_MATRIX}")
-    print(f"  --rep, --replication_factors INT INT INT")
-    print(f"                           {HELP_REPLICATION_FACTORS}")
-    print(f"  -s, --seed INTEGER        {HELP_SEED}")
+    print("\n".join(_opt_line("-h, --help", "Show this message and exit.")))
+    print("\n".join(_opt_line("--version, -V", HELP_VERSION)))
+    print("\n".join(_opt_line("-D, --debug", HELP_DEBUG)))
+    print("\n".join(_opt_line("--depol_loop INTEGER", HELP_DEPOL_LOOP)))
     print(
-        f"  -e, --exporter TEXT       Exporter plugin name (e.g., 'gromacs' or 'gromacs[options]')"
+        "\n".join(
+            _opt_line(
+                "--target_polarization FLOAT FLOAT FLOAT", HELP_TARGET_POLARIZATION
+            )
+        )
     )
-    print(f"  -A, --assess_cages        {HELP_ASSESS_CAGES}")
-    print(f"  -a, --spot_anion TEXT     {HELP_SPOT_ANION}")
-    print(f"  -c, --spot_cation TEXT    {HELP_SPOT_CATION}")
-    print(f"  -C, --config PATH         {HELP_CONFIG}")
+    print(
+        "\n".join(
+            _opt_line(
+                "--replication_matrix INT INT INT INT INT INT INT INT INT",
+                HELP_REPLICATION_MATRIX,
+            )
+        )
+    )
+    print(
+        "\n".join(
+            _opt_line(
+                "--rep, --replication_factors INT INT INT", HELP_REPLICATION_FACTORS
+            )
+        )
+    )
+    print("\n".join(_opt_line("-s, --seed INTEGER", HELP_SEED)))
+    print(
+        "\n".join(
+            _opt_line(
+                "-e, --exporter TEXT",
+                "Exporter plugin name (e.g., 'gromacs' or 'gromacs[options]')",
+            )
+        )
+    )
+    print("\n".join(_opt_line("-A, --assess_cages", HELP_ASSESS_CAGES)))
+    print("\n".join(_opt_line("-a, --spot_anion TEXT", HELP_SPOT_ANION)))
+    print("\n".join(_opt_line("-c, --spot_cation TEXT", HELP_SPOT_CATION)))
+    print("\n".join(_opt_line("-C, --config PATH", HELP_CONFIG)))
     print()
     print("Arguments:")
-    print("  UNITCELL                  Unitcell plugin name (required)")
+    print("\n".join(_opt_line("UNITCELL", "Unitcell plugin name (required)")))
 
 
 def main() -> None:
