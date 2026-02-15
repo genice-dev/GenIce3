@@ -1,0 +1,10 @@
+{
+  "unitcell": "A15",
+  "rep": [2, 2, 2],
+  "unitcell_options": {
+    "shift": [0.1, 0.1, 0.1],
+    "density": 0.8,
+    "assess_cages": true
+  },
+  "seed": 42
+}
