@@ -270,9 +270,9 @@ def safe_import(category, name):
     name:     The name of the plugin.
     """
     logger = getLogger()
-    if category not in ("exporter", "molecule", "unitcell"):
+    if category not in ("exporter", "molecule", "unitcell", "group"):
         raise ValueError(
-            f"category must be 'exporter', 'molecule', or 'unitcell', got: {category}"
+            f"category must be 'exporter', 'molecule', 'unitcell', or 'group', got: {category}"
         )
 
     # single \? as a plugin name ==> show descriptions
