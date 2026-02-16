@@ -2,6 +2,31 @@ import inspect
 from logging import getLogger
 import time
 
+# @reactive でデコレートされた関数を (モジュール名, 関数) で保持。
+# GenIce3 などが _register_tasks で get_reactive_tasks(__name__) により自モジュール分だけ登録する。
+_REACTIVE_REGISTRY = []
+
+
+def reactive(func):
+    """DependencyEngine タスクであることを示すマーカー。
+
+    デコレートした関数の名前がそのまま reactive プロパティ名になる
+    (例: genice.cages)。名前は名詞にすること。
+
+    副作用: この関数を _REACTIVE_REGISTRY に登録する。
+    get_reactive_tasks(module_name) で同一モジュールのタスク一覧を取得できる。
+    """
+    _REACTIVE_REGISTRY.append((func.__module__, func))
+    return func
+
+
+def get_reactive_tasks(module_name: str):
+    """指定モジュールで @reactive を付けた関数のリストを返す。
+
+    GenIce3._register_tasks() から呼び、task_names の手書きリストを不要にする。
+    """
+    return [f for mod, f in _REACTIVE_REGISTRY if mod == module_name]
+
 
 class DependencyEngine:
     logger = getLogger("DependencyEngine")

@@ -4,6 +4,7 @@ Exporter that outputs cage positions and types as JSON.
 Useful for understanding clathrate structures and reusing assessment data.
 """
 
+import json
 import sys
 from io import TextIOWrapper
 
@@ -20,9 +21,14 @@ format_desc = {
 }
 
 
+def dumps(genice: GenIce3, **options) -> str:
+    """Return cage survey as JSON string."""
+    cages = genice.cages
+    data = cages.to_json_capable_data()
+    s = json.dumps(data, indent=4)
+    return s if s.endswith("\n") else s + "\n"
+
+
 def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
     """Write cage survey as JSON to file."""
-    survey_result = genice.cage_survey
-    file.write(survey_result)
-    if not survey_result.endswith("\n"):
-        file.write("\n")
+    file.write(dumps(genice, **options))

@@ -85,7 +85,7 @@ class decorate:
         self.diamond_cell = cell
         self.Ncyl = Ncyl
         self.vertices = []
-        self.fixedEdges = []
+        self.fixed_edges = []
         for edge in graph.edges():
             self.hexagonal_piller(edge)
 
@@ -150,19 +150,19 @@ class decorate:
             # 六角の結合を追加する。
             if j % 2 == 0:
                 for k in range(5):
-                    self.fixedEdges.append((first + k, first + k + 1))
-                self.fixedEdges.append((first + 5, first))
+                    self.fixed_edges.append((first + k, first + k + 1))
+                self.fixed_edges.append((first + 5, first))
             else:
                 for k in range(5):
-                    self.fixedEdges.append((first + k + 1, first + k))
-                self.fixedEdges.append((first, first + 5))
+                    self.fixed_edges.append((first + k + 1, first + k))
+                self.fixed_edges.append((first, first + 5))
             # 縦方向の結合を追加する交互に。
             if j > 0:
                 for k in range(6):
                     if k % 2 == 0:
-                        self.fixedEdges.append((first + k, first + k - 6))
+                        self.fixed_edges.append((first + k, first + k - 6))
                     else:
-                        self.fixedEdges.append((first + k - 6, first + k))
+                        self.fixed_edges.append((first + k - 6, first + k))
 
 
 class UnitCell(genice3.unitcell.UnitCell):
@@ -213,6 +213,6 @@ class UnitCell(genice3.unitcell.UnitCell):
             cell=cell,
             lattice_sites=lattice_sites,
             coord=coord,
-            fixed=nx.DiGraph(dec.fixedEdges),
+            fixed=nx.DiGraph(dec.fixed_edges),
             graph=graph,
         )

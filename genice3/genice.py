@@ -17,9 +17,8 @@ from logging import getLogger
 from typing import Dict, Tuple, List, Any
 from enum import Enum
 import inspect
-import json
 
-from genice3.dependencyengine import DependencyEngine
+from genice3.dependencyengine import DependencyEngine, get_reactive_tasks, reactive
 from genice3.unitcell import UnitCell
 
 
@@ -229,31 +228,34 @@ def _replicate_fixed_edges(
     # replicate_graphの結果を利用してもっとシンプルに処理したい。
     # repgraph = dg.IceGraph()
     logger = getLogger("replicate_fixed_edges")
-    fixedEdges = nx.DiGraph()
+    rep_fixed_edges = nx.DiGraph()
     for repi, repj in repgraph.edges():
         i = repi % nmol
         j = repj % nmol
         if fixed.has_edge(i, j):
-            fixedEdges.add_edge(repi, repj)
+            rep_fixed_edges.add_edge(repi, repj)
         elif fixed.has_edge(j, i):
-            fixedEdges.add_edge(repj, repi)
-    for edge in fixedEdges.edges():
+            rep_fixed_edges.add_edge(repj, repi)
+    for edge in rep_fixed_edges.edges():
         logger.debug(f"* {edge=}")
-    return fixedEdges
+    return rep_fixed_edges
 
 
 # ============================================================================
 # DependencyEngineタスク関数定義: 依存関係は引数名から自動推論される
+# 各関数には @reactive を付ける。関数名がそのまま genice.<名前> になるので名詞で書く。
 # ============================================================================
 
 _genice3_logger = getLogger("GenIce3")
 
 
+@reactive
 def cell(unitcell: UnitCell, replication_matrix: np.ndarray) -> np.ndarray:
     """拡大単位胞のセル行列"""
     return unitcell.cell @ replication_matrix
 
 
+@reactive
 def replica_vectors(replication_matrix: np.ndarray) -> np.ndarray:
     """レプリカベクトルを計算する。
 
@@ -299,6 +301,7 @@ def replica_vectors(replication_matrix: np.ndarray) -> np.ndarray:
     return vecs
 
 
+@reactive
 def replica_vector_labels(replica_vectors: np.ndarray) -> Dict[Tuple[int, ...], int]:
     """レプリカベクトルラベルの辞書を生成する。
 
@@ -314,6 +317,7 @@ def replica_vector_labels(replica_vectors: np.ndarray) -> Dict[Tuple[int, ...], 
     return {tuple(xyz): i for i, xyz in enumerate(replica_vectors)}
 
 
+@reactive
 def graph(
     unitcell: UnitCell,
     replica_vectors: np.ndarray,
@@ -345,6 +349,7 @@ def graph(
     return g
 
 
+@reactive
 def lattice_sites(
     unitcell: UnitCell,
     replica_vectors: np.ndarray,
@@ -368,6 +373,7 @@ def lattice_sites(
     )
 
 
+@reactive
 def anions(
     unitcell: UnitCell, replica_vectors: np.ndarray, spot_anions: Dict[int, str]
 ) -> Dict[int, str]:
@@ -395,6 +401,7 @@ def anions(
     return anion_dict
 
 
+@reactive
 def cations(
     unitcell: UnitCell, replica_vectors: np.ndarray, spot_cations: Dict[int, str]
 ) -> Dict[int, str]:
@@ -422,6 +429,7 @@ def cations(
     return cation_dict
 
 
+@reactive
 def site_occupants(
     anions: Dict[int, str], cations: Dict[int, str], lattice_sites: np.ndarray
 ) -> List[str]:
@@ -446,7 +454,8 @@ def site_occupants(
     return occupants
 
 
-def fixedEdges(
+@reactive
+def fixed_edges(
     graph: nx.Graph,
     unitcell: UnitCell,
     spot_anions: Dict[int, str],
@@ -493,11 +502,12 @@ def fixedEdges(
     return dg
 
 
+@reactive
 def digraph(
     graph: nx.Graph,
     depol_loop: int,
     lattice_sites: np.ndarray,
-    fixedEdges: nx.DiGraph,
+    fixed_edges: nx.DiGraph,
     target_pol: np.ndarray,
 ) -> nx.DiGraph:
     """水素結合ネットワークの有向グラフを生成する。
@@ -510,20 +520,20 @@ def digraph(
         graph: 拡大単位胞全体の無向グラフ
         depol_loop: 双極子最適化の反復回数
         lattice_sites: 格子サイト位置の配列
-        fixedEdges: 固定エッジの有向グラフ
+        fixed_edges: 拡大単位胞全体での固定エッジの有向グラフ
         target_pol: 分極の目標値
 
     Returns:
         nx.DiGraph: 水素結合の方向が決定された有向グラフ
     """
-    for edge in fixedEdges.edges():
+    for edge in fixed_edges.edges():
         _genice3_logger.debug(f"+ {edge=}")
     dg = genice_core.ice_graph(
         graph,
         vertex_positions=lattice_sites,
         is_periodic_boundary=True,
         dipole_optimization_cycles=depol_loop,
-        fixed_edges=fixedEdges,
+        fixed_edges=fixed_edges,
         pairing_attempts=1000,
         target_pol=target_pol,
     )
@@ -532,6 +542,7 @@ def digraph(
     return dg
 
 
+@reactive
 def orientations(
     lattice_sites: np.ndarray,
     digraph: nx.DiGraph,
@@ -563,6 +574,7 @@ def orientations(
     )
 
 
+@reactive
 def cages(
     unitcell: UnitCell,
     replica_vectors: np.ndarray,
@@ -599,22 +611,6 @@ def cages(
     return CageSpecs(positions=repcagepos, specs=repcagespecs)
 
 
-def cage_survey(
-    cages: CageSpecs,
-) -> str:
-    """ケージ情報をJSON形式の文字列として返す。
-
-    Args:
-        cages: ケージ位置とタイプの情報
-
-    Returns:
-        str: ケージ情報をJSON形式でシリアライズした文字列
-    """
-    # JSONで返せばいい。ただ、graphなどは、もっと噛みくだいた形にしたいし、座標はnumpy arrayのままではJSONにならない。
-    data = cages.to_json_capable_data()
-    return json.dumps(data, indent=4)
-
-
 # ============================================================================
 # GenIce3クラス: DependencyEngineをラップ
 # ============================================================================
@@ -648,7 +644,7 @@ class GenIce3:
             無向グラフから双極子最適化アルゴリズムにより各水素結合の方向を決定した
             有向グラフです。固定エッジで指定された方向は維持され、それ以外のエッジは
             最適化により決定されます。このプロパティにアクセスすると、必要な依存関係
-            （graph, lattice_sites, fixedEdgesなど）が自動的に計算されます。
+            （graph, lattice_sites, fixed_edges など）が自動的に計算されます。
 
         graph (nx.Graph): 水素結合ネットワークの無向グラフ。
             拡大単位胞全体の水分子間の水素結合ネットワークを表す無向グラフです。
@@ -688,6 +684,12 @@ class GenIce3:
         spot_cations (Dict[int, str]): 特定の格子サイト位置に配置するカチオンイオンの辞書。
             サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、
             それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。
+
+        cages (CageSpecs): 拡大単位胞全体でのケージ位置・タイプ。
+            単位胞のケージを replica_vectors に従って複製したもので、ゲスト配置や cage_survey 出力に利用します。
+
+        fixed_edges (nx.DiGraph): 拡大単位胞全体での固定エッジの有向グラフ。
+            単位胞の固定エッジと spot_anion/spot_cation に基づく固定を統合したもので、digraph の生成に利用します。
     """
 
     # Class名でlog表示したい。
@@ -757,32 +759,9 @@ class GenIce3:
             raise ConfigurationError(f"Invalid keyword arguments: {kwargs}.")
 
     def _register_tasks(self):
-        """DependencyEngineにモジュールレベルのタスク関数を登録する"""
-        engine = self.engine
-        # モジュールから関数を取得して登録
-        import sys
-
-        current_module = sys.modules[__name__]
-
-        task_names = [
-            "cell",
-            "replica_vectors",
-            "replica_vector_labels",
-            "graph",
-            "lattice_sites",
-            "anions",
-            "cations",
-            "site_occupants",
-            "fixedEdges",
-            "digraph",
-            "orientations",
-            "cages",
-            "cage_survey",
-        ]
-
-        for name in task_names:
-            func = getattr(current_module, name)
-            engine.task(func)
+        """DependencyEngine に @reactive を付けたタスク関数を登録する"""
+        for func in get_reactive_tasks(__name__):
+            self.engine.task(func)
 
     # spot_anions
     @property

@@ -307,6 +307,10 @@ Input plugins (unitcell plugins) construct a crystal structure on demand.
 | ------------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------ |
 | [`genice2-cif`](https://github.com/vitroid/genice-cif) | `genice3 cif[ITT.cif]`<br /> `genice3 zeolite[ITT]` | Read a local CIF file as an ice structure.<br />Read a structure from Zeolite DB. | `cif2ice`    | -->
 
+## Main changes from GenIce2
+
+- **Cage survey output**: The `-A` / `--assess_cages` option has been removed. To obtain cage positions and types, use the exporter plugin `cage_survey` (output is JSON; redirect to a file for reuse). Example: `genice3 CS2 -e cage_survey > cages.json`
+
 ## References
 
 See [references.md](references.md) for the full reference list.

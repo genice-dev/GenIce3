@@ -170,7 +170,7 @@ def test_ion_doping_rejected_on_hydrogen_ordered_ice():
     genice.spot_anions = {0: "Cl"}
 
     with pytest.raises(ConfigurationError, match="not supported"):
-        _ = genice.digraph  # fixedEdges が呼ばれるタイミングで拒否される
+        _ = genice.digraph  # fixed_edges が呼ばれるタイミングで拒否される
 
 
 def test_ion_doping_rejected_on_hydrogen_ordered_ice_via_unitcell_options():

@@ -152,7 +152,7 @@ def figure(genice: GenIce3, **options):
     if graph_type == "full" or graph_type == "digraph":
         fixed_edges = genice.digraph
     elif graph_type == "fixed":
-        fixed_edges = genice.fixedEdges
+        fixed_edges = genice.fixed_edges
     elif graph_type == "frame" or graph_type == "graph":
         fixed_edges = nx.DiGraph()
     else:

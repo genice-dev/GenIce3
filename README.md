@@ -4,7 +4,7 @@
 
 A Swiss army knife to generate hydrogen-disordered ice structures.
 
-**Quick start:** To generate a hydrogen-disordered ice structure, use the unitcell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument. Example: `genice3 1h -e gromacs > ice.gro`
+**Quick start:** To generate a hydrogen-disordered ice structure, use the unitcell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument. Example: `genice3 1h > ice.gro`
 
 Version 3.0a3
 
@@ -61,25 +61,69 @@ pip3 uninstall genice3
 Usage: genice3 [OPTIONS] UNITCELL
 
 Options:
-  -h, --help                Show this message and exit.
-  --version, -V             Show the version and exit.
-  -D, --debug               Enable debug mode
-  --depol_loop INTEGER      Number of iterations for the depolarization optimization loop. Larger values may improve the quality of the hydrogen bond network. Default is 1000.
+  -h, --help               Show this message and exit.
+  -V, --version            Show the version and exit.
+  -D, --debug              Enable debug mode.
+  --depol_loop INTEGER     Number of iterations for the depolarization
+                           optimization loop. Larger values may improve
+                           the quality of the hydrogen bond network.
+                           Default is 1000.
   --target_polarization FLOAT FLOAT FLOAT
-                           Target polarization vector (three floats: Px Py Pz). The dipole optimization will aim to make the net polarization close to this value. Example: --target_polarization 0 0 0 (default).
+                           Target polarization vector (three floats: Px
+                           Py Pz). The dipole optimization will aim to
+                           make the net polarization close to this
+                           value. Example: --target_polarization 0 0 0
+                           (default).
   --replication_matrix INT INT INT INT INT INT INT INT INT
-                           Replication matrix as 9 integers (3x3 matrix). This matrix defines how the unit cell is replicated to create the supercell. The first row (p, q, r) specifies that the new a' axis direction is represented as pa+qb+rc using the original unit cell's basis vectors (a, b, c). Similarly, the second row (s, t, u) specifies that the b' axis direction is sa+tb+uc, and the third row defines the c' axis. For example, --replication_matrix 0 1 0  1 0 0  0 0 1 swaps the a and b axes of the unit cell. Another example, --replication_matrix 1 1 0  1 -1 0  0 0 1 transforms the unit cell such that a'=a+b and b'=a-b. If not specified, replication_factors is used instead.
+                           Replication matrix as 9 integers (3x3
+                           matrix). This matrix defines how the unit
+                           cell is replicated to create the supercell.
+                           The first row (p, q, r) specifies that the
+                           new a' axis direction is represented as
+                           pa+qb+rc using the original unit cell's basis
+                           vectors (a, b, c). Similarly, the second row
+                           (s, t, u) specifies that the b' axis
+                           direction is sa+tb+uc, and the third row
+                           defines the c' axis. For example,
+                           --replication_matrix 0 1 0 1 0 0 0 0 1 swaps
+                           the a and b axes of the unit cell. Another
+                           example, --replication_matrix 1 1 0 1 -1 0 0
+                           0 1 transforms the unit cell such that a'=a+b
+                           and b'=a-b. If not specified,
+                           replication_factors is used instead.
   --rep, --replication_factors INT INT INT
-                           Repeat the unit cell along a, b, and c axes. For example, --rep 2 2 2 creates a 2x2x2 supercell. This is a convenient shortcut for diagonal replication matrices.
-  -s, --seed INTEGER        Random seed for guest molecule placement and other stochastic processes. Using the same seed will produce reproducible results.
-  -e, --exporter TEXT       Exporter plugin name (e.g., 'gromacs' or 'gromacs[options]')
-  -A, --assess_cages        Assess and report cage positions and types in the ice structure. This is useful for understanding the clathrate structure and determining where guest molecules can be placed.
-  -a, --spot_anion TEXT     Specify anion replacing the specified water molecule. Format: WATER_INDEX=ION_NAME, where WATER_INDEX is the index of the water molecule and ION_NAME is the anion name. Examples: -a 13=Cl (place Cl- in cage 13), -a 32=Br (place Br- in cage 32). Multiple spot anions can be specified with multiple -a options.
-  -c, --spot_cation TEXT    Specify cation replacing the specified water molecule. Format: WATER_INDEX=ION_NAME, where WATER_INDEX is the index of the water molecule and ION_NAME is the cation name. Examples: -c 13=Na (place Na+ in cage 13), -c 32=K (place K+ in cage 32). Multiple spot cations can be specified with multiple -c options.
-  -C, --config PATH         Path to a YAML configuration file. Settings from the config file will be overridden by command-line arguments. See documentation for the config file format.
+                           Repeat the unit cell along a, b, and c axes.
+                           For example, --rep 2 2 2 creates a 2x2x2
+                           supercell. This is a convenient shortcut for
+                           diagonal replication matrices.
+  -s, --seed INTEGER       Random seed for guest molecule placement and
+                           other stochastic processes. Using the same
+                           seed will produce reproducible results.
+  -e, --exporter TEXT      Exporter plugin name (e.g., 'gromacs' or
+                           'gromacs[options]').
+  -a, --spot_anion TEXT    Specify anion replacing the specified water
+                           molecule. Format: WATER_INDEX=ION_NAME, where
+                           WATER_INDEX is the index of the water
+                           molecule and ION_NAME is the anion name.
+                           Examples: -a 13=Cl (place Cl- in cage 13), -a
+                           32=Br (place Br- in cage 32). Multiple spot
+                           anions can be specified with multiple -a
+                           options.
+  -c, --spot_cation TEXT   Specify cation replacing the specified water
+                           molecule. Format: WATER_INDEX=ION_NAME, where
+                           WATER_INDEX is the index of the water
+                           molecule and ION_NAME is the cation name.
+                           Examples: -c 13=Na (place Na+ in cage 13), -c
+                           32=K (place K+ in cage 32). Multiple spot
+                           cations can be specified with multiple -c
+                           options.
+  -C, --config PATH        Path to a YAML configuration file. Settings
+                           from the config file will be overridden by
+                           command-line arguments. See documentation for
+                           the config file format.
 
 Arguments:
-  UNITCELL                  Unitcell plugin name (required)
+  UNITCELL                 Unitcell plugin name (required)
 ```
 
 Give the unitcell name as the first argument (see the [Ice structures](#ice-structures) table for symbols such as `1h`, `4`, `CS2`), then options. Optional settings can be read from a YAML file with `-C path/to/config.yaml` (see the [manual](https://genice-dev.github.io/GenIce3) for the format). Use `./genice3.x` instead of `genice3` when running from the source tree.
@@ -244,6 +288,7 @@ It is often easier if the semiclathrate lattice is defined with molecular ions a
 | --- | --- | --- | --- | --- | --- | --- |
 | `_KG` | Kirkwood G(r) |  |  |  |  | Statistical test suite 2: Calculate G(r) for checking long-range disorder in molecular orientations. |
 | `_pol` | Polarization |  |  |  | none | Calculate the polarization of the ice. |
+| `cage_survey` | JSON | .json | none | none | none | Cage positions and types (fractional coords, labels, faces). Replaces -A/--assess_cages. |
 | `cif` | CIF | .cif | Atomic positions | Atomic positions | none | Experimental |
 | `g`, `gromacs` | [Gromacs](http://www.gromacs.org) | .gro | Atomic positions | Atomic positions | none | Default format. |
 | `lammps`, `lmp` | [LAMMPS](https://www.lammps.org/) | .lammps | Atomic positions | Atomic positions | none | Yet to be verified. |
@@ -288,7 +333,8 @@ Exporter plugins define hooks that run after each stage.
 | 16, CS2, MTN, XVI, ice16, sII | Ultralow-density Ice XVI. [Jeffrey 1984, Kosyakov 1999, Sikiric 2010, Falenty 2014, IZA Database] |
 | 17, XVII, ice17 | Ultralow-density Ice XVII. [Smirnov 2013, Rosso 2016, Strobel 2016] |
 | 1c, Ic, ice1c | Cubic type of ice I. [Vos 1993] |
-| 1h, Ih, ice1h | Most popular Ice I (hexagonal). NOTE: Due to a historical reason, the crystal axes of hexagonal ice are exchanged. If you want the basal plane to be Z axis, please use 'one[hh]' instead. |
+| 1h, Ih, ice1h | Most popular Ice I (hexagonal). NOTE: Due to a historical reason, the crystal axes of hexagonal ice are exchanged. If you want the basal plane to be Z axis, please use ice1h_unit instead. |
+| 1h_unit, ice1h_unit | Most popular Ice I (hexagonal).  |
 | 2, II, ice2 | Hydrogen-ordered ice II. [Kamb 1964, Londono 1988, Kamb 2003] |
 | 2D3 | Trilayer honeycomb ice. |
 | 2d, ice2d, ice2rect | A hydrogen-disordered counterpart of ice II. [Nakamura 2015] |
@@ -306,6 +352,7 @@ Exporter plugins define hooks that run after each stage.
 | B, iceB | Hypothetical ice B. [Baez 1998] |
 | BSV, engel05 | Hypothetical zeolitic ice of the gyroid structure. [Engel 2018, IZA Database] |
 | C14, C15, C36, FK6layers, FK9layers, HS2, Hcomp, Struct01, Struct03, Struct04, Struct05, Struct06, Struct07, Struct08, Struct09, Struct10, Struct11, Struct12, Struct13, Struct14, Struct15, Struct16, Struct17, Struct18, Struct19, Struct20, Struct21, Struct22, Struct23, Struct24, Struct25, Struct26, Struct27, Struct28, Struct29, Struct30, Struct31, Struct32, Struct34, Struct35, Struct36, Struct37, Struct38, Struct39, Struct40, Struct41, Struct42, Struct43, Struct44, Struct45, Struct46, Struct47, Struct48, Struct49, Struct50, Struct51, Struct52, Struct53, Struct54, Struct55, Struct56, Struct57, Struct58, Struct59, Struct60, Struct61, Struct62, Struct63, Struct64, Struct65, Struct66, Struct67, Struct68, Struct69, Struct70, Struct71, Struct72, Struct73, Struct74, Struct75, Struct76, Struct77, Struct78, Struct79, Struct80, Struct81, Struct82, Struct83, Struct84, Z, delta, mu, psigma, sV, sigma, zra-d | A space fullerene. [Sikiric 2010] |
+| CIF | Load a CIF file and create a unit cell. |
 | CRN1, CRN2, CRN3 | A continuous random network of Sillium. [Mousseau 2001] |
 | CS1, MEP, sI | Clathrate hydrates sI. [Frank 1959, Jeffrey 1984, Kosyakov 1999, IZA Database] |
 | DOH, HS3, sH | Clathrate type H. |
@@ -331,7 +378,7 @@ Exporter plugins define hooks that run after each stage.
 | sTprime | Filled ice sT'. [Smirnov 2013] |
 | xFAU | Aeroice xFAU. [Matsui 2017] |
 | xdtc | A porous ice with cylindrical channels. [Matsumoto 2021] |
-| 1h_unit, CIF, TS1, dtc, ice1h_unit, sIII | (Undocumented) |
+| TS1, dtc, sIII | (Undocumented) |
 
 
 Names in quotation marks have not been experimentally verified.
@@ -420,6 +467,10 @@ Input plugins (unitcell plugins) construct a crystal structure on demand.
 | pip name                                               | GenIce3 usage                                       | Description                                                                       | requirements |
 | ------------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------ |
 | [`genice2-cif`](https://github.com/vitroid/genice-cif) | `genice3 cif[ITT.cif]`<br /> `genice3 zeolite[ITT]` | Read a local CIF file as an ice structure.<br />Read a structure from Zeolite DB. | `cif2ice`    | -->
+
+## Main changes from GenIce2
+
+- **Cage survey output**: The `-A` / `--assess_cages` option has been removed. To obtain cage positions and types, use the exporter plugin `cage_survey` (output is JSON; redirect to a file for reuse). Example: `genice3 CS2 -e cage_survey > cages.json`
 
 ## References
 
