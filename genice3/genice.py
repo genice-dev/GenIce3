@@ -611,6 +611,22 @@ def cages(
     return CageSpecs(positions=repcagepos, specs=repcagespecs)
 
 
+def place_groups_on_lattice(
+    genice: "GenIce3",
+    spot_cation_groups: Dict[int, Dict[int, str]],
+) -> None:
+    """
+    格子点に group を配置する。
+
+    Args:
+        genice: GenIce3 インスタンス
+        spot_cation_groups: サイト -> {ケージID -> group名} の辞書
+    """
+    _genice3_logger.info(
+        f"place_groups_on_lattice: dummy implementation (group assignment not yet applied) {spot_cation_groups=}"
+    )
+
+
 # ============================================================================
 # GenIce3クラス: DependencyEngineをラップ
 # ============================================================================

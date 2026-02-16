@@ -15,10 +15,20 @@ import numpy as np
 from genice3.cli.pool_parser import (
     OptionDef,
     parse_options_generic,
+    parse_bracketed_plugin,
     OPTION_TYPE_FLAG,
     OPTION_TYPE_STRING,
     OPTION_TYPE_TUPLE,
     OPTION_TYPE_KEYVALUE,
+)
+from genice3.cli.validator import (
+    validate_seed,
+    validate_replication_factors,
+    validate_depol_loop,
+    validate_target_polarization,
+    validate_replication_matrix,
+    validate_spot_ion_dict,
+    validate_parsed_options as _validate_parsed_options,
 )
 from genice3.unitcell import ion_processor
 
@@ -77,19 +87,57 @@ _HELP_CONFIG = (
     "See documentation for the config file format."
 )
 
+
 # 長い形式 (--xxx) はパーサーがすべて受け取り、base に無いキーは plugin_cmdline_options に回る。
 # ここに載せるのは (1) 基底オプション と (2) 短縮形 (-x) を持つものだけ。
 # ルール: プラグインでは短縮形は原則使わない（衝突しやすいため）。新規プラグインは --long_only でよい。
 GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
-    OptionDef("debug", short="-D", is_flag=True, level="base", parse_type=OPTION_TYPE_FLAG, help_text=_HELP_DEBUG),
-    OptionDef("seed", short="-s", level="base", parse_type=OPTION_TYPE_STRING, metavar="INTEGER", help_text=_HELP_SEED),
-    OptionDef("spot_anion", short="-a", level="base", parse_type=OPTION_TYPE_KEYVALUE, metavar="TEXT", help_text=_HELP_SPOT_ANION),
-    OptionDef("spot_cation", short="-c", level="base", parse_type=OPTION_TYPE_KEYVALUE, metavar="TEXT", help_text=_HELP_SPOT_CATION),
-    OptionDef("config", short="-C", level="base", metavar="PATH", help_text=_HELP_CONFIG),
-    OptionDef("exporter", short="-e", level="base", metavar="TEXT", help_text=_HELP_EXPORTER),
+    OptionDef(
+        "debug",
+        short="-D",
+        is_flag=True,
+        level="base",
+        parse_type=OPTION_TYPE_FLAG,
+        help_text=_HELP_DEBUG,
+    ),
+    OptionDef(
+        "seed",
+        short="-s",
+        level="base",
+        parse_type=OPTION_TYPE_STRING,
+        metavar="INTEGER",
+        help_text=_HELP_SEED,
+        parse_validator=validate_seed,
+    ),
+    OptionDef(
+        "spot_anion",
+        short="-a",
+        level="base",
+        parse_type=OPTION_TYPE_KEYVALUE,
+        metavar="TEXT",
+        help_text=_HELP_SPOT_ANION,
+        parse_validator=lambda v: validate_spot_ion_dict(v, "spot_anion"),
+    ),
+    OptionDef(
+        "spot_cation",
+        short="-c",
+        level="base",
+        parse_type=OPTION_TYPE_KEYVALUE,
+        metavar="TEXT",
+        help_text=_HELP_SPOT_CATION,
+        parse_validator=lambda v: validate_spot_ion_dict(v, "spot_cation"),
+    ),
+    OptionDef(
+        "config", short="-C", level="base", metavar="PATH", help_text=_HELP_CONFIG
+    ),
+    OptionDef(
+        "exporter", short="-e", level="base", metavar="TEXT", help_text=_HELP_EXPORTER
+    ),
     OptionDef("guest", short="-g", level="plugin"),
     OptionDef("spot_guest", short="-G", level="plugin"),
-    OptionDef("help", short="-h", level="base", help_text="Show this message and exit."),
+    OptionDef(
+        "help", short="-h", level="base", help_text="Show this message and exit."
+    ),
     OptionDef("version", short="-V", level="base", help_text=_HELP_VERSION),
     OptionDef(
         "rep",
@@ -99,6 +147,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         metavar="INT INT INT",
         help_text=_HELP_REPLICATION_FACTORS,
         help_format="--rep, --replication_factors INT INT INT",
+        parse_validator=validate_replication_factors,
     ),
     OptionDef(
         "replication_factors",
@@ -108,6 +157,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         metavar="INT INT INT",
         help_text=_HELP_REPLICATION_FACTORS,
         help_format="--rep, --replication_factors INT INT INT",
+        parse_validator=validate_replication_factors,
     ),
     OptionDef(
         "replication_matrix",
@@ -115,14 +165,23 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         parse_type=OPTION_TYPE_TUPLE,
         metavar="INT INT INT INT INT INT INT INT INT",
         help_text=_HELP_REPLICATION_MATRIX,
+        parse_validator=validate_replication_matrix,
     ),
-    OptionDef("depol_loop", level="base", parse_type=OPTION_TYPE_STRING, metavar="INTEGER", help_text=_HELP_DEPOL_LOOP),
+    OptionDef(
+        "depol_loop",
+        level="base",
+        parse_type=OPTION_TYPE_STRING,
+        metavar="INTEGER",
+        help_text=_HELP_DEPOL_LOOP,
+        parse_validator=validate_depol_loop,
+    ),
     OptionDef(
         "target_polarization",
         level="base",
         parse_type=OPTION_TYPE_TUPLE,
         metavar="FLOAT FLOAT FLOAT",
         help_text=_HELP_TARGET_POLARIZATION,
+        parse_validator=validate_target_polarization,
     ),
 )
 
@@ -171,6 +230,77 @@ def get_base_level_options(option_defs: Tuple[OptionDef, ...]) -> Set[str]:
     }
 
 
+def validate_parsed_options(base_options: Dict[str, Any]) -> None:
+    """パース済み base_options に対して parse_validator を実行する。"""
+    _validate_parsed_options(base_options, GENICE3_OPTION_DEFS)
+
+
+# =============================================================================
+# spot_cation / spot_anion の角括弧形式パース（--group サブオプション対応）
+# =============================================================================
+
+
+def _parse_group_option(value: Any) -> Dict[int, str]:
+    """--group の値を cage_id=group_name の辞書に変換する。"""
+    result: Dict[int, str] = {}
+    items = [value] if isinstance(value, str) else value
+    if isinstance(items, dict):
+        return {int(k): str(v) for k, v in items.items()}
+    for item in items if isinstance(items, (list, tuple)) else [items]:
+        if isinstance(item, str) and "=" in item:
+            cage_id_str, group_name = item.split("=", 1)
+            result[int(cage_id_str.strip())] = group_name.strip()
+    return result
+
+
+def _process_spot_ion_option(
+    raw_value: Any,
+) -> Tuple[Dict[str, str], Dict[int, Dict[int, str]]]:
+    """
+    spot_cation / spot_anion の生の値を処理。
+    角括弧形式 [0=N --group 23=methyl 17=methyl] および単純形式 0=Na に対応。
+
+    Returns:
+        (ions_dict, groups_dict)
+        ions_dict: {"0": "Na", "35": "K"}
+        groups_dict: {0: {23: "methyl", 17: "methyl"}}  (site -> {cage_id -> group_name})
+    """
+    ions: Dict[str, str] = {}
+    groups: Dict[int, Dict[int, str]] = {}
+
+    def process_item(item: Any) -> None:
+        if (
+            isinstance(item, str)
+            and item.strip().startswith("[")
+            and item.strip().endswith("]")
+        ):
+            assignment, subopts = parse_bracketed_plugin(item.strip())
+            label_str, ion_name = assignment.split("=", 1)
+            label_str = label_str.strip()
+            ions[label_str] = ion_name.strip()
+            if "group" in subopts:
+                group_dict = _parse_group_option(subopts["group"])
+                if group_dict:
+                    groups[int(label_str)] = group_dict
+        elif isinstance(item, str) and "=" in item:
+            label_str, ion_name = item.split("=", 1)
+            ions[label_str.strip()] = ion_name.strip()
+
+    if isinstance(raw_value, dict):
+        for k, v in raw_value.items():
+            if isinstance(v, dict) and "group" in v:
+                ions[str(k)] = str(v.get("ion", v.get("name", v)))
+                groups[int(k)] = _parse_group_option(v["group"])
+            else:
+                ions[str(k)] = str(v)
+    else:
+        items = [raw_value] if isinstance(raw_value, str) else raw_value
+        for item in items if isinstance(items, (list, tuple)) else [items]:
+            process_item(item)
+
+    return ions, groups
+
+
 # =============================================================================
 # 基底オプションの型変換と GenIce3 引数への変換
 # =============================================================================
@@ -192,12 +322,13 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
         型変換済みオプションと未処理オプションを統合した辞書。
     """
     # もともと parse_base_options で型変換していた9個だけ渡す。rep は build_options_dict で replication_factors に正規化されるため含めない。
+    # spot_cation, spot_anion は角括弧形式対応のため別処理
     option_specs = {
         d.name: d.parse_type
         for d in GENICE3_OPTION_DEFS
         if d.level == "base"
         and d.parse_type is not None
-        and d.name != "rep"
+        and d.name not in ("rep", "spot_cation", "spot_anion")
     }
 
     def to_int(x):
@@ -234,7 +365,17 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
     processed, unprocessed = parse_options_generic(
         options, option_specs, post_processors
     )
-    return {**processed, **unprocessed}
+
+    # spot_cation, spot_anion の角括弧形式パース（--group サブオプション対応）
+    for key in ("spot_cation", "spot_anion"):
+        if key in options:
+            ions, groups = _process_spot_ion_option(options[key])
+            processed[key] = ions
+            if groups:
+                processed[f"{key}_groups"] = groups
+
+    # processed を後にマージして、spot_cation/spot_anion の処理結果が unprocessed を上書きする
+    return {**unprocessed, **processed}
 
 
 def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:

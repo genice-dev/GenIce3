@@ -155,6 +155,7 @@ def dumps(
     water_model: str = "3site",
     command_line: str = "",
     name: str = "",  # dummy
+    **kwargs: Any,
 ):
     """
     Gromacs形式で出力

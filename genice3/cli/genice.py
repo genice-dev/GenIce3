@@ -3,7 +3,7 @@ import sys
 from importlib.metadata import version, PackageNotFoundError
 
 from genice3.plugin import safe_import
-from genice3.genice import GenIce3
+from genice3.genice import GenIce3, place_groups_on_lattice
 from genice3.cli.pool_parser import PoolBasedParser
 from genice3.cli.options import (
     GENICE3_OPTION_DEFS,
@@ -11,6 +11,7 @@ from genice3.cli.options import (
     get_option_def,
     format_option_for_help,
     extract_genice_args,
+    validate_parsed_options,
 )
 
 
@@ -133,6 +134,12 @@ def main() -> None:
         for handler in logger.handlers:
             handler.setLevel(DEBUG)
 
+    try:
+        validate_parsed_options(base_options)
+    except ValueError as e:
+        logger.error(str(e))
+        sys.exit(1)
+
     genice_kwargs = extract_genice_args(base_options)
     logger.debug(f"Settings: {genice_kwargs}")
 
@@ -157,6 +164,12 @@ def main() -> None:
                 logger.info(
                     f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces})"
                 )
+
+    # spot_cation_groups を exporter に渡し、格子点への group 配置を実行
+    spot_cation_groups = base_options.get("spot_cation_groups", {}) or {}
+    exporter_processed["spot_cation_groups"] = spot_cation_groups
+    if spot_cation_groups:
+        place_groups_on_lattice(genice, spot_cation_groups)
 
     # コマンドライン全体を取得
     command_line = " ".join(sys.argv)

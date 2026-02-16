@@ -82,6 +82,7 @@ class OptionDef:
     metavar: Optional[str] = None  # ヘルプ用（例: "INTEGER", "TEXT", "FLOAT FLOAT FLOAT"）
     help_text: Optional[str] = None  # --help に表示する説明文
     help_format: Optional[str] = None  # 省略時は short/name/metavar から組み立て。例: "--rep, --replication_factors INT INT INT"
+    parse_validator: Optional[Callable[[Any], None]] = None  # パース直後の値検証。エラー時は ValueError を raise
 
 
 def _option_defs_to_maps(
