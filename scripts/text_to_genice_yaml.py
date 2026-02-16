@@ -35,7 +35,7 @@ YAML_SCHEMA = """
   - replication_factors: [a, b, c]（単位セルを a,b,c 方向に繰り返し）
   - replication_matrix: 9個の整数のリスト（3x3 複製行列）
   - target_polarization: [Px, Py, Pz]
-  - assess_cages: true/false（ケージ評価）
+  - ケージ評価: 出力形式に -e cage_survey を指定するとケージ情報をJSONで出力
   - debug: true/false
   - spot_anion: キーが水分子インデックス（文字列）、値がイオン名。例 {"1": "Cl"}
   - spot_cation: 同上。例 {"5": "Na"}

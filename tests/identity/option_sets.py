@@ -15,14 +15,13 @@ OPTION_CHOICES = [
         "--spot_cation 0=Na --spot_anion 3=Cl",
     ],
     ["", "--guest A12=Me", "--guest A14=Et"],
-    ["-e gromacs", "-e lammps", "-e cif", "-e yaplot", "-e _pol"],
+    ["-e gromacs", "-e lammps", "-e cif", "-e yaplot", "-e _pol", "-e cage_survey"],
     ["--water 4site", "--water 6site"],
     ["", "--spot_guest 0=Me"],
     ["", "", "", "--anion 0=Cl --cation 2=Na"],
     ["", "--depol_loop 2000"],
     ["", "--rep 2 2 2", "--replication_matrix 1 1 1  1 -1 0  1 1 -2"],
     ["", "--target_polarization 0 0 4"],
-    ["", "--assess_cages"],
     ["", "--density 1.1"],
 ]
 

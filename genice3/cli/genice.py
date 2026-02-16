@@ -147,11 +147,6 @@ def main() -> None:
         **unitcell_processed
     )
 
-    if base_options.get("assess_cages", False):
-        survey_result = genice.cage_survey
-        print(survey_result)
-        sys.exit(0)
-
     # コマンドライン全体を取得
     command_line = " ".join(sys.argv)
     exporter_processed["command_line"] = command_line

@@ -59,11 +59,6 @@ _HELP_SEED = (
     "Using the same seed will produce reproducible results."
 )
 _HELP_EXPORTER = "Exporter plugin name (e.g., 'gromacs' or 'gromacs[options]')."
-_HELP_ASSESS_CAGES = (
-    "Assess and report cage positions and types in the ice structure. "
-    "This is useful for understanding the clathrate structure and "
-    "determining where guest molecules can be placed."
-)
 _HELP_SPOT_ANION = (
     "Specify anion replacing the specified water molecule. "
     "Format: WATER_INDEX=ION_NAME, where WATER_INDEX is the index of the water molecule and ION_NAME is the anion name. "
@@ -88,7 +83,6 @@ _HELP_CONFIG = (
 GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
     OptionDef("debug", short="-D", is_flag=True, level="base", parse_type=OPTION_TYPE_FLAG, help_text=_HELP_DEBUG),
     OptionDef("seed", short="-s", level="base", parse_type=OPTION_TYPE_STRING, metavar="INTEGER", help_text=_HELP_SEED),
-    OptionDef("assess_cages", short="-A", level="base", parse_type=OPTION_TYPE_STRING, help_text=_HELP_ASSESS_CAGES),
     OptionDef("spot_anion", short="-a", level="base", parse_type=OPTION_TYPE_KEYVALUE, metavar="TEXT", help_text=_HELP_SPOT_ANION),
     OptionDef("spot_cation", short="-c", level="base", parse_type=OPTION_TYPE_KEYVALUE, metavar="TEXT", help_text=_HELP_SPOT_CATION),
     OptionDef("config", short="-C", level="base", metavar="PATH", help_text=_HELP_CONFIG),
@@ -142,7 +136,6 @@ BASE_HELP_ORDER: Tuple[str, ...] = (
     "replication_factors",
     "seed",
     "exporter",
-    "assess_cages",
     "spot_anion",
     "spot_cation",
     "config",
@@ -236,7 +229,6 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
         "depol_loop": to_int,
         "replication_factors": to_int_tuple,
         "target_polarization": to_float3,
-        "assess_cages": to_bool,
     }
 
     processed, unprocessed = parse_options_generic(

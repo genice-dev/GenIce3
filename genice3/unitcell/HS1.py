@@ -9,7 +9,6 @@ desc = {
     "usage": "No options available.",
     "brief": "Hydrogen-disordered ice Ih.",
     "test": (
-        {"options": "--assess_cages"},
         {"options": "--guest A12=me"},
         {"options": "--spot_guest A12=me"},
         {

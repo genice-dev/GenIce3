@@ -94,7 +94,6 @@ class UnitCell:
         shift: tuple = (0.0, 0.0, 0.0),
         anion: dict = {},
         cation: dict = {},
-        assess_cages: bool = False,
         name: str = "",  # dummy
     ):
         anion = ion_processor(anion)

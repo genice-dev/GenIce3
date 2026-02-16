@@ -7,7 +7,7 @@ from genice3.plugin import UnitCell, Exporter, Molecule
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
 #   --rep 2 2 2 \
 #   --exporter "gromacs[guest.A12=me, guest.A14=et, spot_guest.0=4site, water=4site]" \
-#   --seed 42 --depol_loop 2000 --assess_cages -D \
+#   --seed 42 --depol_loop 2000 -D \
 #   --spot_anion 1=Cl --spot_anion 35=Br \
 #   --spot_cation 1=Na --spot_cation 35=K
 
@@ -37,14 +37,13 @@ genice = GenIce3(
 # anions: アニオンで置換する水分子（インデックス: イオン名）
 # cations: カチオンで置換する水分子（インデックス: イオン名）
 # density: 密度（g/cm³）
-# assess_cages: ケージの評価を行うかどうか
+# ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
 genice.unitcell = UnitCell(
     "A15",
     shift=(0.1, 0.1, 0.1),
     anion={15: "Cl"},
     cation={21: "Na"},
     density=0.8,
-    assess_cages=False,
 )
 
 

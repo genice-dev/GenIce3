@@ -69,7 +69,6 @@ class PoolBasedParser:
         "replication_matrix",
         "seed",
         "depol_loop",
-        "assess_cages",
         "debug",
         "spot_anion",
         "spot_cation",
