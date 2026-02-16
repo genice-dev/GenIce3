@@ -208,14 +208,14 @@ class UnitCell:
         if self._cages is None:
             # ケージの調査が必要になったときに実行
             # lattice_sitesは既にshift済みなので、ケージ位置も既にshift済みの座標系で計算される
-            self.logger.info("Assessing cages...")
+            self.logger.debug("Assessing cages...")
             self._cages = assess_cages(self.graph, self.lattice_sites)
 
-            # ケージ情報をログ出力
-            if self._cages is not None:
-                for i, (pos, label) in enumerate(
-                    zip(self._cages.positions, self._cages.specs)
-                ):
-                    self.logger.info(f"cage {i}: {label} @ {pos}")
+            # # ケージ情報をログ出力
+            # if self._cages is not None:
+            #     for i, (pos, label) in enumerate(
+            #         zip(self._cages.positions, self._cages.specs)
+            #     ):
+            #         self.logger.info(f"cage {i}: {label} @ {pos}")
 
         return self._cages

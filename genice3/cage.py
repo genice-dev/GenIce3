@@ -55,6 +55,13 @@ class CageSpecs:
             f"positions_shape={self.positions.shape})"
         )
 
+    def site_to_cage_indices(self, site: int) -> list[int]:
+        """
+        格子サイトが属するケージのインデックスリストを返す。
+        水分子は通常4つのケージに属する。
+        """
+        return [i for i, spec in enumerate(self.specs) if site in spec.graph]
+
 
 def _assign_unused_label(basename, labels):
     enum = 0

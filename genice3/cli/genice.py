@@ -13,6 +13,7 @@ from genice3.cli.options import (
     extract_genice_args,
 )
 
+
 def get_version():
     """パッケージのバージョンを取得する。見つからない場合はデフォルト値を返す。"""
     try:
@@ -146,6 +147,16 @@ def main() -> None:
     genice.unitcell = safe_import("unitcell", unitcell_name).UnitCell(
         **unitcell_processed
     )
+
+    # spot_cation ごとに属するケージのID・label・facesをログ表示
+    if genice.spot_cations and genice.cages is not None and len(genice.cages.specs) > 0:
+        for site, ion_name in genice.spot_cations.items():
+            cage_indices = genice.cages.site_to_cage_indices(site)
+            for cage_id in cage_indices:
+                spec = genice.cages.specs[cage_id]
+                logger.info(
+                    f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces})"
+                )
 
     # コマンドライン全体を取得
     command_line = " ".join(sys.argv)
