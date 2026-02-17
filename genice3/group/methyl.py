@@ -1,8 +1,8 @@
-from genice3.group import Group
+import genice3.group
 import numpy as np
 
 
-class Methyl(Group):
+class Group(genice3.group.Group):
     def __init__(self):
         bondlen = 0.109
         sine = 1 / 3

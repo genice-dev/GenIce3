@@ -78,11 +78,19 @@ class OptionDef:
     is_flag: bool = False  # 値を持たないフラグか
     max_values: Optional[int] = None  # 消費する値の最大数（rep など）
     level: str = "base"  # "base": 基底レベル, "plugin": プラグインに渡す
-    parse_type: Optional[str] = None  # parse_base_options での型: OPTION_TYPE_STRING / TUPLE / FLAG / KEYVALUE。None は型変換しない（config, exporter 等）
-    metavar: Optional[str] = None  # ヘルプ用（例: "INTEGER", "TEXT", "FLOAT FLOAT FLOAT"）
+    parse_type: Optional[str] = (
+        None  # parse_base_options での型: OPTION_TYPE_STRING / TUPLE / FLAG / KEYVALUE。None は型変換しない（config, exporter 等）
+    )
+    metavar: Optional[str] = (
+        None  # ヘルプ用（例: "INTEGER", "TEXT", "FLOAT FLOAT FLOAT"）
+    )
     help_text: Optional[str] = None  # --help に表示する説明文
-    help_format: Optional[str] = None  # 省略時は short/name/metavar から組み立て。例: "--rep, --replication_factors INT INT INT"
-    parse_validator: Optional[Callable[[Any], None]] = None  # パース直後の値検証。エラー時は ValueError を raise
+    help_format: Optional[str] = (
+        None  # 省略時は short/name/metavar から組み立て。例: "--rep, --replication_factors INT INT INT"
+    )
+    parse_validator: Optional[Callable[[Any], None]] = (
+        None  # パース直後の値検証。エラー時は ValueError を raise
+    )
 
 
 def _option_defs_to_maps(
@@ -90,9 +98,7 @@ def _option_defs_to_maps(
 ) -> Tuple[Dict[str, str], Dict[str, int], Set[str]]:
     """OptionDef の列から short_map, max_values, flag_options を組み立てる（汎用）。"""
     short_map = {d.short: d.name for d in option_defs if d.short is not None}
-    max_values = {
-        d.name: d.max_values for d in option_defs if d.max_values is not None
-    }
+    max_values = {d.name: d.max_values for d in option_defs if d.max_values is not None}
     flag_options = {d.name for d in option_defs if d.is_flag}
     return short_map, max_values, flag_options
 
@@ -210,9 +216,7 @@ def _collect_option_values(
     return values, i
 
 
-def _values_to_option_value(
-    values: List[Any], key: str, flag_options: Set[str]
-) -> Any:
+def _values_to_option_value(values: List[Any], key: str, flag_options: Set[str]) -> Any:
     """
     収集した値リストをオプション値に変換する。
     0個: フラグなら True、それ以外は None
@@ -252,9 +256,7 @@ def _parse_one_long_option(
     """--で始まる1オプションを処理。戻り値は次のインデックス。"""
     key = arg[2:]
     cmdline_specified_keys.add(key)
-    values, next_i = _collect_option_values(
-        args, i + 1, key, option_max_values
-    )
+    values, next_i = _collect_option_values(args, i + 1, key, option_max_values)
     value = _values_to_option_value(values, key, flag_options)
     _merge_option_into_dict(cmdline_dict, key, value)
     return next_i
@@ -275,9 +277,7 @@ def _parse_one_short_option(
         return i + 1
     key = short_option_map[arg]
     cmdline_specified_keys.add(key)
-    values, next_i = _collect_option_values(
-        args, i + 1, key, option_max_values
-    )
+    values, next_i = _collect_option_values(args, i + 1, key, option_max_values)
     value = _values_to_option_value(values, key, flag_options)
     _merge_option_into_dict(cmdline_dict, key, value)
     return next_i
@@ -296,9 +296,7 @@ def parse_command_line_to_dict(
     Returns:
         (cmdline_dict, cmdline_specified_keys)のタプル
     """
-    short_map, option_max_values, flag_options = _option_defs_to_maps(
-        option_defs
-    )
+    short_map, option_max_values, flag_options = _option_defs_to_maps(option_defs)
     cmdline_dict: Dict[str, Any] = {}
     cmdline_specified_keys: Set[str] = set()
     unitcell_arg = None
@@ -682,9 +680,7 @@ def execute_plugin_chain(
             handler.setLevel(DEBUG)
     plugin_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]] = []
 
-    logger.debug(
-        f"The original genice3オプション: {genice3_options}"
-        )
+    logger.debug(f"The original genice3オプション: {genice3_options}")
     # options_dictをコピーして作業
     updated_options_dict = options_dict.copy()
     updated_options_dict["genice3"] = genice3_options
@@ -700,9 +696,7 @@ def execute_plugin_chain(
             continue
 
         # まずgenice3内のオプションを処理し、消費したオプションは消す。
-        logger.debug(
-            f"genice3オプション: {genice3_options}"
-        )
+        logger.debug(f"genice3オプション: {genice3_options}")
         processed_genice3_options, unprocessed_genice3_options, _ = execute_plugin(
             plugin_type, plugin_name, genice3_options
         )
@@ -787,9 +781,7 @@ def parse_args(
 
     logger.debug(f"config_dict: {config_dict}")
 
-    cmdline_dict, cmdline_specified_keys = parse_command_line_to_dict(
-        args, option_defs
-    )
+    cmdline_dict, cmdline_specified_keys = parse_command_line_to_dict(args, option_defs)
 
     if logger.isEnabledFor(DEBUG):
         logger.debug("=" * 60)
@@ -805,10 +797,6 @@ def parse_args(
         cmdline_specified_keys,
         base_level_options,
     )
-
-    logger.info(
-        f"The original options_dict: {cmdline_dict}\n{cmdline_specified_keys}\n{config_dict}\n{options_dict}"
-        )
 
     # プラグインチェーンを動的に実行
     options_dict, plugin_results = execute_plugin_chain(options_dict)
@@ -906,9 +894,7 @@ class PoolBasedParser:
 
     def parse_args(self, args: List[str]) -> None:
         """コマンドライン引数をパース"""
-        self.options_dict, self.plugin_results = parse_args(
-            args, self.option_defs
-        )
+        self.options_dict, self.plugin_results = parse_args(args, self.option_defs)
 
     def get_result(self) -> Dict[str, Any]:
         """

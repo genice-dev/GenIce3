@@ -9,11 +9,7 @@ import numpy as np
 from cif2ice import cellshape, cellvectors
 from genice3.molecule import Molecule
 from genice3.genice import GenIce3
-from genice3.exporter import (
-    parse_guest_option,
-    parse_spot_guest_option,
-    parse_water_model_option,
-)
+from genice3.exporter import parse_water_model_option
 from genice3.cli.pool_parser import (
     OptionDef,
     parse_options_generic,
@@ -144,9 +140,8 @@ def _to_lammps_data(
 
 
 # lammps プラグインが受け取るオプション定義。追加・削除はここだけ行えばよい。
+# guest/spot_guest は基底オプションのためここには含めない。
 LAMMPS_OPTION_DEFS = (
-    OptionDef("guest", parse_type=OPTION_TYPE_KEYVALUE),
-    OptionDef("spot_guest", parse_type=OPTION_TYPE_KEYVALUE),
     OptionDef("water_model", parse_type=OPTION_TYPE_STRING),
 )
 
@@ -177,19 +172,16 @@ def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, An
 
 def dumps(
     genice: GenIce3,
-    guest: dict = {},
-    spot_guest: dict = {},
     water_model: str = "3site",
     command_line: str = "",
     name: str = "",  # dummy
+    **kwargs,
 ):
     """
     LAMMPS形式で出力
 
     Args:
         genice: GenIce3インスタンス
-        guest: ゲスト分子の指定
-        spot_guest: 特定のケージに配置するゲスト分子
         water_model: 水分子モデル名
         command_line: コマンドライン文字列
         name: プラグイン名（"lammps"または""）
@@ -197,11 +189,9 @@ def dumps(
     logger = getLogger("lammps.dump")
     if name not in ("lammps", ""):
         raise ValueError(f"name must be 'lammps' or '', got: {name}")
-    guest_info = parse_guest_option(guest)
-    spot_guest_info = parse_spot_guest_option(spot_guest)
     water_model = parse_water_model_option(water_model)
     waters = genice.water_molecules(water_model=water_model)
-    guests = genice.guest_molecules(guests=guest_info, spot_guests=spot_guest_info)
+    guests = genice.guest_molecules()
     ions = genice.substitutional_ions()
 
     return _to_lammps_data(

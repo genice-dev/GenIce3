@@ -9,4 +9,4 @@ python3 -m genice3.cli.genice A15 --shift 0.1 0.1 0.1 --anion 15=Cl --cation 21=
   --seed 42 \
   --depol_loop 2000 \
   --spot_anion 1=Cl \
-  --spot_cation 5=Na
+  --spot_cation 51=Na

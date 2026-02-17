@@ -1,13 +1,15 @@
 # Another plan of reactive GenIce3 (リアクティブプロパティによる実装).
 
 from genice3 import ConfigurationError
+from genice3.group import Group
 from genice3.molecule import Molecule
+from genice3.plugin import safe_import
 from genice3.util import (
     replicate_positions,
     grandcell_wrap,
     assume_tetrahedral_vectors,
 )
-from genice3.cage import CageSpecs
+from genice3.cage import CageSpecs, CageSpec
 from cif2ice import cellshape
 import genice_core
 import networkx as nx
@@ -239,6 +241,28 @@ def _replicate_fixed_edges(
     for edge in rep_fixed_edges.edges():
         logger.debug(f"* {edge=}")
     return rep_fixed_edges
+
+
+def replicate_subgraph(repgraph: nx.Graph, subgraph: nx.Graph, nmol: int) -> nx.Graph:
+    # unitcell内のsubgraphのレプリカをrepgraph内にさがすgenerator.
+    origin = list(subgraph.nodes())[0]
+    nrep = len(repgraph) // nmol  # number of replicas
+
+    def _next(_reporigin):
+        for _repnei in nx.neighbors(repgraph, _reporigin):
+            _origin = _reporigin % nmol
+            _nei = _repnei % nmol
+            if _nei in nx.neighbors(subgraph, _origin) and not replica.has_edge(
+                _reporigin, _repnei
+            ):
+                replica.add_edge(_reporigin, _repnei)
+                _next(_repnei)
+
+    for rep in range(nrep):
+        reporigin = origin + nmol * rep
+        replica = nx.Graph()
+        _next(reporigin)
+        yield replica
 
 
 # ============================================================================
@@ -579,6 +603,7 @@ def cages(
     unitcell: UnitCell,
     replica_vectors: np.ndarray,
     replication_matrix: np.ndarray,
+    graph: nx.Graph,
 ) -> CageSpecs:
     """ケージ位置とタイプを拡大単位胞全体に複製する。
 
@@ -603,9 +628,16 @@ def cages(
         unitcell.cages.positions, replica_vectors, replication_matrix
     )
     num_cages_in_unitcell = len(unitcell.cages.positions)
-    repcagespecs = [
-        unitcell.cages.specs[i % num_cages_in_unitcell] for i in range(len(repcagepos))
-    ]
+
+    # replicate_subgraphはケージ一個ずつをreplicateするが、repcagespecsの並び順は単位胞単位。
+    repcagespecs = [None] * len(repcagepos)
+    for i, cage in enumerate(unitcell.cages.specs):
+        for j, repgraph in enumerate(
+            replicate_subgraph(graph, cage.graph, unitcell.lattice_sites.shape[0])
+        ):
+            repcagespecs[i + j * num_cages_in_unitcell] = CageSpec(
+                label=cage.label, faces=cage.faces, graph=repgraph
+            )
     # unit cellのcagesと同じ構造。
     _genice3_logger.debug(f"{repcagepos=}, {repcagespecs=}")
     return CageSpecs(positions=repcagepos, specs=repcagespecs)
@@ -624,6 +656,47 @@ def place_groups_on_lattice(
     """
     _genice3_logger.info(
         f"place_groups_on_lattice: dummy implementation (group assignment not yet applied) {spot_cation_groups=}"
+    )
+
+
+def log_spot_cation_cages(genice: "GenIce3") -> None:
+    """spot_cation ごとに属するケージのID・label・facesをログ表示する。"""
+    if not genice.spot_cations or genice.cages is None or len(genice.cages.specs) == 0:
+        return
+    num_replicas = int(np.round(np.linalg.det(genice.replication_matrix)))
+    num_cages_in_unitcell = len(genice.cages.specs) // max(1, num_replicas)
+    for site, ion_name in genice.spot_cations.items():
+        cage_indices = genice.cages.site_to_cage_indices(site)
+        seen_uc = set()
+        for cage_id in cage_indices:
+            uc_id = cage_id % num_cages_in_unitcell
+            if uc_id not in seen_uc:
+                seen_uc.add(uc_id)
+                spec = genice.cages.specs[cage_id]
+                genice.logger.info(
+                    f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces})"
+                )
+
+
+def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group:
+    """グループを配置する。"""
+    # logger = getLogger("GenIce3")
+    group = safe_import("group", group_name).Group()
+    # logger.info(f"{group_name=} {group=}")
+    direction /= np.linalg.norm(direction)
+    offset = direction * bondlen
+    # Z軸をdirection方向に傾ける行列
+    ex, ey, ez = direction
+    r = (ex**2 + ey**2) ** 0.5
+    Ry = np.array([[ez, 0, -r], [0, 1, 0], [r, 0, ez]])
+    Rz = np.array([[ex / r, ey / r, 0], [-ey / r, ex / r, 0], [0, 0, 1]])
+    rotmat = Ry @ Rz
+    sites = group.sites @ rotmat + offset
+    return Group(
+        sites=sites,
+        labels=group.labels,
+        bonds=group.bonds,
+        name=group.name,
     )
 
 
@@ -735,6 +808,9 @@ class GenIce3:
         seed: int = 1,
         spot_anions: Dict[int, str] = {},
         spot_cations: Dict[int, str] = {},
+        guests: Dict[str, List["GuestSpec"]] = None,
+        spot_guests: Dict[int, Molecule] = None,
+        spot_cation_groups: Dict[int, Dict[int, str]] = None,
         **kwargs: Any,
     ) -> None:
         """GenIce3インスタンスを初期化する。
@@ -746,6 +822,9 @@ class GenIce3:
             seed: 乱数シード（デフォルト: 1）
             spot_anions: 特定位置のアニオン配置（デフォルト: {}）
             spot_cations: 特定位置のカチオン配置（デフォルト: {}）
+            guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）
+            spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）
+            spot_cation_groups: spot_cation の --group 指定（サイト -> {ケージID -> group名}）（デフォルト: {}）
             **kwargs: その他のリアクティブプロパティ（unitcellなど）
 
         Raises:
@@ -763,6 +842,11 @@ class GenIce3:
         self.target_pol = target_pol
         self.spot_anions = spot_anions
         self.spot_cations = spot_cations
+        self.guests = guests if guests is not None else {}
+        self.spot_guests = spot_guests if spot_guests is not None else {}
+        self.spot_cation_groups = (
+            spot_cation_groups if spot_cation_groups is not None else {}
+        )
 
         # タスクを登録（モジュールレベルの関数を登録）
         self._register_tasks()
@@ -1016,16 +1100,15 @@ class GenIce3:
                 )
         return mols
 
-    def guest_molecules(
-        self, guests: Dict[str, List[GuestSpec]], spot_guests: Dict[int, Molecule]
-    ) -> List[Molecule]:
+    def guest_molecules(self) -> List[Molecule]:
+        """GenIce3に設定されたguestsとspot_guestsからゲスト分子リストを生成する。"""
         # 通常の氷（ゲストなし）ではケージ不要 → assess_cages を呼ばない
-        if not guests and not spot_guests:
+        if not self.guests and not self.spot_guests:
             return []
 
         all_labels = [spec.label for spec in self.cages.specs]
         # guest_specで指定されているのに存在しない種類のケージはエラーにする。
-        for label in guests:
+        for label in self.guests:
             if label not in all_labels:
                 raise ConfigurationError(f"Cage type {label} is not defined.")
 
@@ -1036,8 +1119,8 @@ class GenIce3:
             self.cages.positions, self.cages.specs, randoms
         ):
             accum = 0.0
-            if spec.label in guests:
-                for guest_spec in guests[spec.label]:
+            if spec.label in self.guests:
+                for guest_spec in self.guests[spec.label]:
                     molecule = guest_spec.molecule
                     occupancy = guest_spec.occupancy
                     accum += occupancy
@@ -1053,7 +1136,7 @@ class GenIce3:
                         break
 
         # spot guestの配置
-        for cage_index, guest in spot_guests.items():
+        for cage_index, guest in self.spot_guests.items():
             mols.append(
                 Molecule(
                     name=guest.name,
@@ -1066,6 +1149,7 @@ class GenIce3:
 
     def substitutional_ions(self) -> Dict[int, Molecule]:
         # 将来は分子イオン(H3O+など)を置く可能性もあることに留意。
+        # また、groupもionの一部となるべき。groupの処理はここで行うことになる。
         ions: Dict[int, Molecule] = {}
         # ならべかえはここではしない。formatterにまかせる。
         for label, molecule in self.anions.items():
@@ -1076,12 +1160,30 @@ class GenIce3:
                 is_water=False,
             )
         for label, molecule in self.cations.items():
+            name = molecule
+            ion_center = self.lattice_sites[label] @ self.cell
+            sites = np.array([ion_center])
+            labels = [molecule]
+            # 修飾グループを置いていく（--group 指定があったサイトのみ）
+            if label in self.spot_cation_groups:
+                self.logger.info("1")
+                for cage, group_name in self.spot_cation_groups[label].items():
+                    group = place_group(
+                        (self.cages.positions[cage] - self.lattice_sites[label])
+                        @ self.cell,
+                        0.13,  # あとでなんとかする。N-H結合距離
+                        group_name,
+                    )
+                    sites = np.concatenate([sites, group.sites + ion_center])
+                    labels += group.labels
+                    self.logger.info(f"{labels=}")
             ions[label] = Molecule(
-                name=molecule,
-                sites=[self.lattice_sites[label] @ self.cell],
-                labels=[molecule],
+                name=name,
+                sites=sites,
+                labels=labels,
                 is_water=False,
             )
+        self.logger.info(f"{ions=}")
         return ions
 
     def dope_anions(self, anions: Dict[int, Molecule]):

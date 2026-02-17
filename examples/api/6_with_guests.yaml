@@ -13,8 +13,14 @@ genice3:
   # replication_factors: [2, 2, 2]
   replication_matrix: [2, 0, 0, 0, 2, 0, 0, 0, 2]
 
-  # ケージの評価を行うかどうか
-  assess_cages: false
+  # ゲスト分子の指定（ケージタイプ: 分子名）※基底オプション
+  guest:
+    A12: me
+    A14: et
+
+  # 特定のケージにゲスト分子を配置（ケージインデックス: 分子名）
+  spot_guest:
+    "0": "4site"
 
 unitcell:
   # 単位セルプラグイン名
@@ -31,17 +37,7 @@ exporter:
   # エクスポータープラグイン名
   name: gromacs
 
-  # エクスポーターのオプション（階層的に指定可能）
-  # ゲスト分子の指定（ケージタイプ: 分子名）
-  guest:
-    A12: me
-    A14: et
-
-  # 特定のケージにゲスト分子を配置（ケージインデックス: 分子名）
-  spot_guest:
-    "0": "4site"
-
-  # 水分子モデル
+  # エクスポーターのオプション（water_model など）
   water_model: "4site"
 
 

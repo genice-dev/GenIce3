@@ -9,7 +9,8 @@ pool_parser は汎用のパースのみ担当し、具体的なオプション�
 - extract_genice_args: 基底オプション辞書から GenIce3(...) に渡す kwargs を組み立てる
 """
 
-from typing import Dict, Any, Optional, Set, Tuple
+from logging import getLogger
+from typing import Dict, Any, List, Optional, Set, Tuple
 import numpy as np
 
 from genice3.cli.pool_parser import (
@@ -31,6 +32,9 @@ from genice3.cli.validator import (
     validate_parsed_options as _validate_parsed_options,
 )
 from genice3.unitcell import ion_processor
+from genice3.genice import ConfigurationError, ShowUsageError, GuestSpec
+from genice3.plugin import safe_import
+from genice3.molecule import Molecule
 
 
 # =============================================================================
@@ -86,6 +90,16 @@ _HELP_CONFIG = (
     "Settings from the config file will be overridden by command-line arguments. "
     "See documentation for the config file format."
 )
+_HELP_GUEST = (
+    "Specify guest molecules for each cage type. "
+    "Format: CAGE_LABEL=GUEST_SPEC, e.g. A12=me, A12=me+et*0.5. "
+    "Multiple cage types can be specified with multiple -g options."
+)
+_HELP_SPOT_GUEST = (
+    "Specify guest molecule at a specific cage index. "
+    "Format: CAGE_INDEX=MOLECULE_NAME, e.g. 0=me, 5=4site. "
+    "Multiple spot guests can be specified with multiple -G options."
+)
 
 
 # 長い形式 (--xxx) はパーサーがすべて受け取り、base に無いキーは plugin_cmdline_options に回る。
@@ -133,8 +147,22 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
     OptionDef(
         "exporter", short="-e", level="base", metavar="TEXT", help_text=_HELP_EXPORTER
     ),
-    OptionDef("guest", short="-g", level="plugin"),
-    OptionDef("spot_guest", short="-G", level="plugin"),
+    OptionDef(
+        "guest",
+        short="-g",
+        level="base",
+        parse_type=OPTION_TYPE_KEYVALUE,
+        metavar="TEXT",
+        help_text=_HELP_GUEST,
+    ),
+    OptionDef(
+        "spot_guest",
+        short="-G",
+        level="base",
+        parse_type=OPTION_TYPE_KEYVALUE,
+        metavar="TEXT",
+        help_text=_HELP_SPOT_GUEST,
+    ),
     OptionDef(
         "help", short="-h", level="base", help_text="Show this message and exit."
     ),
@@ -195,6 +223,8 @@ BASE_HELP_ORDER: Tuple[str, ...] = (
     "replication_factors",
     "seed",
     "exporter",
+    "guest",
+    "spot_guest",
     "spot_anion",
     "spot_cation",
     "config",
@@ -306,6 +336,48 @@ def _process_spot_ion_option(
 # =============================================================================
 
 
+def parse_guest_option(arg: dict) -> Dict[str, List[GuestSpec]]:
+    """guest オプションの辞書を GuestSpec の辞書に変換する。"""
+    logger = getLogger("guest_processor")
+    logger.info(f"{arg=}")
+    result: Dict[str, List[GuestSpec]] = {}
+    for cage, guest_specs in arg.items():
+        logger.info(f"{cage=} {guest_specs=}")
+        result[cage] = []
+        total_occupancy = 0.0
+        for guest_spec in guest_specs.split("+"):
+            if "*" in guest_spec:
+                occupancy_str, molecule = guest_spec.split("*")
+                occupancy = float(occupancy_str)
+            else:
+                molecule = guest_spec
+                occupancy = 1.0
+            mol = safe_import("molecule", molecule).Molecule()
+            result[cage].append(GuestSpec(mol, occupancy))
+            total_occupancy += occupancy
+        if total_occupancy > 1.0:
+            raise ConfigurationError(
+                f"Total occupancy of cage {cage} is greater than 1.0"
+            )
+    logger.debug(f"{result=}")
+    return result
+
+
+def parse_spot_guest_option(arg: dict) -> Dict[int, Molecule]:
+    """spot_guest オプションの辞書を Molecule の辞書に変換する。"""
+    result: Dict[int, Molecule] = {}
+    for label, molecule in arg.items():
+        if label == "?":
+            raise ShowUsageError(
+                "Use '?' to display cage information. "
+                "This option triggers a survey of cage positions and types."
+            )
+        result[int(label) if isinstance(label, str) else label] = safe_import(
+            "molecule", molecule
+        ).Molecule()
+    return result
+
+
 def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
     """
     基底レベルオプションを型変換して統合する。
@@ -374,6 +446,12 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
             if groups:
                 processed[f"{key}_groups"] = groups
 
+    # guest, spot_guest を GuestSpec/Molecule の辞書に変換
+    if "guest" in processed and processed["guest"]:
+        processed["guest"] = parse_guest_option(processed["guest"])
+    if "spot_guest" in processed and processed["spot_guest"]:
+        processed["spot_guest"] = parse_spot_guest_option(processed["spot_guest"])
+
     # processed を後にマージして、spot_cation/spot_anion の処理結果が unprocessed を上書きする
     return {**unprocessed, **processed}
 
@@ -386,7 +464,7 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
         base_options: parse_base_options 済みの基底オプション辞書（result["base_options"]）
 
     Returns:
-        GenIce3(depol_loop=..., replication_matrix=..., target_pol=..., seed=..., spot_anions=..., spot_cations=...) に渡す辞書
+        GenIce3 に渡す kwargs（depol_loop, replication_matrix, target_pol, seed, spot_anions, spot_cations, guests, spot_guests）
     """
     seed = base_options.get("seed", 1)
     depol_loop = base_options.get("depol_loop", 1000)
@@ -399,6 +477,9 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
     spot_anion_dict = ion_processor(spot_anion_dict)
     spot_cation_dict = ion_processor(spot_cation_dict)
 
+    guests = base_options.get("guest", {}) or {}
+    spot_guests = base_options.get("spot_guest", {}) or {}
+
     replication_matrix = base_options.get("replication_matrix")
     replication_factors = base_options.get("replication_factors", (1, 1, 1))
     if replication_matrix is None:
@@ -408,6 +489,8 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
     else:
         replication_matrix = np.array(replication_matrix)
 
+    spot_cation_groups = base_options.get("spot_cation_groups", {}) or {}
+
     return {
         "depol_loop": depol_loop,
         "replication_matrix": replication_matrix,
@@ -415,4 +498,7 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
         "seed": seed,
         "spot_anions": spot_anion_dict,
         "spot_cations": spot_cation_dict,
+        "guests": guests,
+        "spot_guests": spot_guests,
+        "spot_cation_groups": spot_cation_groups,
     }

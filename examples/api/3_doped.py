@@ -6,10 +6,10 @@ from genice3.plugin import UnitCell, Exporter, Molecule
 # corresponding command:
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
 #   --rep 2 2 2 \
-#   --exporter "gromacs[guest.A12=me, guest.A14=et, spot_guest.0=4site, water=4site]" \
-#   --seed 42 --depol_loop 2000 -D \
 #   --spot_anion 1=Cl --spot_anion 35=Br \
-#   --spot_cation 1=Na --spot_cation 35=K
+#   --spot_cation 1=Na --spot_cation 35=K \
+#   --exporter "gromacs[water_model=4site]" \
+#   --seed 42 --depol_loop 2000 -D
 
 basicConfig(level=INFO)
 
@@ -28,7 +28,7 @@ genice = GenIce3(
         1: "Cl",
     },
     spot_cations={
-        5: "Na",
+        51: "Na",
     },
 )
 
@@ -48,9 +48,6 @@ genice.unitcell = UnitCell(
 
 
 # エクスポーターで出力
-# guest: ゲスト分子の指定（ケージタイプ: 分子名）
-# spot_guest: 特定のケージにゲスト分子を配置（ケージインデックス: 分子名）
-# water: 水分子モデル（文字列で指定）
 Exporter("gromacs").dump(
     genice,
     water_model="4site",
