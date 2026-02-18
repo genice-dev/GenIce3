@@ -21,7 +21,8 @@
 - 目玉機能。この 2 つが完成するまでは公表できない。
   - [ ] group!
     - [ ] API呼び出しでgroupを指定する方法を文書化する。
-    - [ ] カチオンのサブオプションとしてgroupを指定する。例: `--cation 0=[N --group 1=methyl 2=butyl 4=hexyl 12=methyl]`（階層記法）。flat記法も検討。
+    - [x] Spotカチオンのサブオプションとしてgroupを指定する。例: `--cation 0=[N --group 1=methyl 2=butyl 4=hexyl 12=methyl]`（階層記法）。flat記法も検討。
+    - [ ] Spotでないカチオンにも対応
     - [ ] インタラクティブCLI: `--group 水分子番号` で隣接4ケージのメニューを表示し、各ケージに配置するgroupを選択させる（questionary使用）。
   - [ ] topological defects
     - 指定方法を真剣に考える。本来なら、edge を指定する必要がある。まあそれでいいか。-D 0 2 -L 4 5
