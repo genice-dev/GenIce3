@@ -1,0 +1,19 @@
+# GenIce3 設定ファイルの例（YAML形式）
+# 拡大胞を新たに単位胞とする unitcell プラグインを出力する。
+# 対応する CLI: examples/api/10_extend_unitcell.sh
+# 対応する Python API: examples/api/10_extend_unitcell.py
+#
+# 生成された出力を A15e.py にリダイレクトして保存し、
+# rep=1 1 1 で同じ構造を再現する unitcell プラグインとして利用できる。
+
+genice3:
+  # 複製行列（3x3、行優先の9整数）
+  # 例: 1 1 0 / -1 1 0 / 0 0 1 で a'=a+b, b'=-a+b の変換
+  replication_matrix: [1, 1, 0, -1, 1, 0, 0, 0, 1]
+
+unitcell:
+  name: A15
+
+exporter:
+  name: python
+  # 生成コード内の説明用名前は CLI で指定: -e "python[name=A15e]"
