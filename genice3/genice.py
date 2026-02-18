@@ -1153,44 +1153,53 @@ class GenIce3:
             )
         return mols
 
-    def substitutional_ions(self) -> Dict[int, Molecule]:
-        # TODO: 分子イオン(H3O+など)の可能性。単原子イオンは例外的な扱い。
-        # TODO: spot でない cation（単位胞の anion/cation）への修飾（group 配置）の可能性。
-        # また、groupもionの一部となるべき。groupの処理はここで行うことになる。
-        ions: Dict[int, Molecule] = {}
-        # ならべかえはここではしない。formatterにまかせる。
-        for label, molecule in self.anions.items():
-            ions[label] = Molecule(
-                name=molecule,
-                sites=[self.lattice_sites[label] @ self.cell],
-                labels=[molecule],
-                is_water=False,
-            )
-        for label, molecule in self.cations.items():
+    def build_molecular_ion(
+        self,
+        site_label: int,
+        molecule: str,
+        groups: Dict[int, str] | None = None,
+    ) -> Molecule:
+        """サイト site_label に分子イオン（および spot cation 用の修飾 group）を構築する。"""
+        groups = groups or {}
+        ion_center = self.lattice_sites[site_label] @ self.cell
+        try:
+            ion = safe_import("molecule", molecule).Molecule()
+            name = ion.name
+            sites = ion.sites + ion_center
+            labels = list(ion.labels)
+        except ImportError:
             name = molecule
-            ion_center = self.lattice_sites[label] @ self.cell
             sites = np.array([ion_center])
             labels = [molecule]
-            # 修飾グループを置いていく（--group 指定があったサイトのみ）
-            if label in self.spot_cation_groups:
-                self.logger.info("1")
-                for cage, group_name in self.spot_cation_groups[label].items():
-                    direction = self.cages.positions[cage] - self.lattice_sites[label]
-                    direction -= np.floor(direction + 0.5)
-                    group = place_group(
-                        direction @ self.cell,
-                        0.13,  # あとでなんとかする。N-H結合距離
-                        group_name,
-                    )
-                    sites = np.concatenate([sites, group.sites + ion_center])
-                    labels += group.labels
-                    self.logger.info(f"{labels=}")
-            ions[label] = Molecule(
-                name=name,
-                sites=sites,
-                labels=labels,
-                is_water=False,
+        # 修飾グループを置いていく（--group 指定があったサイトのみ）
+        for cage, group_name in groups.items():
+            direction = self.cages.positions[cage] - self.lattice_sites[site_label]
+            direction -= np.floor(direction + 0.5)
+            group = place_group(
+                direction @ self.cell,
+                0.13,  # あとでなんとかする。N-H結合距離
+                group_name,
             )
+            sites = np.concatenate([sites, group.sites + ion_center])
+            labels += group.labels
+            self.logger.info(f"{labels=}")
+        return Molecule(
+            name=name,
+            sites=sites,
+            labels=labels,
+            is_water=False,
+        )
+
+    def substitutional_ions(self) -> Dict[int, Molecule]:
+        # TODO: spot でない cation（単位胞の anion/cation）への修飾は、あらかじめspot_cation_groupsに展開してしまえ。
+        ions: Dict[int, Molecule] = {}
+        # ならべかえはここではしない。formatterにまかせる。
+        for site_label, molecule in self.anions.items():
+            ions[site_label] = self.build_molecular_ion(site_label, molecule)
+        for site_label, molecule in self.cations.items():
+            # cationには腕がつく可能性がある。
+            groups = self.spot_cation_groups.get(site_label, {})
+            ions[site_label] = self.build_molecular_ion(site_label, molecule, groups)
         self.logger.info(f"{ions=}")
         return ions
 
