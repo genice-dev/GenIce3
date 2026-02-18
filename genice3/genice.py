@@ -1109,10 +1109,14 @@ class GenIce3:
             return []
 
         all_labels = [spec.label for spec in self.cages.specs]
+        available = sorted(set(all_labels))
         # guest_specで指定されているのに存在しない種類のケージはエラーにする。
         for label in self.guests:
             if label not in all_labels:
-                raise ConfigurationError(f"Cage type {label} is not defined.")
+                raise ConfigurationError(
+                    f"Cage type {label} is not defined. "
+                    f"Available cage types in this structure: {available}."
+                )
 
         randoms = np.random.random(len(self.cages.positions))
 
