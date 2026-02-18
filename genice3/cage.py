@@ -122,7 +122,7 @@ def assess_cages(graph, node_frac):
 
     cagespecs = []
     for cage, g in zip(cages, cage_graphs):
-        cagesize = len(g)
+        cagesize = len(cage)
         graph_id = db.query_id(g)
         # if it is a new cage type
         if graph_id < 0:
