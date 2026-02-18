@@ -3,7 +3,7 @@ import sys
 from importlib.metadata import version, PackageNotFoundError
 
 from genice3.plugin import safe_import
-from genice3.genice import GenIce3, log_spot_cation_cages
+from genice3.genice import GenIce3, log_cation_cages, log_spot_cation_cages
 from genice3.cli.pool_parser import PoolBasedParser
 from genice3.cli.options import (
     GENICE3_OPTION_DEFS,
@@ -156,6 +156,7 @@ def main() -> None:
     )
 
     log_spot_cation_cages(genice)
+    log_cation_cages(genice)
 
     # コマンドライン全体を取得
     command_line = " ".join(sys.argv)

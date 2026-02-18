@@ -5,7 +5,7 @@ import pairlist as pl
 from genice3 import ConfigurationError
 from genice3.util import shortest_distance, density_in_g_cm3
 from genice3.cage import assess_cages
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Union
 from genice3.molecule.one import Molecule
 from genice3.cli.pool_parser import (
     OptionDef,
@@ -22,12 +22,34 @@ UNITCELL_OPTION_DEFS = (
     OptionDef("density", parse_type=OPTION_TYPE_STRING),
     OptionDef("anion", parse_type=OPTION_TYPE_KEYVALUE),
     OptionDef("cation", parse_type=OPTION_TYPE_KEYVALUE),
+    OptionDef("cation_groups", parse_type=OPTION_TYPE_KEYVALUE),
 )
 
-# 型変換後の後処理（shift→floatタプル、density→float）
+def _parse_cation_groups(raw: Dict[str, Union[str, dict]]) -> Dict[int, Dict[int, str]]:
+    """
+    単位胞オプション cation_groups の生値を site -> {cage_id -> group_name} に変換する。
+    値は "1=methyl,17=methyl" 形式の文字列、または YAML 由来の {cage_id: group_name} 辞書。
+    """
+    result: Dict[int, Dict[int, str]] = {}
+    for site_str, val in raw.items():
+        site = int(site_str)
+        if isinstance(val, dict):
+            result[site] = {int(k): str(v) for k, v in val.items()}
+        else:
+            result[site] = {}
+            for part in str(val).split(","):
+                part = part.strip()
+                if "=" in part:
+                    cage_str, group_name = part.split("=", 1)
+                    result[site][int(cage_str.strip())] = group_name.strip()
+    return result
+
+
+# 型変換後の後処理（shift→floatタプル、density→float、cation_groups→site->{cage->group}）
 UNITCELL_POST_PROCESSORS = {
     "shift": lambda x: tuple(float(v) for v in x),
     "density": lambda x: float(x) if isinstance(x, str) else x,
+    "cation_groups": _parse_cation_groups,
 }
 
 
@@ -66,8 +88,8 @@ class UnitCell:
         """
         unitcell 共通オプションを型変換して処理する。
 
-        対象は UNITCELL_OPTION_DEFS で定義。shift / density / anion / cation。
-        後処理は UNITCELL_POST_PROCESSORS で shift→float タプル、density→float に変換。
+        対象は UNITCELL_OPTION_DEFS で定義。shift / density / anion / cation / cation_groups。
+        後処理は UNITCELL_POST_PROCESSORS で shift→float、density→float、cation_groups→site->{cage->group} に変換。
 
         Args:
             options: プラグインに渡されたオプション辞書。
@@ -94,10 +116,18 @@ class UnitCell:
         shift: tuple = (0.0, 0.0, 0.0),
         anion: dict = {},
         cation: dict = {},
+        cation_groups: dict = None,
         name: str = "",  # dummy
     ):
         anion = ion_processor(anion)
         cation = ion_processor(cation)
+        if cation_groups is None:
+            cation_groups = {}
+        else:
+            # parse_options を通っていない生指定（str の値）の場合は正規化
+            sample = next(iter(cation_groups.values()), None)
+            if sample is not None and not isinstance(sample, dict):
+                cation_groups = _parse_cation_groups(cation_groups)
         if type(density) == str:
             density = float(density)
 
@@ -182,6 +212,7 @@ class UnitCell:
             )
         self.anions = anion
         self.cations = cation
+        self.cation_groups = cation_groups  # サイト -> {ケージID -> group名}（単位胞内カチオン用）
         # ionは水素結合の向きを固定する。
         for label in anion:
             for nei in self.graph[label]:

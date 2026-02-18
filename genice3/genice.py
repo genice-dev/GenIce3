@@ -167,6 +167,12 @@ def _assume_water_orientations(
     return rotmatrices
 
 
+def _replicate_lattice_node(lattice_site_label, nmol, replica_vectors):
+    multiple = int(np.floor(np.linalg.det(replica_vectors) + 0.5))
+    for i in range(multiple):
+        yield lattice_site_label + nmol * i
+
+
 def _replicate_graph(
     graph1: nx.Graph,
     cell1frac_coords: np.ndarray,
@@ -666,16 +672,29 @@ def log_spot_cation_cages(genice: "GenIce3") -> None:
     num_replicas = int(np.round(np.linalg.det(genice.replication_matrix)))
     num_cages_in_unitcell = len(genice.cages.specs) // max(1, num_replicas)
     for site, ion_name in genice.spot_cations.items():
-        cage_indices = genice.cages.site_to_cage_indices(site)
-        seen_uc = set()
+        cage_indices = genice.cages.node_to_cage_indices.get(site, [])
         for cage_id in cage_indices:
-            uc_id = cage_id % num_cages_in_unitcell
-            if uc_id not in seen_uc:
-                seen_uc.add(uc_id)
-                spec = genice.cages.specs[cage_id]
-                genice.logger.info(
-                    f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces})"
-                )
+            spec = genice.cages.specs[cage_id]
+            genice.logger.info(
+                f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces}) in the supercell."
+            )
+
+
+def log_cation_cages(genice: "GenIce3") -> None:
+    # log_spot_cation_cagesの、単位胞バージョン。単位胞内ケージ番号を表示する。
+    if (
+        not genice.cations
+        or genice.unitcell.cages is None
+        or len(genice.unitcell.cages.specs) == 0
+    ):
+        return
+    for site, ion_name in genice.cations.items():
+        cage_indices = genice.unitcell.cages.node_to_cage_indices.get(site, [])
+        for cage_id in cage_indices:
+            spec = genice.unitcell.cages.specs[cage_id]
+            genice.logger.info(
+                f"cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces}) in the unit cell."
+            )
 
 
 def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group:
@@ -1190,15 +1209,42 @@ class GenIce3:
             is_water=False,
         )
 
+    def _effective_spot_cation_groups(self) -> Dict[int, Dict[int, str]]:
+        """spot_cation_groups に単位胞由来の cation_groups を展開してマージした辞書を返す（on-demand）。"""
+        # ベースは CLI/API で指定された spot_cation_groups
+        effective: Dict[int, Dict[int, str]] = {
+            k: dict(v) for k, v in self.spot_cation_groups.items()
+        }
+        # number of nodes in the unitcell
+        nuc_nodes = len(self.unitcell.lattice_sites)
+        # number of cages in the unitcell
+        nuc_cages = len(self.unitcell.cages.specs)
+        for un_node, uc_group in self.unitcell.cation_groups.items():
+            for node in _replicate_lattice_node(
+                un_node, nuc_nodes, self.replication_matrix
+            ):
+                # 拡大胞のノードに隣接する4つのケージのインデックス
+                cage_indices = self.cages.node_to_cage_indices.get(node, [])
+                for cage_index in cage_indices:
+                    # ケージのインデックスを単位胞でのインデックスになおし、そこに入るグループを取得
+                    self.logger.info(f"{cage_index=} {nuc_cages=} {uc_group=} {node=}")
+                    uc_cage_index = cage_index % nuc_cages
+                    if uc_cage_index in uc_group:
+                        group = uc_group[cage_index % nuc_cages]
+                        # 拡大胞のノードに隣接する4つのケージのインデックスに、グループをマッピング
+                        effective.setdefault(node, {}).setdefault(cage_index, group)
+        return effective
+
     def substitutional_ions(self) -> Dict[int, Molecule]:
-        # TODO: spot でない cation（単位胞の anion/cation）への修飾は、あらかじめspot_cation_groupsに展開してしまえ。
+        # 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う
+        effective_groups = self._effective_spot_cation_groups()
         ions: Dict[int, Molecule] = {}
         # ならべかえはここではしない。formatterにまかせる。
         for site_label, molecule in self.anions.items():
             ions[site_label] = self.build_molecular_ion(site_label, molecule)
         for site_label, molecule in self.cations.items():
             # cationには腕がつく可能性がある。
-            groups = self.spot_cation_groups.get(site_label, {})
+            groups = effective_groups.get(site_label, {})
             ions[site_label] = self.build_molecular_ion(site_label, molecule, groups)
         self.logger.info(f"{ions=}")
         return ions

@@ -43,6 +43,13 @@ class CageSpecs:
     specs: list[CageSpec]
     positions: np.ndarray  # in fractional coordinates
 
+    def __post_init__(self) -> None:
+        """ノード番号 → ケージ番号の逆引き辞書を生成。"""
+        self.node_to_cage_indices: dict[int, list[int]] = {}
+        for cage_idx, spec in enumerate(self.specs):
+            for node in spec.graph:
+                self.node_to_cage_indices.setdefault(int(node), []).append(cage_idx)
+
     def to_json_capable_data(self):
         data = []
         for position, specs in zip(self.positions, self.specs):
@@ -59,13 +66,6 @@ class CageSpecs:
             f"CageSpecs(n_cages={len(self.specs)}, "
             f"positions_shape={self.positions.shape})"
         )
-
-    def site_to_cage_indices(self, site: int) -> list[int]:
-        """
-        格子サイトが属するケージのインデックスリストを返す。
-        水分子は通常4つのケージに属する。
-        """
-        return [i for i, spec in enumerate(self.specs) if site in spec.graph]
 
 
 def _assign_label(basename, labels):

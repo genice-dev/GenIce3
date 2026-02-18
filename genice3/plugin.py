@@ -255,7 +255,7 @@ def import_extra(category, name):
             logger.debug(f"      Loading {name}...")
             module = ep.load()
     if module is None:
-        raise ValueError(f"Nonexistent or failed to load the {category} module: {name}")
+        raise ImportError(f"Nonexistent or failed to load the {category} module: {name}")
     return module
 
 

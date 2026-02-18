@@ -1,0 +1,25 @@
+# GenIce3 設定ファイルの例（YAML形式）
+# 単位胞内カチオン + group と spot アニオン。
+# 対応 CLI: python ./genice3.x A15 --rep 2 2 2 --anion 2=Cl と
+# 単位胞 cation / cation_groups を YAML で指定した例（角括弧形式は CLI では未対応のため YAML で記述）。
+
+genice3:
+  replication_factors: [2, 2, 2]
+
+unitcell:
+  name: A15
+
+  # 単位胞内のカチオン（サイト番号: イオン名）
+  cation:
+    "0": N
+
+  # 単位胞内カチオンへの group 指定（サイト番号: { ケージID: group名 }）
+  cation_groups:
+    "0": { 1: methyl, 6: methyl, 3: methyl, 4: methyl }
+
+  anion:
+    "2": Cl
+
+exporter:
+  name: gromacs
+  water_model: "4site"
