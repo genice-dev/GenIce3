@@ -1175,9 +1175,10 @@ class GenIce3:
             if label in self.spot_cation_groups:
                 self.logger.info("1")
                 for cage, group_name in self.spot_cation_groups[label].items():
+                    direction = self.cages.positions[cage] - self.lattice_sites[label]
+                    direction -= np.floor(direction + 0.5)
                     group = place_group(
-                        (self.cages.positions[cage] - self.lattice_sites[label])
-                        @ self.cell,
+                        direction @ self.cell,
                         0.13,  # あとでなんとかする。N-H結合距離
                         group_name,
                     )
