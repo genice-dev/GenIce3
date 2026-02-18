@@ -407,15 +407,17 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
                 fd = mod.format_desc
                 aliases = fd.get("aliases", [name])
                 name_col = ", ".join(f"`{a}`" for a in aliases)
-                rows.append({
-                    "name": name_col,
-                    "application": fd.get("application", ""),
-                    "extension": fd.get("extension", ""),
-                    "water": fd.get("water", ""),
-                    "solute": fd.get("solute", ""),
-                    "hb": fd.get("hb", ""),
-                    "remarks": fd.get("remarks", ""),
-                })
+                rows.append(
+                    {
+                        "name": name_col,
+                        "application": fd.get("application", ""),
+                        "extension": fd.get("extension", ""),
+                        "water": fd.get("water", ""),
+                        "solute": fd.get("solute", ""),
+                        "hb": fd.get("hb", ""),
+                        "remarks": fd.get("remarks", ""),
+                    }
+                )
                 seen.add(name)
             except Exception as e:
                 logger.debug(f"Skip {name} for format table: {e}")
