@@ -189,6 +189,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
     ),
     OptionDef(
         "replication_matrix",
+        max_values=9,
         level="base",
         parse_type=OPTION_TYPE_TUPLE,
         metavar="INT INT INT INT INT INT INT INT INT",
@@ -490,7 +491,8 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
             replication_factors = tuple(replication_factors)
         replication_matrix = np.diag(replication_factors)
     else:
-        replication_matrix = np.array(replication_matrix)
+        # コマンドライン/YAML からは文字列のタプルで渡るため、整数の 3x3 に変換
+        replication_matrix = np.array(replication_matrix, dtype=int).reshape(3, 3)
 
     spot_cation_groups = base_options.get("spot_cation_groups", {}) or {}
 

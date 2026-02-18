@@ -93,14 +93,27 @@ class OptionDef:
     )
 
 
+def _looks_like_integer(s: str) -> bool:
+    """負の数を含む整数として解釈できる文字列か（-1, 0, 123 など）。"""
+    if not s:
+        return False
+    if s.startswith("-"):
+        return len(s) > 1 and s[1:].isdigit()
+    return s.isdigit()
+
+
 def _option_defs_to_maps(
     option_defs: Sequence[OptionDef],
-) -> Tuple[Dict[str, str], Dict[str, int], Set[str]]:
-    """OptionDef の列から short_map, max_values, flag_options を組み立てる（汎用）。"""
+) -> Tuple[Dict[str, str], Dict[str, int], Set[str], Set[str]]:
+    """OptionDef の列から short_map, max_values, flag_options, numeric_value_options を組み立てる（汎用）。"""
     short_map = {d.short: d.name for d in option_defs if d.short is not None}
     max_values = {d.name: d.max_values for d in option_defs if d.max_values is not None}
     flag_options = {d.name for d in option_defs if d.is_flag}
-    return short_map, max_values, flag_options
+    # 負の数を受け取るオプション（--replication_matrix 1 1 0 1 -1 0 0 0 1 など）
+    numeric_value_options = {
+        d.name for d in option_defs if d.max_values is not None or d.name == "replication_matrix"
+    }
+    return short_map, max_values, flag_options, numeric_value_options
 
 
 # ============================================================================
@@ -197,21 +210,30 @@ def _collect_option_values(
     start_index: int,
     key: str,
     option_max_values: Dict[str, int],
+    numeric_value_options: Optional[Set[str]] = None,
 ) -> Tuple[List[Any], int]:
     """
     オプションに続く引数から値を収集する。
-    - で始まる引数が出るまで、または option_max_values に達するまで消費する。
+    - で始まる引数は原則として次のオプションとみなすが、
+    numeric_value_options に含まれるオプションでは -1, -2 などを整数値として受け取る。
 
     Returns:
         (収集した値のリスト, 次の未消費インデックス)
     """
+    numeric_value_options = numeric_value_options or set()
     values: List[Any] = []
     max_vals = option_max_values.get(key)
     i = start_index
-    while i < len(args) and not args[i].startswith("-"):
+    while i < len(args):
+        token = args[i]
+        # 通常は - で始まれば値の収集を打ち切る（負の整数は numeric_value_options のときのみ値として受け取る）
+        if token.startswith("-") and not (
+            key in numeric_value_options and _looks_like_integer(token)
+        ):
+            break
         if max_vals is not None and len(values) >= max_vals:
             break
-        values.append(args[i])
+        values.append(token)
         i += 1
     return values, i
 
@@ -252,11 +274,14 @@ def _parse_one_long_option(
     cmdline_specified_keys: Set[str],
     option_max_values: Dict[str, int],
     flag_options: Set[str],
+    numeric_value_options: Optional[Set[str]] = None,
 ) -> int:
     """--で始まる1オプションを処理。戻り値は次のインデックス。"""
     key = arg[2:]
     cmdline_specified_keys.add(key)
-    values, next_i = _collect_option_values(args, i + 1, key, option_max_values)
+    values, next_i = _collect_option_values(
+        args, i + 1, key, option_max_values, numeric_value_options
+    )
     value = _values_to_option_value(values, key, flag_options)
     _merge_option_into_dict(cmdline_dict, key, value)
     return next_i
@@ -271,13 +296,16 @@ def _parse_one_short_option(
     short_option_map: Dict[str, str],
     option_max_values: Dict[str, int],
     flag_options: Set[str],
+    numeric_value_options: Optional[Set[str]] = None,
 ) -> int:
     """-で始まる1オプションを処理。short_option_map に無ければスキップ。戻り値は次のインデックス。"""
     if arg not in short_option_map:
         return i + 1
     key = short_option_map[arg]
     cmdline_specified_keys.add(key)
-    values, next_i = _collect_option_values(args, i + 1, key, option_max_values)
+    values, next_i = _collect_option_values(
+        args, i + 1, key, option_max_values, numeric_value_options
+    )
     value = _values_to_option_value(values, key, flag_options)
     _merge_option_into_dict(cmdline_dict, key, value)
     return next_i
@@ -296,7 +324,9 @@ def parse_command_line_to_dict(
     Returns:
         (cmdline_dict, cmdline_specified_keys)のタプル
     """
-    short_map, option_max_values, flag_options = _option_defs_to_maps(option_defs)
+    short_map, option_max_values, flag_options, numeric_value_options = _option_defs_to_maps(
+        option_defs
+    )
     cmdline_dict: Dict[str, Any] = {}
     cmdline_specified_keys: Set[str] = set()
     unitcell_arg = None
@@ -324,6 +354,7 @@ def parse_command_line_to_dict(
                 cmdline_specified_keys,
                 option_max_values,
                 flag_options,
+                numeric_value_options,
             )
         elif arg.startswith("-") and arg != "-":
             i = _parse_one_short_option(
@@ -335,6 +366,7 @@ def parse_command_line_to_dict(
                 short_map,
                 option_max_values,
                 flag_options,
+                numeric_value_options,
             )
         else:
             i += 1
