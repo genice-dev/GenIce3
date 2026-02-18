@@ -439,6 +439,9 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     # spot_cation, spot_anion の角括弧形式パース（--group サブオプション対応）
+    # TODO: --group のフラット表現（--spot_cation 0=N --group 1=methyl）は spot_cation と結びつかない。
+    #       角括弧形式（--spot_cation "[0=N --group 1=methyl]"）でのみ正しく解釈される。
+    #       フラット表現を廃止すると設定のハードルが上がるため当面は見送り。
     for key in ("spot_cation", "spot_anion"):
         if key in options:
             ions, groups = _process_spot_ion_option(options[key])

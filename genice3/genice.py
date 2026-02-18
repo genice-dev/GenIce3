@@ -679,7 +679,9 @@ def log_spot_cation_cages(genice: "GenIce3") -> None:
 
 
 def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group:
-    """グループを配置する。"""
+    """グループを配置する。
+    TODO: 将来は2個以上のアンカーを持つ group を扱う可能性がある。
+    """
     # logger = getLogger("GenIce3")
     group = safe_import("group", group_name).Group()
     # logger.info(f"{group_name=} {group=}")
@@ -1148,7 +1150,8 @@ class GenIce3:
         return mols
 
     def substitutional_ions(self) -> Dict[int, Molecule]:
-        # 将来は分子イオン(H3O+など)を置く可能性もあることに留意。
+        # TODO: 分子イオン(H3O+など)の可能性。単原子イオンは例外的な扱い。
+        # TODO: spot でない cation（単位胞の anion/cation）への修飾（group 配置）の可能性。
         # また、groupもionの一部となるべき。groupの処理はここで行うことになる。
         ions: Dict[int, Molecule] = {}
         # ならべかえはここではしない。formatterにまかせる。

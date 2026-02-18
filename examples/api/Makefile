@@ -1,7 +1,7 @@
 # run them from the root dir with: poetry run make -f examples/api/Makefile
 
 # .out を「明示的ターゲットの前提」にしておくと中間扱いされず消されない（GNU/BSD 両方で有効）
-API_BASES := 3_doped 4_from_cif 5_to_cif 6_with_guests 7_polarized 8_cage_survey
+API_BASES := 3_doped 4_from_cif 5_to_cif 6_with_guests 7_polarized 8_cage_survey 9_ion_group
 API_OUTS := $(foreach b,$(API_BASES),examples/api/$(b)_flat.sh.out examples/api/$(b).py.out examples/api/$(b).yaml.out examples/api/$(b).sh.out)
 
 all: api_outs examples/api/3_doped.compare examples/api/4_from_cif.compare examples/api/5_to_cif.compare examples/api/6_with_guests.compare examples/api/7_polarized.compare examples/api/8_cage_survey.compare

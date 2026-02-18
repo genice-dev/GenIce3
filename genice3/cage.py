@@ -8,7 +8,8 @@ import string
 from logging import getLogger
 
 import networkx as nx
-from cycless.cycles import centerOfMass, cycles_iter
+from cycless import center_of_graph
+from cycless.cycles import cycles_iter
 from cycless.polyhed import cage_to_graph, polyhedra_iter
 from graphstat import GraphStat
 
@@ -20,7 +21,11 @@ class CageSpec:
     graph: nx.Graph  # labels of water constituting the cage
 
     def to_json_capable_data(self):
-        return {"label": self.label, "faces": self.faces, "nodes": list(self.graph)}
+        return {
+            "label": self.label,
+            "faces": self.faces,
+            "nodes": [int(x) for x in self.graph],
+        }
 
     def __repr__(self) -> str:
         return (
@@ -63,7 +68,7 @@ class CageSpecs:
         return [i for i, spec in enumerate(self.specs) if site in spec.graph]
 
 
-def _assign_unused_label(basename, labels):
+def _assign_label(basename, labels):
     enum = 0
     label = f"A{basename}"
     while label in labels:
@@ -85,27 +90,24 @@ def _make_cage_expression(ring_ids, ringlist):
     return index
 
 
-def assess_cages(graph, node_pos):
+def assess_cages(graph, node_frac):
     """Assess cages from  the graph topology.
 
     Args:
         graph (graph-like): HB network
-        nodepos (np.Array): Positions of the nodes
+        node_frac (np.Array): Fractional positions of the nodes
     """
     logger = getLogger()
 
     # Prepare the list of rings
     # taking the positions in PBC into account.
     ringlist = [
-        [int(x) for x in ring] for ring in cycles_iter(nx.Graph(graph), 8, pos=node_pos)
+        [int(x) for x in ring]
+        for ring in cycles_iter(nx.Graph(graph), 8, pos=node_frac)
     ]
 
-    # Positions of the centers of the rings.
-    ringpos = np.array([centerOfMass(ringnodes, node_pos) for ringnodes in ringlist])
-
     MaxCageSize = 22
-    positions = []
-    cagetypes = []
+    cage_fracs = []
     # data storage of the found cages
     db = GraphStat()
     labels = set()
@@ -113,34 +115,32 @@ def assess_cages(graph, node_pos):
 
     # Detect cages and classify
     cages = [cage for cage in polyhedra_iter(ringlist, MaxCageSize)]
-    positions = [centerOfMass(list(cage), ringpos) for cage in cages]
+    cage_graphs = [cage_to_graph(cage, ringlist) for cage in cages]
+    cage_fracs = [center_of_graph(g, node_frac) for g in cage_graphs]
+    if len(cage_fracs) == 0:
+        logger.info("    No cages detected.")
 
     cagespecs = []
-    cage_positions = []
-    for cage, position in zip(cages, positions):
-        g = cage_to_graph(cage, ringlist)
-        cagesize = len(cage)
-        g_id = db.query_id(g)
+    for cage, g in zip(cages, cage_graphs):
+        cagesize = len(g)
+        graph_id = db.query_id(g)
         # if it is a new cage type
-        if g_id < 0:
+        if graph_id < 0:
             # new type!
             # register the last query
-            g_id = db.register()
+            graph_id = db.register()
 
             # prepare a new label
-            label = _assign_unused_label(cagesize, labels)
-            g_id2label[g_id] = label
+            label = _assign_label(cagesize, labels)
+            g_id2label[graph_id] = label
             labels.add(label)
 
             # cage expression
         else:
-            label = g_id2label[g_id]
+            label = g_id2label[graph_id]
         faces = _make_cage_expression(cage, ringlist)
         cagespecs.append(CageSpec(label=label, faces=faces, graph=g))
         # print(f"{label=}, {faces=}, {ringlist=}")
         # print([len(ringlist[ring]) for ring in cage])
 
-        cage_positions.append(position)
-    if len(cage_positions) == 0:
-        logger.info("    No cages detected.")
-    return CageSpecs(specs=cagespecs, positions=np.array(cage_positions))
+    return CageSpecs(specs=cagespecs, positions=np.array(cage_fracs))

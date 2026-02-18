@@ -112,6 +112,7 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
         s += yp.Color(2)
         s += yp.Layer(1)
         s += yp.Text(O, f"{water_index}")
+
     s += yp.Layer(3)
     s += yp.Color(4)
     s += yp.ArrowType(1)
@@ -155,6 +156,20 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
         d = position1 - position2
         if d @ d < 0.16**2:
             s += yp.Line(position1, position2)
+
+    cagespecs = genice.cages
+
+    s += yp.Layer(6)
+    s += yp.Size(size_O * 3)
+    for i, (cagespec, position) in enumerate(zip(cagespecs.specs, cagespecs.positions)):
+        s += yp.Color(5)
+        s += yp.Circle(position @ genice.cell)
+        s += yp.Color(2)
+        s += yp.Text(position @ genice.cell, f"{i}")
+
+        # for atom in cagespec.graph:
+        #     s += yp.Line(position, atom)
+
     s += "#" + "\n#Command line: " + " ".join(sys.argv) + "\n"
     s += yp.NewPage()
     file.write(s)
