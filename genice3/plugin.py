@@ -290,15 +290,24 @@ def safe_import(category, name):
     module = None
     fullname = f"{category}.{module_name}"
     logger.debug(f"Try to Load a local module: {fullname}")
+    # まずカレントディレクトリを path に挿入して試す（実行ディレクトリの group/ 等を読むため）
+    cwd = os.getcwd()
+    path_inserted = cwd not in sys.path
+    if path_inserted:
+        sys.path.insert(0, cwd)
     try:
-        module = importlib.import_module(fullname)  # at ~/.genice
-        logger.debug("Succeeded.")
-    except ModuleNotFoundError:
-        logger.debug(f"Module not found: {fullname}")
-        module = None
-    except ImportError as e:
-        logger.error(f"Error importing module {fullname}: {str(e)}")
-        raise
+        try:
+            module = importlib.import_module(fullname)
+            logger.debug("Succeeded (local from cwd or path).")
+        except ModuleNotFoundError:
+            logger.debug(f"Module not found: {fullname}")
+            module = None
+        except ImportError as e:
+            logger.error(f"Error importing module {fullname}: {str(e)}")
+            raise
+    finally:
+        if path_inserted and sys.path and sys.path[0] == cwd:
+            sys.path.pop(0)
     if module is None:
         fullname = f"genice3.{category}.{module_name}"
         logger.debug(f"Try to load a system module: {fullname}")
