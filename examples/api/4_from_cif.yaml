@@ -1,8 +1,5 @@
-# GenIce3 設定ファイルの例（YAML形式）
-# コマンドライン引数で指定された値は、この設定ファイルの値を上書きします。
+# Generated from 4_from_cif.sh
 
-unitcell:
-  name: CIF
-  file: cif/MEP.cif
-  osite: T
-
+unitcell: CIF
+file: cif/MEP.cif
+osite: T

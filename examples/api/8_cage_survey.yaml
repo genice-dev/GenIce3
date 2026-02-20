@@ -1,9 +1,4 @@
-# GenIce3 設定ファイルの例（YAML形式）
-# DOH 構造のケージ位置・タイプを JSON で出力する
-# 実行: genice3 --config 8_cage_survey.yaml  > cages.json
+# Generated from 8_cage_survey.sh
 
-unitcell:
-  name: DOH
-
-exporter:
-  name: cage_survey
+unitcell: DOH
+exporter: cage_survey

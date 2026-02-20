@@ -1,5 +1,5 @@
 #!/bin/bash
-# DOH 構造で cage_survey を使う例（CLI・複数行）
+# Generated from 8_cage_survey.yaml
 
 python3 -m genice3.cli.genice DOH \
-  -e cage_survey
+  --exporter cage_survey

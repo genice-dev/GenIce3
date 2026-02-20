@@ -10,13 +10,6 @@ from cif2ice import cellshape, cellvectors
 from genice3.molecule import Molecule
 from genice3.genice import GenIce3
 from genice3.exporter import parse_water_model_option
-from genice3.cli.pool_parser import (
-    OptionDef,
-    parse_options_generic,
-    OPTION_TYPE_STRING,
-    OPTION_TYPE_KEYVALUE,
-)
-
 format_desc = {
     "aliases": ["lammps", "lmp"],
     "application": "[LAMMPS](https://www.lammps.org/)",
@@ -139,35 +132,25 @@ def _to_lammps_data(
     return s
 
 
-# lammps プラグインが受け取るオプション定義。追加・削除はここだけ行えばよい。
-# guest/spot_guest は基底オプションのためここには含めない。
-LAMMPS_OPTION_DEFS = (
-    OptionDef("water_model", parse_type=OPTION_TYPE_STRING),
-)
+def _scalar(v: Any) -> Any:
+    if isinstance(v, (list, tuple)) and len(v) == 1:
+        return v[0]
+    return v
 
 
 def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    lammps プラグインのオプションを型変換して処理する。
-
-    対象は LAMMPS_OPTION_DEFS で定義。water は water_model のエイリアスとして正規化する。
-
-    Args:
-        options: プラグインに渡されたオプション辞書。
-
-    Returns:
-        (処理したオプション, 処理しなかったオプション)。未処理は次のプラグインへ。
+    lammps プラグインのオプションを処理する。water は water_model のエイリアス。
     """
     options = dict(options)
     if "water" in options and "water_model" not in options:
         options["water_model"] = options["water"]
-
-    option_specs = {
-        d.name: d.parse_type
-        for d in LAMMPS_OPTION_DEFS
-        if d.parse_type is not None
-    }
-    return parse_options_generic(options, option_specs)
+    processed: Dict[str, Any] = {}
+    unprocessed = dict(options)
+    if "water_model" in options:
+        processed["water_model"] = _scalar(options["water_model"])
+        unprocessed.pop("water_model", None)
+    return processed, unprocessed
 
 
 def dumps(

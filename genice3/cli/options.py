@@ -2,21 +2,18 @@
 genice3 CLI のオプション定義と解釈
 
 基底オプション（--seed, --rep 等）とプラグイン用オプション（-g, -G 等）をここで一元管理する。
-pool_parser は汎用のパースのみ担当し、具体的なオプション名・短縮形・説明は持たない。
 
-- GENICE3_OPTION_DEFS: CLI で認識するオプション一覧（PoolBasedParser に渡す）
-- parse_base_options: パーサーから渡された辞書を型変換（pool_parser の base プラグインから呼ばれる）
+- GENICE3_OPTION_DEFS: CLI で認識するオプション一覧（--help 用）
+- base_options_from_new_structure: option_parser 出力の基底部分を型変換
 - extract_genice_args: 基底オプション辞書から GenIce3(...) に渡す kwargs を組み立てる
 """
 
 from logging import getLogger
-from typing import Dict, Any, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 
-from genice3.cli.pool_parser import (
+from genice3.cli.option_def import (
     OptionDef,
-    parse_options_generic,
-    parse_bracketed_plugin,
     OPTION_TYPE_FLAG,
     OPTION_TYPE_STRING,
     OPTION_TYPE_TUPLE,
@@ -289,39 +286,45 @@ def _process_spot_ion_option(
 ) -> Tuple[Dict[str, str], Dict[int, Dict[int, str]]]:
     """
     spot_cation / spot_anion の生の値を処理。
-    角括弧形式 [0=N --group 23=methyl 17=methyl] および単純形式 0=Na に対応。
+    option_parser の新構造（スカラー or {arg: {group: [...]}} のリスト）および従来の辞書形式に対応。
 
     Returns:
         (ions_dict, groups_dict)
-        ions_dict: {"0": "Na", "35": "K"}
-        groups_dict: {0: {23: "methyl", 17: "methyl"}}  (site -> {cage_id -> group_name})
     """
     ions: Dict[str, str] = {}
     groups: Dict[int, Dict[int, str]] = {}
 
     def process_item(item: Any) -> None:
-        if (
-            isinstance(item, str)
-            and item.strip().startswith("[")
-            and item.strip().endswith("]")
-        ):
-            assignment, subopts = parse_bracketed_plugin(item.strip())
-            label_str, ion_name = assignment.split("=", 1)
+        if isinstance(item, dict):
+            (arg, subopts), = item.items()
+            label_str, ion_name = str(arg).split("=", 1)
             label_str = label_str.strip()
             ions[label_str] = ion_name.strip()
-            if "group" in subopts:
-                group_dict = _parse_group_option(subopts["group"])
+            if subopts and "group" in subopts:
+                g = subopts["group"]
+                group_dict = _parse_group_option(g)
                 if group_dict:
                     groups[int(label_str)] = group_dict
         elif isinstance(item, str) and "=" in item:
             label_str, ion_name = item.split("=", 1)
             ions[label_str.strip()] = ion_name.strip()
 
+    def _label_to_cage_id(label: Any) -> int:
+        """'51=N' や 51 からケージ番号を整数で返す。"""
+        s = str(label).strip()
+        if "=" in s:
+            s = s.split("=", 1)[0].strip()
+        return int(s)
+
     if isinstance(raw_value, dict):
         for k, v in raw_value.items():
             if isinstance(v, dict) and "group" in v:
-                ions[str(k)] = str(v.get("ion", v.get("name", v)))
-                groups[int(k)] = _parse_group_option(v["group"])
+                # イオン名は value の ion/name か、キー '51=N' の = 以降
+                ion_name = v.get("ion", v.get("name"))
+                if ion_name is None and "=" in str(k):
+                    ion_name = str(k).split("=", 1)[1].strip()
+                ions[str(k)] = str(ion_name) if ion_name is not None else ""
+                groups[_label_to_cage_id(k)] = _parse_group_option(v["group"])
             else:
                 ions[str(k)] = str(v)
     else:
@@ -379,84 +382,128 @@ def parse_spot_guest_option(arg: dict) -> Dict[int, Molecule]:
     return result
 
 
+def _normalize_single(v: Any) -> Any:
+    """リスト1要素はスカラーに。"""
+    if isinstance(v, list) and len(v) == 1:
+        return v[0]
+    return v
+
+
+def _list_to_keyvalue(v: Any) -> Dict[str, str]:
+    """option_parser のリスト（スカラー or {k:v}）を key=value 辞書に。"""
+    if isinstance(v, dict):
+        return {str(k): str(val) for k, val in v.items()}
+    items = v if isinstance(v, (list, tuple)) else [v]
+    out: Dict[str, str] = {}
+    for item in items:
+        if isinstance(item, dict):
+            (k, val), = item.items()
+            out[str(k)] = str(val)
+        elif isinstance(item, str) and "=" in item:
+            k, val = item.split("=", 1)
+            out[k.strip()] = val.strip()
+    return out
+
+
+def base_options_from_new_structure(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    option_parser 出力から基底オプション部分を抽出し型変換する。
+    extract_genice_args と validate_parsed_options が期待する辞書を返す。
+    """
+    base_keys = {d.name for d in GENICE3_OPTION_DEFS if d.level == "base"} | {
+        "unitcell",
+        "exporter",
+    }
+    options = {k: _normalize_single(v) for k, v in data.items() if k in base_keys}
+    if "rep" in data:
+        r = data["rep"]
+        options["replication_factors"] = r if isinstance(r, (list, tuple)) else [r]
+    return parse_base_options(options)
+
+
 def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
     """
     基底レベルオプションを型変換して統合する。
-
-    動的プラグインチェーン（pool_parser）の base プラグインとして呼ばれる。
-    対象は GENICE3_OPTION_DEFS のうち level=="base" かつ parse_type が指定されている
-    オプション（rep は build_options_dict で replication_factors に正規化されるため除外）。
-    オプションの追加・削除は GENICE3_OPTION_DEFS の編集のみ行えばよい。
-
-    Args:
-        options: 基底レベルにマージ済みのオプション辞書（YAML やコマンドライン由来）。
-
-    Returns:
-        型変換済みオプションと未処理オプションを統合した辞書。
+    options はフラットな辞書（key -> value。value はスカラーまたはリスト）。
     """
-    # もともと parse_base_options で型変換していた9個だけ渡す。rep は build_options_dict で replication_factors に正規化されるため含めない。
-    # spot_cation, spot_anion は角括弧形式対応のため別処理
-    option_specs = {
-        d.name: d.parse_type
-        for d in GENICE3_OPTION_DEFS
-        if d.level == "base"
-        and d.parse_type is not None
-        and d.name not in ("rep", "spot_cation", "spot_anion")
-    }
+    processed: Dict[str, Any] = {}
+    unprocessed = dict(options)
 
     def to_int(x):
+        if x is None:
+            return x
         if isinstance(x, int):
             return x
         return int(x)
 
     def to_int_tuple(x):
+        if x is None:
+            return x
         if isinstance(x, (tuple, list)):
             return tuple(int(v) for v in x)
         return (int(x),)
 
-    def to_bool(x):
-        if isinstance(x, bool):
-            return x
-        if isinstance(x, str):
-            return x.lower() in ("true", "1", "yes", "on")
-        return bool(x)
-
     def to_float3(x):
+        if x is None:
+            return x
         if isinstance(x, np.ndarray) and x.shape == (3,):
             return np.asarray(x, dtype=float)
         if isinstance(x, (tuple, list)) and len(x) == 3:
             return np.array([float(v) for v in x])
         raise ValueError(f"target_polarization must be 3 numbers, got: {x}")
 
-    post_processors = {
-        "seed": to_int,
-        "depol_loop": to_int,
-        "replication_factors": to_int_tuple,
-        "target_polarization": to_float3,
-    }
+    for key in ("seed", "depol_loop"):
+        if key in options:
+            processed[key] = to_int(_normalize_single(options[key]))
+            unprocessed.pop(key, None)
+    if "replication_factors" in options:
+        processed["replication_factors"] = to_int_tuple(
+            _normalize_single(options["replication_factors"])
+            if options["replication_factors"] is not None
+            else options["replication_factors"]
+        )
+        unprocessed.pop("replication_factors", None)
+    if "replication_matrix" in options:
+        processed["replication_matrix"] = to_int_tuple(
+            _normalize_single(options["replication_matrix"])
+        )
+        unprocessed.pop("replication_matrix", None)
+    if "target_polarization" in options:
+        processed["target_polarization"] = to_float3(
+            _normalize_single(options["target_polarization"])
+        )
+        unprocessed.pop("target_polarization", None)
+    if "debug" in options:
+        v = options["debug"]
+        processed["debug"] = (
+            v is True
+            or (isinstance(v, str) and v.lower() in ("true", "1", "yes", "on"))
+        )
+        unprocessed.pop("debug", None)
 
-    processed, unprocessed = parse_options_generic(
-        options, option_specs, post_processors
-    )
-
-    # spot_cation, spot_anion の角括弧形式パース（--group サブオプション対応）
-    # TODO: --group のフラット表現（--spot_cation 0=N --group 1=methyl）は spot_cation と結びつかない。
-    #       角括弧形式（--spot_cation "[0=N --group 1=methyl]"）でのみ正しく解釈される。
-    #       フラット表現を廃止すると設定のハードルが上がるため当面は見送り。
     for key in ("spot_cation", "spot_anion"):
         if key in options:
             ions, groups = _process_spot_ion_option(options[key])
             processed[key] = ions
             if groups:
                 processed[f"{key}_groups"] = groups
+            unprocessed.pop(key, None)
 
-    # guest, spot_guest を GuestSpec/Molecule の辞書に変換
-    if "guest" in processed and processed["guest"]:
-        processed["guest"] = parse_guest_option(processed["guest"])
-    if "spot_guest" in processed and processed["spot_guest"]:
-        processed["spot_guest"] = parse_spot_guest_option(processed["spot_guest"])
+    for key in ("guest", "spot_guest"):
+        if key in options and options[key]:
+            d = _list_to_keyvalue(options[key])
+            if d:
+                if key == "guest":
+                    processed[key] = parse_guest_option(d)
+                else:
+                    processed[key] = parse_spot_guest_option(d)
+            unprocessed.pop(key, None)
 
-    # processed を後にマージして、spot_cation/spot_anion の処理結果が unprocessed を上書きする
+    for key in ("config", "exporter"):
+        if key in options:
+            processed[key] = _normalize_single(options[key])
+            unprocessed.pop(key, None)
+
     return {**unprocessed, **processed}
 
 

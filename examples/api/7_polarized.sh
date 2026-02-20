@@ -1,6 +1,5 @@
 #!/bin/bash
-# 分極した氷 (1) コンストラクタで target_pol を指定する場合のCLI（括弧付き）
-# 対応するPython: examples/api/7_polarized_1.py
+# Generated from 7_polarized.yaml
 
 python3 -m genice3.cli.genice 1h \
   --rep 2 2 2 \

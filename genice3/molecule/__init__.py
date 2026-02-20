@@ -2,12 +2,6 @@ from dataclasses import dataclass
 import numpy as np
 from math import sin, cos, radians
 from typing import Dict, Any, Tuple
-from genice3.cli.pool_parser import (
-    parse_options_generic,
-    OPTION_TYPE_STRING,
-)
-
-
 @dataclass
 class Molecule:
     """

@@ -1,25 +1,19 @@
 """
-genice3/pool_parser.pyの統合テスト
-
-PoolBasedParserの統合が正しく動作するかを確認するテスト
+genice3 CLI runner の統合テスト（option_parser ベース）
 """
 
 import sys
 from pathlib import Path
 
-# プロジェクトルートをパスに追加
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from genice3.cli.pool_parser import PoolBasedParser
-from genice3.cli.options import GENICE3_OPTION_DEFS
+from genice3.cli.runner import parse_argv, validate_result
 
 
 def test_basic_parsing():
     """基本的なパースのテスト"""
-    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
-    parser.parse_args(["A15", "--exporter", "gromacs", "--rep", "2", "2", "2"])
-    result = parser.get_result()
+    result = parse_argv(["A15", "--exporter", "gromacs", "--rep", "2", "2", "2"])
 
     assert result["unitcell"]["name"] == "A15"
     assert result["exporter"]["name"] == "gromacs"
@@ -29,8 +23,7 @@ def test_basic_parsing():
 
 def test_complex_parsing():
     """複雑なパースのテスト"""
-    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
-    parser.parse_args(
+    result = parse_argv(
         [
             "A15",
             "--exporter",
@@ -47,7 +40,6 @@ def test_complex_parsing():
             "5=Na",
         ]
     )
-    result = parser.get_result()
 
     assert result["unitcell"]["name"] == "A15"
     assert result["exporter"]["name"] == "gromacs"
@@ -59,18 +51,16 @@ def test_complex_parsing():
 
 def test_validation():
     """バリデーションのテスト"""
-    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
-    parser.parse_args(["A15", "--exporter", "gromacs"])
-    is_valid, errors = parser.validate()
+    result = parse_argv(["A15", "--exporter", "gromacs"])
+    is_valid, errors = validate_result(result)
     assert is_valid, f"バリデーションエラー: {errors}"
     print("✓ バリデーションテスト成功")
 
 
 def test_missing_unitcell():
     """unitcellが指定されていない場合のテスト"""
-    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
-    parser.parse_args(["--exporter", "gromacs"])
-    is_valid, errors = parser.validate()
+    result = parse_argv(["--exporter", "gromacs"])
+    is_valid, errors = validate_result(result)
     assert not is_valid, "unitcellが指定されていない場合はエラーになるべき"
     assert any("unitcell" in error.lower() for error in errors)
     print("✓ unitcell未指定のテスト成功")
@@ -78,7 +68,7 @@ def test_missing_unitcell():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("genice3/pool_parser.py 統合テスト")
+    print("genice3 CLI runner 統合テスト")
     print("=" * 60)
     print()
 

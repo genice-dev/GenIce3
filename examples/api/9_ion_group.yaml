@@ -1,47 +1,23 @@
-# GenIce3 設定ファイルの例（YAML形式）
-# このファイルはYAML形式でGenIce3のオプションを指定します。
-# コマンドライン引数で指定された値は、この設定ファイルの値を上書きします。
+# Generated from 9_ion_group.sh
 
-genice3:
-  # 乱数シード
-  seed: 42
-
-  # 分極ループの反復回数
-  depol_loop: 2000
-
-  # 複製行列（9つの整数で3x3行列を指定）
-  # replication_factors: [2, 2, 2]
-  replication_matrix: [2, 0, 0, 0, 2, 0, 0, 0, 2]
-
-  # ケージの評価を行うかどうか
-  assess_cages: false
-
-  spot_anion:
-    # 特定の水分子をアニオンで置換（水分子インデックス: イオン名）
-    "1": Cl
-
-  # 特定の水分子をカチオンで置換。group サブオプションは「サイトごと」にネストして指定する。
-  spot_cation:
-    "51":
-      ion: N
-      group: { 12: methyl, 48: methyl, 49: methyl, 50: methyl }
-
-unitcell:
-  # 単位セルプラグイン名
-  name: A15
-
-  # 単位セルのオプション（階層的に指定可能）
-  # シフト（分数座標）
-  shift: [0.1, 0.1, 0.1]
-
-  # 密度（g/cm³）
-  density: 0.8
-
-exporter:
-  # エクスポータープラグイン名
-  name: gromacs
-
-  # 水分子モデル
-  water_model: "4site"
-
-
+unitcell: A15
+shift:
+- 0.1
+- 0.1
+- 0.1
+density: 0.8
+rep:
+- 2
+- 2
+- 2
+spot_anion: 1=Cl
+spot_cation:
+  51=N:
+    group:
+    - 12=methyl
+    - 48=methyl
+    - 49=methyl
+    - 50=methyl
+exporter: yaplot
+seed: 42
+depol_loop: 2000

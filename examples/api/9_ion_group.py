@@ -45,7 +45,6 @@ genice.unitcell = UnitCell(
 
 
 # エクスポーターで出力
-Exporter("gromacs").dump(
+Exporter("yaplot").dump(
     genice,
-    water_model="4site",
 )

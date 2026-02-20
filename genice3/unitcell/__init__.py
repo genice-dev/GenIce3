@@ -7,23 +7,8 @@ from genice3.util import shortest_distance, density_in_g_cm3
 from genice3.cage import assess_cages
 from typing import Dict, Any, Tuple, Union
 from genice3.molecule.one import Molecule
-from genice3.cli.pool_parser import (
-    OptionDef,
-    parse_options_generic,
-    OPTION_TYPE_STRING,
-    OPTION_TYPE_TUPLE,
-    OPTION_TYPE_KEYVALUE,
-)
-
-
-# unitcell 共通オプション定義。追加・削除はここだけ行えばよい。
-UNITCELL_OPTION_DEFS = (
-    OptionDef("shift", parse_type=OPTION_TYPE_TUPLE),
-    OptionDef("density", parse_type=OPTION_TYPE_STRING),
-    OptionDef("anion", parse_type=OPTION_TYPE_KEYVALUE),
-    OptionDef("cation", parse_type=OPTION_TYPE_KEYVALUE),
-    OptionDef("cation_groups", parse_type=OPTION_TYPE_KEYVALUE),
-)
+# unitcell 共通オプション: shift, density, anion, cation, cation_groups
+# option_parser の新構造（リスト of スカラー or {arg: subopts}）を __init__ 用に変換する。
 
 def _parse_cation_groups(raw: Dict[str, Union[str, dict]]) -> Dict[int, Dict[int, str]]:
     """
@@ -45,12 +30,35 @@ def _parse_cation_groups(raw: Dict[str, Union[str, dict]]) -> Dict[int, Dict[int
     return result
 
 
-# 型変換後の後処理（shift→floatタプル、density→float、cation_groups→site->{cage->group}）
-UNITCELL_POST_PROCESSORS = {
-    "shift": lambda x: tuple(float(v) for v in x),
-    "density": lambda x: float(x) if isinstance(x, str) else x,
-    "cation_groups": _parse_cation_groups,
-}
+def _option_parser_list_to_ion_dicts(
+    items: Any,
+) -> Tuple[Dict[str, str], Dict[int, Dict[int, str]]]:
+    """
+    option_parser の cation/anion リストを (ions_dict, groups_dict) に変換。
+    items: [ "0=N", { "4=N": { "group": [ "1=methyl" ] } } ]
+    """
+    ions: Dict[str, str] = {}
+    groups: Dict[int, Dict[int, str]] = {}
+    if items is None:
+        return ions, groups
+    lst = items if isinstance(items, (list, tuple)) else [items]
+    for item in lst:
+        if isinstance(item, dict):
+            (arg, subopts), = item.items()
+            k, v = str(arg).split("=", 1)
+            ions[k.strip()] = v.strip()
+            if subopts and "group" in subopts:
+                g = subopts["group"]
+                grp_list = g if isinstance(g, (list, tuple)) else [g]
+                groups[int(k.strip())] = {}
+                for part in grp_list:
+                    if isinstance(part, str) and "=" in part:
+                        c, name = part.split("=", 1)
+                        groups[int(k.strip())][int(c.strip())] = name.strip()
+        elif isinstance(item, str) and "=" in item:
+            k, v = item.split("=", 1)
+            ions[k.strip()] = v.strip()
+    return ions, groups
 
 
 def _is_subgraph(G: nx.Graph, H: nx.DiGraph) -> bool:
@@ -58,11 +66,19 @@ def _is_subgraph(G: nx.Graph, H: nx.DiGraph) -> bool:
     return all(G.has_edge(u, v) for u, v in H.edges())
 
 
+def _label_to_cage_id(label: Any) -> int:
+    """'51=N' や 51 からケージ番号を整数で返す。"""
+    s = str(label).strip()
+    if "=" in s:
+        s = s.split("=", 1)[0].strip()
+    return int(s)
+
+
 def ion_processor(arg: dict) -> Dict[int, Molecule]:
-    # keyとvalueを変換するのみ
+    # keyとvalueを変換するのみ。キーは整数または '51=N' 形式（= の前がケージ番号）
     result: Dict[int, Molecule] = {}
     for label, molecule in arg.items():
-        result[int(label)] = molecule
+        result[_label_to_cage_id(label)] = molecule
     return result
 
 
@@ -86,23 +102,46 @@ class UnitCell:
     @staticmethod
     def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        unitcell 共通オプションを型変換して処理する。
-
-        対象は UNITCELL_OPTION_DEFS で定義。shift / density / anion / cation / cation_groups。
-        後処理は UNITCELL_POST_PROCESSORS で shift→float、density→float、cation_groups→site->{cage->group} に変換。
-
-        Args:
-            options: プラグインに渡されたオプション辞書。
+        option_parser の新構造（リスト of スカラー or {arg: subopts}）を
+        UnitCell.__init__ が受け取る形に変換する。
 
         Returns:
-            (処理したオプション, 処理しなかったオプション)。未処理は次のプラグインへ。
+            (処理したオプション, 処理しなかったオプション)。
         """
-        option_specs = {
-            d.name: d.parse_type
-            for d in UNITCELL_OPTION_DEFS
-            if d.parse_type is not None
-        }
-        return parse_options_generic(options, option_specs, UNITCELL_POST_PROCESSORS)
+        processed: Dict[str, Any] = {}
+        unprocessed = dict(options)
+
+        if "cation" in options:
+            ions, groups = _option_parser_list_to_ion_dicts(options["cation"])
+            processed["cation"] = ions
+            if groups:
+                processed["cation_groups"] = groups
+            unprocessed.pop("cation", None)
+        if "anion" in options:
+            ions, _ = _option_parser_list_to_ion_dicts(options["anion"])
+            processed["anion"] = ions
+            unprocessed.pop("anion", None)
+        if "cation_groups" in options:
+            processed["cation_groups"] = _parse_cation_groups(options["cation_groups"])
+            unprocessed.pop("cation_groups", None)
+        if "shift" in options:
+            v = options["shift"]
+            v = v if isinstance(v, (list, tuple)) else [v]
+            processed["shift"] = tuple(float(x) for x in v)
+            unprocessed.pop("shift", None)
+        if "density" in options:
+            v = options["density"]
+            if isinstance(v, (list, tuple)) and v:
+                processed["density"] = float(v[0])
+            elif isinstance(v, str):
+                processed["density"] = float(v)
+            elif isinstance(v, (int, float)):
+                processed["density"] = float(v)
+            else:
+                processed["density"] = v
+            unprocessed.pop("density", None)
+
+        return processed, unprocessed
 
     def __init__(
         self,
@@ -128,8 +167,10 @@ class UnitCell:
             sample = next(iter(cation_groups.values()), None)
             if sample is not None and not isinstance(sample, dict):
                 cation_groups = _parse_cation_groups(cation_groups)
-        if type(density) == str:
+        if isinstance(density, str):
             density = float(density)
+        elif isinstance(density, (list, tuple)) and len(density) == 1:
+            density = float(density[0])
 
         self.cell = cell
         celli = np.linalg.inv(cell)

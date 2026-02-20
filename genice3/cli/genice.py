@@ -4,9 +4,8 @@ from importlib.metadata import version, PackageNotFoundError
 
 from genice3.plugin import safe_import
 from genice3.genice import GenIce3, log_cation_cages, log_spot_cation_cages
-from genice3.cli.pool_parser import PoolBasedParser
+from genice3.cli.runner import parse_argv, validate_result
 from genice3.cli.options import (
-    GENICE3_OPTION_DEFS,
     BASE_HELP_ORDER,
     get_option_def,
     format_option_for_help,
@@ -109,9 +108,8 @@ def main() -> None:
     basicConfig(level=INFO)
     logger = getLogger()
 
-    parser = PoolBasedParser(GENICE3_OPTION_DEFS)
     try:
-        parser.parse_args(sys.argv[1:])
+        result = parse_argv(sys.argv[1:])
     except Exception as e:
         logger.error(f"パースエラー: {e}")
         import traceback
@@ -119,10 +117,8 @@ def main() -> None:
         traceback.print_exc()
         sys.exit(1)
 
-    result = parser.get_result()
-
     # バリデーション
-    is_valid, errors = parser.validate()
+    is_valid, errors = validate_result(result)
     if not is_valid:
         for error in errors:
             logger.error(error)

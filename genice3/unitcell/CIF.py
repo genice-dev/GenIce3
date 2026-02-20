@@ -4,18 +4,12 @@
 
 import genice3.unitcell
 import numpy as np
-from typing import Dict, List, Any, Tuple
+from typing import Any, Dict, List, Tuple
 import networkx as nx
 from cif2ice import cellvectors, read_cif
 from genice3.util import atoms_to_waters, shortest_distance
 import re
 from logging import getLogger
-
-from genice3.cli.pool_parser import (
-    OptionDef,
-    parse_options_generic,
-    OPTION_TYPE_STRING,
-)
 
 desc = {
     "ref": {},
@@ -25,31 +19,24 @@ desc = {
 }
 
 
-# CIF unitcell プラグインが受け取るオプション定義。追加・削除はここだけ行えばよい。
-CIF_OPTION_DEFS = (
-    OptionDef("osite", parse_type=OPTION_TYPE_STRING),
-    OptionDef("hsite", parse_type=OPTION_TYPE_STRING),
-    OptionDef("file", parse_type=OPTION_TYPE_STRING),
-    OptionDef("water_model", parse_type=OPTION_TYPE_STRING),
-)
+def _scalar(v: Any) -> Any:
+    if isinstance(v, (list, tuple)) and len(v) == 1:
+        return v[0]
+    return v
 
 
 def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    unitcell.cif プラグインのオプションを型変換して処理する。
-
-    対象は CIF_OPTION_DEFS で定義（osite, hsite, file, water_model）。
-
-    Args:
-        options: プラグインに渡されたオプション辞書。
-
-    Returns:
-        (処理したオプション, 処理しなかったオプション)。未処理は次のプラグインへ。
+    CIF プラグインのオプションを処理する（file, osite, hsite, water_model）。
+    option_parser 由来の辞書（値はスカラーまたはリスト）を受け取る。
     """
-    option_specs = {
-        d.name: d.parse_type for d in CIF_OPTION_DEFS if d.parse_type is not None
-    }
-    return parse_options_generic(options, option_specs)
+    processed: Dict[str, Any] = {}
+    unprocessed = dict(options)
+    for key in ("file", "osite", "hsite", "water_model"):
+        if key in options:
+            processed[key] = _scalar(options[key])
+            unprocessed.pop(key, None)
+    return processed, unprocessed
 
 
 class UnitCell(genice3.unitcell.UnitCell):

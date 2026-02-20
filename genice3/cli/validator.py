@@ -7,7 +7,7 @@ runtime_validator（構造体などコンテキストが必要）は必要にな
 
 from typing import Any, Dict, Sequence
 
-from genice3.cli.pool_parser import OptionDef
+from genice3.cli.option_def import OptionDef
 
 
 # =============================================================================
@@ -108,7 +108,7 @@ def validate_replication_matrix(value: Any) -> None:
 
 
 def validate_spot_ion_dict(value: Any, option_name: str) -> None:
-    """spot_cation / spot_anion の辞書: キーは非負整数として解釈可能であること"""
+    """spot_cation / spot_anion の辞書: キーは非負整数、または '51=N' 形式（= の前がサイト番号）"""
     if value is None or (isinstance(value, dict) and not value):
         return
     if not isinstance(value, dict):
@@ -116,8 +116,12 @@ def validate_spot_ion_dict(value: Any, option_name: str) -> None:
             f"--{option_name} must be key=value format or bracketed, got: {type(value).__name__}"
         )
     for k in value.keys():
+        key_str = str(k).strip()
+        # '51=N' 形式なら = の前をサイト番号として検証
+        if "=" in key_str:
+            key_str = key_str.split("=", 1)[0].strip()
         try:
-            idx = int(k)
+            idx = int(key_str)
             if idx < 0:
                 raise ValueError(
                     f"--{option_name} site index must be non-negative, got: {k}"
@@ -126,7 +130,7 @@ def validate_spot_ion_dict(value: Any, option_name: str) -> None:
             if isinstance(e, ValueError) and "non-negative" in str(e):
                 raise
             raise ValueError(
-                f"--{option_name} site index must be an integer, got: {k}"
+                f"--{option_name} site index must be an integer (or LABEL=ION), got: {k}"
             ) from e
 
 
