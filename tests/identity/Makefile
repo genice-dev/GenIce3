@@ -1,4 +1,4 @@
-NTHREADS=8
+NTHREADS=1
 LIMIT=1000
 
 # 想定フロー

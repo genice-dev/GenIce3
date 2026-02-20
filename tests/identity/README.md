@@ -49,7 +49,7 @@ git commit -m "Update regression reference outputs for ..."
 
 - **unitcell**: `genice3.plugin.scan("unitcell")` の system プラグイン
 - **exporter**: `genice3/exporter/*.py`（raw, null, __init__, _KG を除く）
-- **オプション**: `--seed 1`, `--rep 1 1 1`, `--water 4site`, `--spot_cation 0=Na --spot_anion 2=Cl`
+- **オプション**: `--seed 1`, `--exporter gromacs :water_model 4site`（gromacs 時）, `--spot_cation 0=Na --spot_anion 2=Cl` など（括弧なし・`--exporter` / `:サブオプション` 形式）
 
 各 unitcell に対して、exporter とオプションの組み合わせで `reference/{ice}_{i}.{exporter}` を生成・比較します。
 

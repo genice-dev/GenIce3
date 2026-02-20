@@ -16,30 +16,39 @@ from graphstat import GraphStat
 
 @dataclass
 class CageSpec:
-    label: str  # A12, etc.
-    faces: str  # 5^12 6^2, etc.
-    graph: nx.Graph  # labels of water constituting the cage
+    """ケージの仕様。cage_type は "A12" などのケージ種別を表す文字列。"""
 
-    def to_json_capable_data(self):
+    cage_type: str  # A12, 1b, etc.
+    faces: str  # 5^12 6^2, etc.
+    graph: nx.Graph  # ケージを構成する水分子ノードのグラフ
+
+    def to_json_capable_data(self) -> dict:
         return {
-            "label": self.label,
+            "cage_type": self.cage_type,
             "faces": self.faces,
             "nodes": [int(x) for x in self.graph],
         }
 
     def __repr__(self) -> str:
         return (
-            f"CageSpec(label={self.label!r}, "
+            f"CageSpec(cage_type={self.cage_type!r}, "
             f"faces={self.faces!r}, "
             f"n_nodes={self.graph.number_of_nodes()})"
         )
 
     def __str__(self) -> str:
-        return f"{self.label} ({self.faces}) {self.graph.number_of_nodes()} nodes"
+        return f"{self.cage_type} ({self.faces}) {self.graph.number_of_nodes()} nodes"
 
 
 @dataclass
 class CageSpecs:
+    """拡大単位胞内の全ケージの位置と仕様。
+
+    specs: 各ケージの CageSpec（cage_type, faces, graph）。
+    positions: 分数座標の配列（Nx3）。specs と同順。
+    node_to_cage_indices: __post_init__ で生成。ノード番号 → そのノードを含むケージのインデックスリスト。
+    """
+
     specs: list[CageSpec]
     positions: np.ndarray  # in fractional coordinates
 
@@ -50,7 +59,8 @@ class CageSpecs:
             for node in spec.graph:
                 self.node_to_cage_indices.setdefault(int(node), []).append(cage_idx)
 
-    def to_json_capable_data(self):
+    def to_json_capable_data(self) -> dict:
+        """JSON シリアライズ用の辞書を返す。キーはケージインデックス、値は frac_pos と specs。"""
         data = []
         for position, specs in zip(self.positions, self.specs):
             data.append(
@@ -68,17 +78,19 @@ class CageSpecs:
         )
 
 
-def _assign_label(basename, labels):
+def _assign_cage_type(basename: int, existing_types: set[str]) -> str:
+    """未使用のケージタイプ名（A12, A12a など）を生成する。"""
     enum = 0
-    label = f"A{basename}"
-    while label in labels:
+    cage_type = f"A{basename}"
+    while cage_type in existing_types:
         char = string.ascii_lowercase[enum]
-        label = f"A{basename}{char}"
+        cage_type = f"A{basename}{char}"
         enum += 1
-    return label
+    return cage_type
 
 
-def _make_cage_expression(ring_ids, ringlist):
+def _make_cage_expression(ring_ids: list, ringlist: list) -> str:
+    """ケージを構成するリングのサイズから "5^12 6^2" のような面表現文字列を生成する。"""
     ringcount = [0 for i in range(9)]
     for ring in ring_ids:
         ringcount[len(ringlist[ring])] += 1
@@ -90,12 +102,17 @@ def _make_cage_expression(ring_ids, ringlist):
     return index
 
 
-def assess_cages(graph, node_frac):
-    """Assess cages from  the graph topology.
+def assess_cages(
+    graph: nx.Graph, node_frac: np.ndarray
+) -> CageSpecs:
+    """水素結合グラフとノードの分数座標からケージを検出・分類し、CageSpecs を返す。
 
     Args:
-        graph (graph-like): HB network
-        node_frac (np.Array): Fractional positions of the nodes
+        graph: 水素結合ネットワーク（無向グラフ）。
+        node_frac: ノードの分数座標（Nx3）。
+
+    Returns:
+        検出されたケージの位置（分数座標）と仕様（CageSpec のリスト）。
     """
     logger = getLogger()
 
@@ -110,8 +127,8 @@ def assess_cages(graph, node_frac):
     cage_fracs = []
     # data storage of the found cages
     db = GraphStat()
-    labels = set()
-    g_id2label = dict()
+    existing_cage_types: set[str] = set()
+    g_id_to_cage_type: dict[int, str] = {}
 
     # Detect cages and classify
     cages = [cage for cage in polyhedra_iter(ringlist, MaxCageSize)]
@@ -130,16 +147,13 @@ def assess_cages(graph, node_frac):
             # register the last query
             graph_id = db.register()
 
-            # prepare a new label
-            label = _assign_label(cagesize, labels)
-            g_id2label[graph_id] = label
-            labels.add(label)
-
-            # cage expression
+            cage_type = _assign_cage_type(cagesize, existing_cage_types)
+            g_id_to_cage_type[graph_id] = cage_type
+            existing_cage_types.add(cage_type)
         else:
-            label = g_id2label[graph_id]
+            cage_type = g_id_to_cage_type[graph_id]
         faces = _make_cage_expression(cage, ringlist)
-        cagespecs.append(CageSpec(label=label, faces=faces, graph=g))
+        cagespecs.append(CageSpec(cage_type=cage_type, faces=faces, graph=g))
         # print(f"{label=}, {faces=}, {ringlist=}")
         # print([len(ringlist[ring]) for ring in cage])
 

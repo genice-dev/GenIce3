@@ -16,7 +16,7 @@ import networkx as nx
 import numpy as np
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Dict, Tuple, List, Any
+from typing import Any, Dict, Generator, List, Tuple
 from enum import Enum
 import inspect
 
@@ -84,8 +84,18 @@ class AtomicStructure:
 def _assume_water_orientations(
     coord: np.ndarray, digraph: nx.DiGraph, cellmat: np.ndarray, dopants: Dict[int, str]
 ) -> np.ndarray:
-    """
-    Does not work when two OHs are colinear
+    """有向グラフと座標から各水分子の配向行列（Nx3x3）を計算する。
+
+    2本のOHが一直線上にある場合は正しく動作しない。
+
+    Args:
+        coord: 各ノードの分数座標（Nx3）。
+        digraph: 水素結合の向きが決まった有向グラフ。
+        cellmat: セル行列（分数→直交変換に使用）。
+        dopants: ドーパントが占めるサイト（ノード番号→イオン名）。
+
+    Returns:
+        各水分子の配向行列（Nx3x3）。直交座標系での回転行列。
     """
 
     logger = getLogger()
@@ -167,37 +177,47 @@ def _assume_water_orientations(
     return rotmatrices
 
 
-def _replicate_lattice_node(lattice_site_label, nmol, replica_vectors):
-    multiple = int(np.floor(np.linalg.det(replica_vectors) + 0.5))
+def _replicate_lattice_node(
+    lattice_site_node: int, nmol: int, replication_matrix: np.ndarray
+) -> Generator[int, None, None]:
+    """1つの格子サイトを拡大単位胞内で複製したときのノード番号を列挙する。
+
+    Args:
+        lattice_site_node: 複製前の単位胞内での格子サイト（ノード）番号。
+        nmol: 単位胞内の水分子数（ノード数）。
+        replication_matrix: 拡大倍率（行列式）の計算に用いる3x3行列。通常は replication_matrix を渡す。
+
+    Yields:
+        拡大単位胞内でのノード番号（lattice_site_node + nmol * i for i in 0..倍率-1）。
+    """
+    multiple = int(np.floor(np.linalg.det(replication_matrix) + 0.5))
     for i in range(multiple):
-        yield lattice_site_label + nmol * i
+        yield lattice_site_node + nmol * i
 
 
 def _replicate_graph(
     graph1: nx.Graph,
     cell1frac_coords: np.ndarray,
     replica_vectors: np.ndarray,
-    replica_vector_labels: Dict[Tuple[int, ...], int],
+    replica_vector_index: Dict[Tuple[int, ...], int],
     reshape: np.ndarray,
 ) -> nx.Graph:
     """
-    関数 `replicate_graph` は、グラフに関連するさまざまな入力を受け取り、指定されたレプリカ ベクトルと形状に基づいてそれを複製し、複製されたグラフと固定エッジを返します。
+    指定されたレプリカベクトルと形状に基づいてグラフを複製する。
 
     2つの座標系がいりみだれているので注意。
     cell1frac: 複製前の単位胞における小数座標
     grandfrac: 複製後の大きな単位胞における小数座標
 
     Args:
-      graph1: 元のグラフを表すグラフ オブジェクトです。
-      cell1frac_coords: 元のグラフ内の原子の小数点座標を含む numpy 配列です。
-      replica_vectors: レプリカ(拡大単位胞を構成する、もとの単位胞のグリッド)の方向を定義する整数ベクトルのリスト。
-      replica_vector_labels: レプリカベクトル座標のタプルを一意のラベルにマッピングする辞書です。このラベルは、複製されたグラフ内の各レプリカ ベクトルを識別するために使用されます。
-      reshape: 単位胞を積みかさねて拡大された結晶構造を作る、積み重ね方を表す行列。
+      graph1: 元のグラフ。
+      cell1frac_coords: 元のグラフ内の節点の分数座標 (Nx3)。
+      replica_vectors: レプリカベクトルの配列。
+      replica_vector_index: レプリカベクトル座標タプル → 一意のインデックス。
+      reshape: 拡大単位胞の積み重ね方を表す行列。
 
     Returns:
-      関数 `replicate_graph` は `repgraph` を返します。
-
-    Stage2のもとの関数と違い、fixedの複製は行いません。
+      複製された無向グラフ。fixed の複製は行わない。
     """
     # repgraph = dg.IceGraph()
     repgraph = nx.Graph()
@@ -221,7 +241,7 @@ def _replicate_graph(
             cell1frac_b = np.floor(
                 grandcell_wrap(cell1frac_b, reshape, invdet, det)
             ).astype(int)
-            b = replica_vector_labels[tuple(cell1frac_b)]
+            b = replica_vector_index[tuple(cell1frac_b)]
             newi = nmol * b + i
             newj = nmol * a + j
 
@@ -233,8 +253,16 @@ def _replicate_graph(
 def _replicate_fixed_edges(
     repgraph: nx.Graph, fixed: nx.DiGraph, nmol: int
 ) -> nx.DiGraph:
-    # replicate_graphの結果を利用してもっとシンプルに処理したい。
-    # repgraph = dg.IceGraph()
+    """単位胞の固定エッジを拡大単位胞のグラフ上に複製した有向グラフを返す。
+
+    Args:
+        repgraph: 拡大単位胞全体の無向グラフ。
+        fixed: 単位胞内の固定エッジ（有向グラフ）。
+        nmol: 単位胞内のノード数。
+
+    Returns:
+        拡大単位胞全体での固定エッジを表す有向グラフ。
+    """
     logger = getLogger("replicate_fixed_edges")
     rep_fixed_edges = nx.DiGraph()
     for repi, repj in repgraph.edges():
@@ -249,8 +277,19 @@ def _replicate_fixed_edges(
     return rep_fixed_edges
 
 
-def replicate_subgraph(repgraph: nx.Graph, subgraph: nx.Graph, nmol: int) -> nx.Graph:
-    # unitcell内のsubgraphのレプリカをrepgraph内にさがすgenerator.
+def replicate_subgraph(
+    repgraph: nx.Graph, subgraph: nx.Graph, nmol: int
+) -> Generator[nx.Graph, None, None]:
+    """単位胞内の subgraph の各レプリカを repgraph から取り出して yield する。
+
+    Args:
+        repgraph: 拡大単位胞全体の無向グラフ。
+        subgraph: 単位胞内の部分グラフ（例: 1ケージを構成するノードと辺）。
+        nmol: 単位胞内のノード数。
+
+    Yields:
+        拡大単位胞内の各レプリカに対応する部分グラフ（nx.Graph）。
+    """
     origin = list(subgraph.nodes())[0]
     nrep = len(repgraph) // nmol  # number of replicas
 
@@ -333,16 +372,15 @@ def replica_vectors(replication_matrix: np.ndarray) -> np.ndarray:
 
 @reactive
 def replica_vector_labels(replica_vectors: np.ndarray) -> Dict[Tuple[int, ...], int]:
-    """レプリカベクトルラベルの辞書を生成する。
+    """レプリカベクトル座標タプル → 一意のインデックス の辞書を返す。
 
-    各レプリカベクトル（整数タプル）を一意のインデックスにマッピングします。
-    このマッピングは、拡大単位胞内での単位胞の位置を効率的に管理するために使用されます。
+    拡大単位胞内での単位胞の位置を、グラフ複製などで参照するために使う。
 
     Args:
-        replica_vectors: レプリカベクトルの配列
+        replica_vectors: レプリカベクトルの配列（Nx3）。
 
     Returns:
-        Dict[Tuple[int, ...], int]: レプリカベクトル座標タプルからインデックスへのマッピング
+        座標タプル (a, b, c) を 0..N-1 のインデックスにマッピングする辞書。
     """
     return {tuple(xyz): i for i, xyz in enumerate(replica_vectors)}
 
@@ -363,7 +401,7 @@ def graph(
     Args:
         unitcell: 基本単位胞オブジェクト
         replica_vectors: レプリカベクトルの配列
-        replica_vector_labels: レプリカベクトルラベルの辞書
+        replica_vector_labels: レプリカベクトル座標タプル→インデックスの辞書（replica_vector_labels タスクの戻り値）
         replication_matrix: 単位胞を複製するための3x3整数行列
 
     Returns:
@@ -373,8 +411,8 @@ def graph(
         unitcell.graph,
         unitcell.lattice_sites,
         replica_vectors,
-        replica_vector_labels,
-        replication_matrix,
+        replica_vector_index=replica_vector_labels,
+        reshape=replication_matrix,
     )
     return g
 
@@ -422,12 +460,12 @@ def anions(
     """
     anion_dict: Dict[int, str] = {}
     Z = len(unitcell.lattice_sites)
-    for label, ion_name in unitcell.anions.items():
+    for site_index, ion_name in unitcell.anions.items():
         for i in range(len(replica_vectors)):
-            site = i * Z + label
+            site = i * Z + site_index
             anion_dict[site] = ion_name
-    for label, ion_name in spot_anions.items():
-        anion_dict[label] = ion_name
+    for site_index, ion_name in spot_anions.items():
+        anion_dict[site_index] = ion_name
     return anion_dict
 
 
@@ -450,12 +488,12 @@ def cations(
     """
     cation_dict: Dict[int, str] = {}
     Z = len(unitcell.lattice_sites)
-    for label, ion_name in unitcell.cations.items():
+    for site_index, ion_name in unitcell.cations.items():
         for i in range(len(replica_vectors)):
-            site = i * Z + label
+            site = i * Z + site_index
             cation_dict[site] = ion_name
-    for label, ion_name in spot_cations.items():
-        cation_dict[label] = ion_name
+    for site_index, ion_name in spot_cations.items():
+        cation_dict[site_index] = ion_name
     return cation_dict
 
 
@@ -513,22 +551,22 @@ def fixed_edges(
             "hydrogen-ordered ices."
         )
     dg = _replicate_fixed_edges(graph, unitcell.fixed, len(unitcell.lattice_sites))
-    for label in spot_anions:
-        for nei in graph.neighbors(label):
-            if dg.has_edge(label, nei):
+    for site_index in spot_anions:
+        for nei in graph.neighbors(site_index):
+            if dg.has_edge(site_index, nei):
                 raise ConfigurationError(
-                    f"矛盾する辺の固定 at {label}; すでに({label} --> {nei})が固定されています。"
+                    f"矛盾する辺の固定 at {site_index}; すでに({site_index} --> {nei})が固定されています。"
                 )
             else:
-                dg.add_edge(nei, label)
-    for label in spot_cations:
-        for nei in graph.neighbors(label):
-            if dg.has_edge(nei, label):
+                dg.add_edge(nei, site_index)
+    for site_index in spot_cations:
+        for nei in graph.neighbors(site_index):
+            if dg.has_edge(nei, site_index):
                 raise ConfigurationError(
-                    f"矛盾する辺の固定 at {label}; すでに({nei} --> {label})が固定されています。"
+                    f"矛盾する辺の固定 at {site_index}; すでに({nei} --> {site_index})が固定されています。"
                 )
             else:
-                dg.add_edge(label, nei)
+                dg.add_edge(site_index, nei)
     return dg
 
 
@@ -610,20 +648,21 @@ def cages(
     replica_vectors: np.ndarray,
     replication_matrix: np.ndarray,
     graph: nx.Graph,
-) -> CageSpecs:
+) -> CageSpecs | None:
     """ケージ位置とタイプを拡大単位胞全体に複製する。
 
     基本単位胞内で定義されたゲスト分子を配置するためのケージ（空隙）の
-    位置とタイプを、拡大単位胞全体に複製します。
+    位置とタイプを、拡大単位胞全体に複製する。
 
     Args:
-        unitcell: 基本単位胞オブジェクト
-        replica_vectors: レプリカベクトルの配列
-        replication_matrix: 単位胞を複製するための3x3整数行列
+        unitcell: 基本単位胞オブジェクト。
+        replica_vectors: レプリカベクトルの配列。
+        replication_matrix: 単位胞を複製するための3x3整数行列。
+        graph: 拡大単位胞全体の無向グラフ（サブグラフ複製に使用）。
 
     Returns:
-        CageSpecs: 拡大単位胞全体でのケージ位置とタイプの情報
-                   （unitcell.cagesがNoneの場合はNoneを返す）
+        CageSpecs: 拡大単位胞全体でのケージ位置とタイプ。
+        unitcell.cages が None の場合は None。
     """
     if unitcell.cages is None:
         return None
@@ -642,7 +681,7 @@ def cages(
             replicate_subgraph(graph, cage.graph, unitcell.lattice_sites.shape[0])
         ):
             repcagespecs[i + j * num_cages_in_unitcell] = CageSpec(
-                label=cage.label, faces=cage.faces, graph=repgraph
+                cage_type=cage.cage_type, faces=cage.faces, graph=repgraph
             )
     # unit cellのcagesと同じ構造。
     _genice3_logger.debug(f"{repcagepos=}, {repcagespecs=}")
@@ -666,7 +705,7 @@ def place_groups_on_lattice(
 
 
 def log_spot_cation_cages(genice: "GenIce3") -> None:
-    """spot_cation ごとに属するケージのID・label・facesをログ表示する。"""
+    """spot_cation ごとに属するケージのID・cage_type・facesをログ表示する。"""
     if not genice.spot_cations or genice.cages is None or len(genice.cages.specs) == 0:
         return
     num_replicas = int(np.round(np.linalg.det(genice.replication_matrix)))
@@ -676,12 +715,12 @@ def log_spot_cation_cages(genice: "GenIce3") -> None:
         for cage_id in cage_indices:
             spec = genice.cages.specs[cage_id]
             genice.logger.info(
-                f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces}) in the supercell."
+                f"spot_cation {site}={ion_name} belongs to cage {cage_id} ({spec.cage_type} {spec.faces}) in the supercell."
             )
 
 
 def log_cation_cages(genice: "GenIce3") -> None:
-    # log_spot_cation_cagesの、単位胞バージョン。単位胞内ケージ番号を表示する。
+    """単位胞内のカチオンごとに、属するケージのID・cage_type・faces をログ表示する。"""
     if (
         not genice.cations
         or genice.unitcell.cages is None
@@ -693,13 +732,23 @@ def log_cation_cages(genice: "GenIce3") -> None:
         for cage_id in cage_indices:
             spec = genice.unitcell.cages.specs[cage_id]
             genice.logger.info(
-                f"cation {site}={ion_name} belongs to cage {cage_id} ({spec.label} {spec.faces}) in the unit cell."
+                f"cation {site}={ion_name} belongs to cage {cage_id} ({spec.cage_type} {spec.faces}) in the unit cell."
             )
 
 
 def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group:
-    """グループを配置する。
+    """指定方向・結合長で group プラグインを読み込み、配置した Group を返す。
+
+    置換イオンから group のアンカー原子までが direction 方向に bondlen の長さで並ぶ。
     TODO: 将来は2個以上のアンカーを持つ group を扱う可能性がある。
+
+    Args:
+        direction: 配置方向（直交座標、正規化される）。
+        bondlen: アンカーまでの結合長。
+        group_name: group プラグイン名（例: "ammonia"）。
+
+    Returns:
+        回転・並進を適用した Group インスタンス。
     """
     # logger = getLogger("GenIce3")
     group = safe_import("group", group_name).Group()
@@ -1106,6 +1155,14 @@ class GenIce3:
         )
 
     def water_molecules(self, water_model: Molecule) -> Dict[int, Molecule]:
+        """格子サイトが水のサイトについて、配向・位置を適用した水分子の辞書を返す。
+
+        Args:
+            water_model: 水分子のテンプレート（sites, labels など）。
+
+        Returns:
+            サイト番号（ノード番号）→ Molecule の辞書。イオンサイトは含まない。
+        """
         mols = {}
         for site in range(len(self.lattice_sites)):
             if "water" == self.site_occupants[site]:
@@ -1127,13 +1184,13 @@ class GenIce3:
         if not self.guests and not self.spot_guests:
             return []
 
-        all_labels = [spec.label for spec in self.cages.specs]
-        available = sorted(set(all_labels))
+        all_cage_types = [spec.cage_type for spec in self.cages.specs]
+        available = sorted(set(all_cage_types))
         # guest_specで指定されているのに存在しない種類のケージはエラーにする。
-        for label in self.guests:
-            if label not in all_labels:
+        for cage_type in self.guests:
+            if cage_type not in all_cage_types:
                 raise ConfigurationError(
-                    f"Cage type {label} is not defined. "
+                    f"Cage type {cage_type} is not defined. "
                     f"Available cage types in this structure: {available}."
                 )
 
@@ -1144,8 +1201,8 @@ class GenIce3:
             self.cages.positions, self.cages.specs, randoms
         ):
             accum = 0.0
-            if spec.label in self.guests:
-                for guest_spec in self.guests[spec.label]:
+            if spec.cage_type in self.guests:
+                for guest_spec in self.guests[spec.cage_type]:
                     molecule = guest_spec.molecule
                     occupancy = guest_spec.occupancy
                     accum += occupancy
@@ -1174,25 +1231,34 @@ class GenIce3:
 
     def build_molecular_ion(
         self,
-        site_label: int,
+        site_index: int,
         molecule: str,
         groups: Dict[int, str] | None = None,
     ) -> Molecule:
-        """サイト site_label に分子イオン（および spot cation 用の修飾 group）を構築する。"""
+        """サイト site_index（格子サイトのノード番号）に分子イオン（および spot cation 用の修飾 group）を構築する。
+
+        Args:
+            site_index: 格子サイトのノード番号。
+            molecule: 分子イオンのプラグイン名（例: "ammonium"）。
+            groups: 当該サイトに隣接するケージID → group名。spot cation の修飾用。
+
+        Returns:
+            直交座標で配置された Molecule（原子名は labels）。
+        """
         groups = groups or {}
-        ion_center = self.lattice_sites[site_label] @ self.cell
+        ion_center = self.lattice_sites[site_index] @ self.cell
         try:
             ion = safe_import("molecule", molecule).Molecule()
             name = ion.name
             sites = ion.sites + ion_center
-            labels = list(ion.labels)
+            atom_names: List[str] = list(ion.labels)
         except ImportError:
             name = molecule
             sites = np.array([ion_center])
-            labels = [molecule]
+            atom_names = [molecule]
         # 修飾グループを置いていく（--group 指定があったサイトのみ）
         for cage, group_name in groups.items():
-            direction = self.cages.positions[cage] - self.lattice_sites[site_label]
+            direction = self.cages.positions[cage] - self.lattice_sites[site_index]
             direction -= np.floor(direction + 0.5)
             group = place_group(
                 direction @ self.cell,
@@ -1200,12 +1266,12 @@ class GenIce3:
                 group_name,
             )
             sites = np.concatenate([sites, group.sites + ion_center])
-            labels += group.labels
-            self.logger.info(f"{labels=}")
+            atom_names += group.labels
+            self.logger.info(f"{atom_names=}")
         return Molecule(
             name=name,
             sites=sites,
-            labels=labels,
+            labels=atom_names,
             is_water=False,
         )
 
@@ -1236,26 +1302,29 @@ class GenIce3:
         return effective
 
     def substitutional_ions(self) -> Dict[int, Molecule]:
+        """単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。"""
         # 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う
         effective_groups = self._effective_spot_cation_groups()
         ions: Dict[int, Molecule] = {}
         # ならべかえはここではしない。formatterにまかせる。
-        for site_label, molecule in self.anions.items():
-            ions[site_label] = self.build_molecular_ion(site_label, molecule)
-        for site_label, molecule in self.cations.items():
+        for site_index, molecule in self.anions.items():
+            ions[site_index] = self.build_molecular_ion(site_index, molecule)
+        for site_index, molecule in self.cations.items():
             # cationには腕がつく可能性がある。
-            groups = effective_groups.get(site_label, {})
-            ions[site_label] = self.build_molecular_ion(site_label, molecule, groups)
+            groups = effective_groups.get(site_index, {})
+            ions[site_index] = self.build_molecular_ion(site_index, molecule, groups)
         self.logger.info(f"{ions=}")
         return ions
 
-    def dope_anions(self, anions: Dict[int, Molecule]):
-        for label, molecule in anions.items():
-            self.anions[label] = molecule
+    def dope_anions(self, anions: Dict[int, Molecule]) -> None:
+        """サイト番号→分子の辞書でアニオン配置を上書きする（主に API/テスト用）。"""
+        for site_index, molecule in anions.items():
+            self.anions[site_index] = molecule
 
-    def dope_cations(self, cations: Dict[int, Molecule]):
-        for label, molecule in cations.items():
-            self.cations[label] = molecule
+    def dope_cations(self, cations: Dict[int, Molecule]) -> None:
+        """サイト番号→分子の辞書でカチオン配置を上書きする（主に API/テスト用）。"""
+        for site_index, molecule in cations.items():
+            self.cations[site_index] = molecule
 
     # def get_atomic_structure(
     #     self,
@@ -1329,6 +1398,7 @@ class GenIce3:
 
     @classmethod
     def list_public_settable_reactive_properties(cls):
+        """公開APIのうち、setter を持つリアクティブプロパティのみを列挙する。"""
         return {
             name: prop
             for name, prop in cls.list_settable_reactive_properties().items()

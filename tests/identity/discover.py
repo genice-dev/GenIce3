@@ -46,11 +46,18 @@ def formatter_list():
     return formatter_paths
 
 
-def options_to_bracket_str(args: dict) -> str:
-    """args 辞書を [key=val:key2=val2] 形式の文字列に変換"""
+def args_to_cli(args: dict) -> str:
+    """args 辞書を --key val 形式の CLI オプション文字列に変換（新形式）"""
     if not args:
         return ""
-    return "[" + ":".join(f"{k}={v}" for k, v in args.items()) + "]"
+    parts = []
+    for k, v in args.items():
+        parts.append(f"--{k}")
+        if isinstance(v, (list, tuple)):
+            parts.extend(str(x) for x in v)
+        else:
+            parts.append(str(v))
+    return " " + " ".join(parts)
 
 
 def run_genice(
@@ -83,11 +90,14 @@ def run_genice(
 
 
 def _extract_formatter(opts_str: str) -> str | None:
-    """opts_str から -e formatter を抽出"""
+    """opts_str から --exporter NAME の NAME を抽出（: サブオプションの前まで）"""
     parts = opts_str.split()
     for i, p in enumerate(parts):
-        if p == "-e" and i + 1 < len(parts):
-            return parts[i + 1]
+        if p == "--exporter" and i + 1 < len(parts):
+            name = parts[i + 1]
+            if name.startswith(":"):
+                return None
+            return name
     return None
 
 
@@ -146,13 +156,14 @@ def discover(
         opt_cfg = option_sets[opt_idx]
         opts_str = opt_cfg.get("options", "")
         args = opt_cfg.get("args") or {}
-        bracket = options_to_bracket_str(args)
-        target = f"{ice}{bracket}"
+        # 新形式: target は unitcell 名のみ。args は genice_opts の先頭に --key val で付与
+        target = ice
+        args_cli = args_to_cli(args)
         base = " ".join(base_options)
         formatter_name = _extract_formatter(opts_str)
         formatter_path = formatters.get(formatter_name, "")
         product = f"{ice}_{opt_idx}.{formatter_name}"
-        genice_opts = f"{base} {opts_str}".strip()
+        genice_opts = f"{args_cli} {base} {opts_str}".strip()
         genice_cmd = f"{sys.executable} -m genice3.cli.genice {target} {genice_opts}"
 
         print(f"  $ {genice_cmd}")
