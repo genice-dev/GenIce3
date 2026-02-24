@@ -2,12 +2,13 @@
 Utility functions for genice3
 """
 
-import numpy as np
-from typing import List, Iterable
+from dataclasses import dataclass
+from typing import List, Iterable, Union, Tuple
 from logging import getLogger
 from collections import defaultdict
 import itertools as it
 
+import numpy as np
 import networkx as nx
 import pairlist as pl
 
@@ -405,6 +406,58 @@ def validate_ice_rules(dg: nx.DiGraph):
                 f" and {dg.out_degree(node)} outgoing edges"
             )
     return valid
+
+
+def _closest_node_bruteforce(
+    frac_pos: np.ndarray,
+    lattice_sites: np.ndarray,
+    cell: np.ndarray,
+) -> int:
+    """1 点 frac_pos に周期境界で最も近い格子点のインデックスを返す。総当り。"""
+    p = np.asarray(frac_pos).reshape(3)
+    best_j = 0
+    best_d2 = np.inf
+    for j in range(len(lattice_sites)):
+        d = lattice_sites[j] - p
+        d -= np.floor(d + 0.5)
+        d_orth = d @ cell
+        d2 = np.dot(d_orth, d_orth)
+        if d2 < best_d2:
+            best_d2 = d2
+            best_j = j
+    return best_j
+
+
+def find_nearest_sites_pbc(
+    frac_pos: Union[Tuple[float, float, float], np.ndarray],
+    lattice_sites: np.ndarray,
+    cell: np.ndarray,
+) -> Union[int, List[int]]:
+    """分数座標に最も近い格子サイトを返す。周期境界を考慮。pairs_iter で近傍を絞り、見つからなければ総当り。
+
+    1 点のときは int、複数点のときは list[int] を返す。
+    """
+    p = np.atleast_2d(frac_pos)  # (1,3) または (N,3)
+    n_query = len(p)
+
+    @dataclass
+    class Neighbor:
+        distance: float
+        node: int
+
+    neighbors: dict[int, Neighbor] = {}
+    for i, j, d in pl.pairs_iter(p, 0.5, cell, pos2=lattice_sites, distance=True):
+        if i not in neighbors or d < neighbors[i].distance:
+            neighbors[i] = Neighbor(distance=d, node=j)
+
+    out = []
+    for i in range(n_query):
+        if i in neighbors:
+            out.append(neighbors[i].node)
+        else:
+            out.append(_closest_node_bruteforce(p[i], lattice_sites, cell))
+
+    return out[0] if n_query == 1 else out
 
 
 # Candidates for ice XI
