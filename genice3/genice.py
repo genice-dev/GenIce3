@@ -499,26 +499,36 @@ def cations(
 
 @reactive
 def site_occupants(
-    anions: Dict[int, str], cations: Dict[int, str], lattice_sites: np.ndarray
+    anions: Dict[int, str],
+    cations: Dict[int, str],
+    spot_hydroniums: List[int],
+    spot_hydroxides: List[int],
+    lattice_sites: np.ndarray,
 ) -> List[str]:
-    """各格子サイトの占有種（水分子またはイオン）のリストを生成する。
+    """各格子サイトの占有種（水分子・イオン・H3O+・OH-）のリストを生成する。
 
-    各格子サイトが水分子、アニオン、カチオンのいずれで占有されているかを
+    各格子サイトが水分子、アニオン、カチオン、H3O+、OH- のいずれで占有されているかを
     判定し、サイトインデックス順にリストとして返します。
 
     Args:
         anions: アニオン配置の辞書
         cations: カチオン配置の辞書
+        spot_hydroniums: H3O+ を置くサイトのリスト
+        spot_hydroxides: OH- を置くサイトのリスト
         lattice_sites: 格子サイト位置の配列
 
     Returns:
-        List[str]: 各サイトの占有種のリスト（"water"またはイオン名）
+        List[str]: 各サイトの占有種のリスト（"water" またはイオン名）
     """
     occupants = ["water"] * len(lattice_sites)
     for site, ion_name in anions.items():
         occupants[site] = ion_name
     for site, ion_name in cations.items():
         occupants[site] = ion_name
+    for site in spot_hydroniums:
+        occupants[site] = "H3O+"
+    for site in spot_hydroxides:
+        occupants[site] = "OH-"
     return occupants
 
 
@@ -528,27 +538,35 @@ def fixed_edges(
     unitcell: UnitCell,
     spot_anions: Dict[int, str],
     spot_cations: Dict[int, str],
+    spot_hydroniums: List[int],
+    spot_hydroxides: List[int],
 ) -> nx.DiGraph:
     """固定エッジ（水素結合の方向が固定されたエッジ）を拡大単位胞全体に複製する。
 
-    基本単位胞で定義された固定エッジと、spot_anions/spot_cationsで指定された
-    イオン位置に基づく固定エッジを統合し、拡大単位胞全体での固定エッジを返します。
-    固定エッジは、水素結合の方向が既に決定されている（プロトンが固定されている）
-    エッジを表します。
+    基本単位胞で定義された固定エッジと、spot_anions/spot_cations/spot_hydroniums/
+    spot_hydroxides で指定されたイオン・置換種に基づく固定エッジを統合し、
+    拡大単位胞全体での固定エッジを返します。
+    - アニオン: 4本受け入れ。カチオン: 4本供与。
+    - H3O+ (spot_hydroniums): 1本受け入れ・3本供与。
+    - OH- (spot_hydroxides): 3本受け入れ・1本供与。
 
     Args:
         graph: 拡大単位胞全体のグラフ
         unitcell: 基本単位胞オブジェクト
         spot_anions: 特定位置のアニオン配置
         spot_cations: 特定位置のカチオン配置
+        spot_hydroniums: H3O+ を置くサイトのリスト（1受容・3供与）
+        spot_hydroxides: OH- を置くサイトのリスト（3受容・1供与）
 
     Returns:
         nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ
     """
-    if (spot_anions or spot_cations) and not unitcell.SUPPORTS_ION_DOPING:
+    if (
+        spot_anions or spot_cations or spot_hydroniums or spot_hydroxides
+    ) and not unitcell.SUPPORTS_ION_DOPING:
         raise ConfigurationError(
-            "Ion doping (spot_anion/spot_cation) is not supported for "
-            "hydrogen-ordered ices."
+            "Ion doping (spot_anion/spot_cation/spot_hydronium/spot_hydroxide) "
+            "is not supported for hydrogen-ordered ices."
         )
     dg = _replicate_fixed_edges(graph, unitcell.fixed, len(unitcell.lattice_sites))
     for site_index in spot_anions:
@@ -567,6 +585,24 @@ def fixed_edges(
                 )
             else:
                 dg.add_edge(site_index, nei)
+    for site_index in spot_hydroniums:
+        neis = sorted(graph.neighbors(site_index))
+        if len(neis) != 4:
+            raise ConfigurationError(
+                f"spot_hydronium at {site_index} must have 4 neighbors, got {len(neis)}."
+            )
+        dg.add_edge(neis[0], site_index)
+        for nei in neis[1:]:
+            dg.add_edge(site_index, nei)
+    for site_index in spot_hydroxides:
+        neis = sorted(graph.neighbors(site_index))
+        if len(neis) != 4:
+            raise ConfigurationError(
+                f"spot_hydroxide at {site_index} must have 4 neighbors, got {len(neis)}."
+            )
+        dg.add_edge(site_index, neis[0])
+        for nei in neis[1:]:
+            dg.add_edge(nei, site_index)
     return dg
 
 
@@ -617,6 +653,8 @@ def orientations(
     cell: np.ndarray,
     anions: Dict[int, str],
     cations: Dict[int, str],
+    spot_hydroniums: List[int],
+    spot_hydroxides: List[int],
 ) -> np.ndarray:
     """各水分子の配向行列を計算する。
 
@@ -630,6 +668,8 @@ def orientations(
         cell: 拡大単位胞のセル行列
         anions: アニオン配置の辞書
         cations: カチオン配置の辞書
+        spot_hydroniums: H3O+ を置くサイトのリスト
+        spot_hydroxides: OH- を置くサイトのリスト
 
     Returns:
         np.ndarray: 各水分子の配向行列（Nx3x3配列、Nは水分子数）
@@ -638,7 +678,7 @@ def orientations(
         lattice_sites,
         digraph,
         cell,
-        anions | cations,
+        set(anions) | set(cations) | set(spot_hydroniums) | set(spot_hydroxides),
     )
 
 
@@ -844,11 +884,15 @@ class GenIce3:
             サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、
             それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。
 
+        spot_hydroniums (List[int]): H3O+ を置くサイトのリスト（1受容・3供与）。
+
+        spot_hydroxides (List[int]): OH- を置くサイトのリスト（3受容・1供与）。
+
         cages (CageSpecs): 拡大単位胞全体でのケージ位置・タイプ。
             単位胞のケージを replica_vectors に従って複製したもので、ゲスト配置や cage_survey 出力に利用します。
 
         fixed_edges (nx.DiGraph): 拡大単位胞全体での固定エッジの有向グラフ。
-            単位胞の固定エッジと spot_anion/spot_cation に基づく固定を統合したもので、digraph の生成に利用します。
+            単位胞の固定エッジと spot_anion/spot_cation/spot_hydronium/spot_hydroxide に基づく固定を統合したもので、digraph の生成に利用します。
     """
 
     # Class名でlog表示したい。
@@ -868,6 +912,8 @@ class GenIce3:
         "seed",
         "spot_anions",
         "spot_cations",
+        "spot_hydroniums",
+        "spot_hydroxides",
     ]
 
     def __init__(
@@ -878,6 +924,8 @@ class GenIce3:
         seed: int = 1,
         spot_anions: Dict[int, str] = {},
         spot_cations: Dict[int, str] = {},
+        spot_hydroniums: List[int] = None,
+        spot_hydroxides: List[int] = None,
         guests: Dict[str, List["GuestSpec"]] = None,
         spot_guests: Dict[int, Molecule] = None,
         spot_cation_groups: Dict[int, Dict[int, str]] = None,
@@ -892,6 +940,8 @@ class GenIce3:
             seed: 乱数シード（デフォルト: 1）
             spot_anions: 特定位置のアニオン配置（デフォルト: {}）
             spot_cations: 特定位置のカチオン配置（デフォルト: {}）
+            spot_hydroniums: H3O+ を置くサイトのリスト（デフォルト: []）
+            spot_hydroxides: OH- を置くサイトのリスト（デフォルト: []）
             guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）
             spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）
             spot_cation_groups: spot_cation の --group 指定（サイト -> {ケージID -> group名}）（デフォルト: {}）
@@ -912,6 +962,8 @@ class GenIce3:
         self.target_pol = target_pol
         self.spot_anions = spot_anions
         self.spot_cations = spot_cations
+        self.spot_hydroniums = spot_hydroniums if spot_hydroniums is not None else []
+        self.spot_hydroxides = spot_hydroxides if spot_hydroxides is not None else []
         self.guests = guests if guests is not None else {}
         self.spot_guests = spot_guests if spot_guests is not None else {}
         self.spot_cation_groups = (
@@ -983,6 +1035,46 @@ class GenIce3:
         """
         self._spot_cations = spot_cations
         self.logger.debug(f"  {spot_cations=}")
+        self.engine.cache.clear()
+
+    # spot_hydroniums (H3O+: 1受容・3供与)
+    @property
+    def spot_hydroniums(self):
+        """H3O+ を置くサイトのリスト。1本受け入れ・3本供与。
+
+        Returns:
+            List[int]: サイトインデックスのリスト
+        """
+        if not hasattr(self, "_spot_hydroniums"):
+            self._spot_hydroniums = []
+        return self._spot_hydroniums
+
+    @spot_hydroniums.setter
+    def spot_hydroniums(self, spot_hydroniums):
+        self._spot_hydroniums = (
+            list(spot_hydroniums) if spot_hydroniums is not None else []
+        )
+        self.logger.debug(f"  {spot_hydroniums=}")
+        self.engine.cache.clear()
+
+    # spot_hydroxides (OH-: 3受容・1供与)
+    @property
+    def spot_hydroxides(self):
+        """OH- を置くサイトのリスト。3本受け入れ・1本供与。
+
+        Returns:
+            List[int]: サイトインデックスのリスト
+        """
+        if not hasattr(self, "_spot_hydroxides"):
+            self._spot_hydroxides = []
+        return self._spot_hydroxides
+
+    @spot_hydroxides.setter
+    def spot_hydroxides(self, spot_hydroxides):
+        self._spot_hydroxides = (
+            list(spot_hydroxides) if spot_hydroxides is not None else []
+        )
+        self.logger.debug(f"  {spot_hydroxides=}")
         self.engine.cache.clear()
 
     @property
@@ -1122,6 +1214,8 @@ class GenIce3:
             "target_pol": self.target_pol,
             "spot_anions": self.spot_anions,
             "spot_cations": self.spot_cations,
+            "spot_hydroniums": self.spot_hydroniums,
+            "spot_hydroxides": self.spot_hydroxides,
         }
 
     def __getattr__(self, name: str):
@@ -1165,7 +1259,10 @@ class GenIce3:
         """
         mols = {}
         for site in range(len(self.lattice_sites)):
-            if "water" == self.site_occupants[site]:
+            occ = self.site_occupants[site]
+            # hydroniumやhydroxideはwater-likeではない。
+            is_water_like = occ == "water"
+            if is_water_like:
                 rel_position = self.lattice_sites[site]
                 orientation = self.orientations[site]
 
@@ -1301,14 +1398,73 @@ class GenIce3:
                         effective.setdefault(node, {}).setdefault(cage_index, group)
         return effective
 
+    def build_hydronium(self, site_index: int) -> Molecule:
+        """H3O+ を構築する。"""
+        sites = []
+        labels = ["Cn", "Hn", "Hn", "Hn"]
+        OH = 0.1
+        sites.append(np.zeros(3))
+        neighbors = list(self.digraph.successors(site_index))
+        if len(neighbors) != 3:
+            raise ValueError("H3O+ must have 3 neighbors.")
+        for neighbor in neighbors:
+            direction = self.lattice_sites[neighbor] - self.lattice_sites[site_index]
+            direction -= np.floor(direction + 0.5)
+            direction = direction @ self.cell
+            direction *= OH / np.linalg.norm(direction)
+            sites.append(direction)
+        return Molecule(
+            name="H3O",
+            sites=np.array(sites) + self.lattice_sites[site_index] @ self.cell,
+            labels=labels,
+            is_water=False,
+        )
+
+    def build_hydroxide(self, site_index: int) -> Molecule:
+        """OH- を構築する。"""
+        sites = []
+        labels = ["Nx", "Hx"]
+        OH = 0.1
+        sites.append(np.zeros(3))
+        neighbors = list(self.digraph.successors(site_index))
+        if len(neighbors) != 1:
+            raise ValueError(f"OH- must have 1 neighbor. {site_index=} {neighbors=}")
+        direction = self.lattice_sites[neighbors[0]] - self.lattice_sites[site_index]
+        direction -= np.floor(direction + 0.5)
+        direction = direction @ self.cell
+        direction *= OH / np.linalg.norm(direction)
+        sites.append(direction)
+        return Molecule(
+            name="OH",
+            sites=np.array(sites) + self.lattice_sites[site_index] @ self.cell,
+            labels=labels,
+            is_water=False,
+        )
+
     def substitutional_ions(self) -> Dict[int, Molecule]:
         """単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。"""
         # 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う
-        effective_groups = self._effective_spot_cation_groups()
+
+        # 前提条件: anions, cations, hydroniums, hydroxidesのサイトに重複がないこと。
+        # そうでない場合は、エラーを返す。
+        if len(set(self.spot_hydroniums) & set(self.spot_hydroxides)) > 0:
+            raise ValueError("hydroniums and hydroxides must not have the same site.")
+        if len(set(self.anions) & set(self.cations)) > 0:
+            raise ValueError("anions and cations must not have the same site.")
+        if len(set(self.spot_hydroniums) & set(self.cations)) > 0:
+            raise ValueError("hydroniums and cations must not have the same site.")
+        if len(set(self.spot_hydroxides) & set(self.cations)) > 0:
+            raise ValueError("hydroxides and cations must not have the same site.")
+
         ions: Dict[int, Molecule] = {}
+        for site_index in self.spot_hydroniums:
+            ions[site_index] = self.build_hydronium(site_index)
+        for site_index in self.spot_hydroxides:
+            ions[site_index] = self.build_hydroxide(site_index)
         # ならべかえはここではしない。formatterにまかせる。
         for site_index, molecule in self.anions.items():
             ions[site_index] = self.build_molecular_ion(site_index, molecule)
+        effective_groups = self._effective_spot_cation_groups()
         for site_index, molecule in self.cations.items():
             # cationには腕がつく可能性がある。
             groups = effective_groups.get(site_index, {})

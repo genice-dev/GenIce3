@@ -101,6 +101,14 @@ Options:
                            seed will produce reproducible results.
   -e, --exporter TEXT      Exporter plugin name (e.g., 'gromacs' or
                            'gromacs[options]').
+  -g, --guest TEXT         Specify guest molecules for each cage type.
+                           Format: CAGE_LABEL=GUEST_SPEC, e.g. A12=me,
+                           A12=me+et*0.5. Multiple cage types can be
+                           specified with multiple -g options.
+  -G, --spot_guest TEXT    Specify guest molecule at a specific cage
+                           index. Format: CAGE_INDEX=MOLECULE_NAME, e.g.
+                           0=me, 5=4site. Multiple spot guests can be
+                           specified with multiple -G options.
   -a, --spot_anion TEXT    Specify anion replacing the specified water
                            molecule. Format: WATER_INDEX=ION_NAME, where
                            WATER_INDEX is the index of the water
@@ -293,6 +301,7 @@ It is often easier if the semiclathrate lattice is defined with molecular ions a
 | `g`, `gromacs` | [Gromacs](http://www.gromacs.org) | .gro | Atomic positions | Atomic positions | none | Default format. |
 | `lammps`, `lmp` | [LAMMPS](https://www.lammps.org/) | .lammps | Atomic positions | Atomic positions | none | Yet to be verified. |
 | `plotly` | [Plotly](https://plotly.com/python/) | .html | Atomic positions | Atomic positions | o | Interactive 3D visualization. |
+| `py`, `python` | Python unitcell plugin | .py | none | none | graph | Outputs a unitcell plugin where the supercell becomes the new unit cell. |
 | `y`, `yaplot` | [Yaplot](https://github.com/vitroid/Yaplot) | .yap | Atomic positions | Atomic positions | o | It renders molecular configurations and the HB network. |
 
 Installing the [`genice2-mdanalysis`](https://github.com/genice-dev/genice-mdanalysis) package adds support for many formats used by molecular dynamics software. Use the `-e` (exporter) option. For example:
