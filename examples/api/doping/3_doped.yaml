@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 3_doped.yaml
 # Generated from 3_doped.sh
 
 unitcell: A15

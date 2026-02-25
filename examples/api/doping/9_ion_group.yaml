@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 9_ion_group.yaml
 # Generated from 9_ion_group.sh
 
 unitcell: A15

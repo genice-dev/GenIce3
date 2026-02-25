@@ -53,6 +53,7 @@ This directory contains examples for **extending or transforming the unit cell**
 === "10_extend_unitcell.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 10_extend_unitcell.yaml
     # Generated from 10_extend_unitcell.sh
     
     unitcell: A15

@@ -1,31 +1,35 @@
 PIPNAME=genice3
 GITNAME=GenIce
+# Use Poetry venv Python (genice3 の依存が入ったインタープリタ)
+PYTHON ?= /Users/matto/Library/Caches/pypoetry/virtualenvs/genice3-Xscl5EVV-py3.11/bin/python
 
 all: README.md
 	echo Hello.
 
-# docs/references.md is generated from citations.json by "make docs" (replacer --docs)
-README.md: temp_README.md Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.json pyproject.toml
-	python3 -m Utilities.replacer < temp_README.md > README.md
+# docs/references.md is generated from citations.yaml by "make docs" (replacer --docs)
+README.md: temp_README.md Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
+	$(PYTHON) -m Utilities.replacer < temp_README.md > README.md
 
 # Generate docs/*.md from temp_docs/*.md (same Jinja2 context as README).
+# Then embed examples/api (py/sh/yaml) into docs/api-examples/*.md.
 # Depends on unitcell/molecule plugins so that ref/desc changes are reflected.
-docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/ice-structures.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.json pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
-	python3 -m Utilities.replacer --docs
+docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/ice-structures.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
+	$(PYTHON) -m Utilities.replacer --docs
+	$(PYTHON) scripts/build_api_docs.py
 
-%: temp_% Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.json pyproject.toml
-	python3 -m Utilities.replacer < $< > $@
+%: temp_% Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
+	$(PYTHON) -m Utilities.replacer < $< > $@
 
 
 update-citations:
-	cp citations.json old.citations.json
-	python3 Utilities/citation.py < old.citations.json > citations.json
-	-diff old.citations.json citations.json
+	cp citations.yaml old.citations.yaml
+	$(PYTHON) Utilities/citation.py < old.citations.yaml > citations.yaml
+	-diff old.citations.yaml citations.yaml
 
 unitcell-test: $(patsubst genice3/unitcell/%.py, %.unitcell-test, $(wildcard genice3/unitcell/[0-9A-Za-z]*.py))
 
 %.unitcell-test:
-	python3 -m genice3.unitcell._test.lattice_vs_unitcell $*
+	$(PYTHON) -m genice3.unitcell._test.lattice_vs_unitcell $*
 	touch $@
 
 
@@ -33,22 +37,33 @@ unitcell-test: $(patsubst genice3/unitcell/%.py, %.unitcell-test, $(wildcard gen
 prepare:
 	@echo "No preparation needed for genice3"
 
+# docs/ や mkdocs.yml の変更で自動リビルド・ブラウザリロード（watchdog 入りで監視が安定）
+serve:
+	mkdocs serve
+
+# mkdocs serve 起動中に、キー一発でブラウザをリロードしたいとき用。
+# docs/ 内を touch すると livereload が検知してブラウザが更新される。
+# 自動監視が効かない環境（Dropbox等）では、編集後に make docs && make reload または
+# Cursor のキーバインドで「make reload」を実行するとよい。
+reload:
+	@touch docs/index.md && echo "Touched docs/index.md — livereload should refresh the browser."
 
 test:
 	make -C tests all
 
+# Test PyPI へアップロード（事前に poetry config repositories.testpypi https://test.pypi.org/legacy/ を実行）
 test-deploy: clean prepare build
-	python3 -m twine upload --repository testpypi dist/*
+	poetry publish -r testpypi
 test-install:
 	pip3 install --index-url https://test.pypi.org/simple/ $(PIPNAME)
 uninstall:
 	-pip3 uninstall -y $(PIPNAME)
 build: README.md $(wildcard genice3/*.py)
-	python3 -m build --wheel
+	poetry build
 deploy: clean prepare build
-	python3 -m twine upload dist/*
+	poetry publish
 check:
-	python3 -m build --check
+	poetry build
 
 
 clone-myself-from-github:

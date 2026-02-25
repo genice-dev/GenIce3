@@ -46,6 +46,7 @@ This directory contains examples for **reading from and writing to CIF files**.
 === "4_from_cif.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 4_from_cif.yaml
     # Generated from 4_from_cif.sh
     
     unitcell: CIF
@@ -86,6 +87,7 @@ This directory contains examples for **reading from and writing to CIF files**.
 === "5_to_cif.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 5_to_cif.yaml
     # Generated from 5_to_cif.sh
     
     unitcell: A15

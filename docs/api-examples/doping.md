@@ -1,7 +1,9 @@
 This directory contains examples for **ionic substitution and group (cation group) doping**.
 
+CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット置換は **-A / --spot_anion**, **-C / --spot_cation**。
+
 - `3_doped.py`  
-  - Basic usage of anion/cation substitutional doping.
+  - Basic usage of anion/cation substitutional doping (unitcell + spot).
 
 - `9_ion_group.py`  
   - Attach *groups* to cations inside a unit cell.
@@ -65,6 +67,7 @@ This directory contains examples for **ionic substitution and group (cation grou
 === "11_ion_group_unitcell.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 11_ion_group_unitcell.yaml
     # Generated from 11_ion_group_unitcell.sh
     
     unitcell: A15
@@ -103,7 +106,7 @@ This directory contains examples for **ionic substitution and group (cation grou
     #   --rep 2 2 2 \
     #   --spot_anion 1=Cl --spot_anion 35=Br \
     #   --spot_cation 1=Na --spot_cation 35=K \
-    #   --exporter "gromacs[water_model=4site]" \
+    #   --exporter gromacs :water_model 4site \
     #   --seed 42 --depol_loop 2000 -D
     
     basicConfig(level=INFO)
@@ -112,8 +115,8 @@ This directory contains examples for **ionic substitution and group (cation grou
     # seed: 乱数シード
     # depol_loop: 分極ループの反復回数
     # replication_matrix: 複製行列（2x2x2の対角行列）
-    # spot_anions: 特定の水分子をアニオンで置換（インデックス: イオン名の文字列）
-    # spot_cations: 特定の水分子をカチオンで置換（インデックス: イオン名の文字列）
+    # spot_anions: 特定の水分子をアニオンで置換（水分子インデックス: イオン名）。CLI は -A / --spot_anion
+    # spot_cations: 特定の水分子をカチオンで置換（水分子インデックス: イオン名）。CLI は -C / --spot_cation
     # 注意: debugはGenIce3のコンストラクタでは受け付けられない（ログレベルの設定はbasicConfigで行う）
     genice = GenIce3(
         seed=42,
@@ -129,8 +132,8 @@ This directory contains examples for **ionic substitution and group (cation grou
     
     # 単位セルを設定
     # shift: シフト（分数座標）
-    # anions: アニオンで置換する水分子（インデックス: イオン名）
-    # cations: カチオンで置換する水分子（インデックス: イオン名）
+    # anion: 単位胞内の格子サイトをアニオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion
+    # cation: 単位胞内の格子サイトをカチオンで置換（サイトインデックス: イオン名）。CLI は -c / --cation
     # density: 密度（g/cm³）
     # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
     genice.unitcell = UnitCell(
@@ -171,6 +174,7 @@ This directory contains examples for **ionic substitution and group (cation grou
 === "3_doped.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 3_doped.yaml
     # Generated from 3_doped.sh
     
     unitcell: A15
@@ -212,7 +216,7 @@ This directory contains examples for **ionic substitution and group (cation grou
     #   --rep 2 2 2 \
     #   --spot_anion 1=Cl --spot_anion 35=Br \
     #   --spot_cation 1=Na --spot_cation 35=K \
-    #   --exporter "gromacs[water_model=4site]" \
+    #   --exporter gromacs :water_model 4site \
     #   --seed 42 --depol_loop 2000 -D
     
     basicConfig(level=INFO)
@@ -221,7 +225,7 @@ This directory contains examples for **ionic substitution and group (cation grou
     # seed: 乱数シード
     # depol_loop: 分極ループの反復回数
     # replication_matrix: 複製行列（2x2x2の対角行列）
-    # spot_anions / spot_cations: サイト -> イオン名の文字列。
+    # spot_anions / spot_cations: 水分子インデックス -> イオン名。CLI は -A / --spot_anion, -C / --spot_cation
     # spot_cation_groups: group サブオプション（サイト -> {ケージID -> group名}）。
     # YAML/CLI のネスト形式で使う "ion" キーは Python API では不要（別引数で渡す）。
     genice = GenIce3(
@@ -236,9 +240,7 @@ This directory contains examples for **ionic substitution and group (cation grou
     )
     
     # 単位セルを設定
-    # shift: シフト（分数座標）
-    # anions: アニオンで置換する水分子（インデックス: イオン名）
-    # cations: カチオンで置換する水分子（インデックス: イオン名）
+    # anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
     # density: 密度（g/cm³）
     # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
     genice.unitcell = UnitCell(
@@ -274,6 +276,7 @@ This directory contains examples for **ionic substitution and group (cation grou
 === "9_ion_group.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 9_ion_group.yaml
     # Generated from 9_ion_group.sh
     
     unitcell: A15

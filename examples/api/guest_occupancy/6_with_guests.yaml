@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 6_with_guests.yaml
 # Generated from 6_with_guests.sh
 
 unitcell: A15

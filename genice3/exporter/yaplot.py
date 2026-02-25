@@ -17,7 +17,7 @@ desc = {
     "ref": {"Codes": "https://github.com/vitroid/Yaplot"},
     "brief": "Yaplot.",
     "usage": """
-Usage: genice3 icename -f yaplot[options]
+Usage: genice3 UNITCELL --exporter yaplot [:option value ...]
 
 options:
     H=x   Set the radius of H to be x.
@@ -32,6 +32,7 @@ format_desc = {
     "solute": "Atomic positions",
     "hb": "o",
     "remarks": "It renders molecular configurations and the HB network.",
+    "suboptions": "H: radius of H atom (numeric).",
 }
 
 

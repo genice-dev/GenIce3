@@ -14,8 +14,12 @@ theme:
       primary: indigo
       accent: indigo
 
+extra_css:
+  - stylesheets/extra.css
+
 markdown_extensions:
   - admonition
+  - md_in_html
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
@@ -52,4 +56,3 @@ nav:
   - References: references.md
   - Contribute: contribute.md
   - License: license.md
-  - README check (dev): README-check.md

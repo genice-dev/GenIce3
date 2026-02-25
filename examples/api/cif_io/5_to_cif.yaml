@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 5_to_cif.yaml
 # Generated from 5_to_cif.sh
 
 unitcell: A15

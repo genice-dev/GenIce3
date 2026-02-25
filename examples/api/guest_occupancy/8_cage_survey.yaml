@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 8_cage_survey.yaml
 # Generated from 8_cage_survey.sh
 
 unitcell: DOH

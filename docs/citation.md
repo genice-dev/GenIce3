@@ -30,4 +30,4 @@ The algorithms for generating depolarized, hydrogen-disordered ice are described
 }
 ```
 
-For the full reference list (with DOI links), see [References](references.md) in this manual (generated from `citations.json`).
+For the full reference list (with DOI links), see [References](references.md) in this manual (generated from `citations.yaml`).

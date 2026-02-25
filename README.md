@@ -6,15 +6,15 @@ A Swiss army knife to generate hydrogen-disordered ice structures.
 
 **Quick start:** Use the unit cell name as the first argument (e.g. `1h` for Ice Ih, `4` for Ice IV): `genice3 1h > ice.gro`
 
-Version 3.0a3
+Version 3.0b0
 
 For **usage**, **ice structures**, **output formats**, **water models**, **guest molecules**, and the full manual, see the [documentation](https://genice-dev.github.io/GenIce3).
 
 ## New in GenIce3
 
-- **Command line**: Option syntax unified; options can be read from config files.
-- **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
-- **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
+-   **Command line**: Option syntax unified; options can be read from config files.
+-   **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
+-   **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
 
 ## Demo
 
@@ -23,15 +23,16 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 ## Requirements
 
 - networkx >=2.0.dev20160901144005
-- python >=3.11,<3.14
-- numpy ^2.0
-- pairlist >=0.6
-- cycless >=0.4.2
+- numpy >=2.0
+- pairlist >=0.6.4
+- cycless >=0.7
 - graphstat >=0.3.3
 - yaplotlib >=0.1.2
 - openpyscad >=0.5.0
-- genice-core >=1.1
-- pyyaml ^6.0
+- genice-core >=1.3.1
+- pyyaml >=6.0
+- jinja2 >=3.1.4
+- cif2ice (>=0.4.1,<0.5.0)
 
 
 ## Installation
@@ -50,7 +51,7 @@ pip uninstall genice3
 
 ## References
 
-See [references.md](references.md) for the full reference list.
+See the [manual → References](https://genice-dev.github.io/GenIce3/references/) for the full reference list (generated from `citations.yaml`).
 
 ## Citation
 

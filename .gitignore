@@ -71,7 +71,7 @@ genice2/lattices/engel/diverse_ice_structures
 
 .ipynb_checkpoints/
 
-old.citations.json
+old.citations.yaml
 .vscode/configurationCache.log
 .vscode/dryrun.log
 .vscode/settings.json
@@ -82,3 +82,4 @@ ToDo.md
 *.unitcell-test
 GenIce2.code-workspace
 1hx888.xyz
+old.citations.json

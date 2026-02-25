@@ -1,10 +1,12 @@
 # Ice structures
 
+<div class="ice-structures-symbol-table" markdown="1">
 {{ ices }}
+</div>
 
 Names in quotation marks have not been experimentally verified.
 
-You can add custom ice structures by placing unit-cell plugins in a `unitcell` directory. [cif2ice](https://github.com/vitroid/cif2ice) can fetch CIF files from the [IZA structure database](http://www.iza-structure.org/databases) and help you create a lattice module.
+You can add custom ice structures by placing unit-cell plugins in a `unitcell` directory. [cif2ice](https://github.com/vitroid/cif2ice) can fetch CIF files from the [IZA structure database](http://www.iza-structure.org/databases) and help you create a unitcell module.
 
 Note: Different naming conventions are used in the literature.
 
@@ -21,7 +23,7 @@ Note: Different naming conventions are used in the literature.
 | C1    | -   | 2   | \*    | -   |               |
 | C2    | -   | 1c  | \*    | -   |               |
 
-FI: Filled ices; CH: Clathrate hydrates; FK:Frank-Kasper duals; Zeo: Zeolites; Foam: foam crystals (Weaire 1994).
+FI: Filled ices; CH: Clathrate hydrates; FK:Frank-Kasper duals; Zeo: Zeolites; Foam: foam crystals [[Weaire 1994](references.md#weaire-1994)].
 
 -: No correspondence; \*: Non-FK types.
 

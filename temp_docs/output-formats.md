@@ -2,8 +2,7 @@
 
 {{ exporter }}
 
-!!! info "MDAnalysis-based exporters"
-    A GenIce3-compatible exporter for [MDAnalysis](https://www.mdanalysis.org/) and the many formats it supports is **not yet implemented**. The GenIce2 package [`genice2-mdanalysis`](https://github.com/genice-dev/genice-mdanalysis) targets GenIce2; see [Plugins](plugins.md) for prepared/planned plugins.
+A GenIce3-compatible plugin **[genice3-mdanalysis](https://github.com/genice-dev/genice3-mdanalysis)** is available; it provides an exporter for [MDAnalysis](https://www.mdanalysis.org/) and the many formats it supports. See [`genice3-mdanalysis`](https://github.com/genice-dev/genice3-mdanalysis). [Plugins](plugins.md) lists other prepared/planned plugins.
 
 You can add custom output formats by placing exporter plugins in an `exporter` directory under the current working directory.
 

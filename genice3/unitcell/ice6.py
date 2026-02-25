@@ -68,7 +68,7 @@ class UnitCell(genice3.unitcell.UnitCell):
 
         # bondlen = 3.0
 
-        density = 1.373
+        density = kwargs.pop("density", 1.373)
 
         cell = cellvectors(a=6.181, b=6.181, c=5.698)
 

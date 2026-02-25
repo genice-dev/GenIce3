@@ -13,7 +13,11 @@ from genice3.cli.option_parser import (
     scalarize_single_item_lists,
     structure_for_display,
 )
-from genice3.cli.options import base_options_from_new_structure
+from genice3.cli.options import (
+    base_options_from_new_structure,
+    get_common_unitcell_option_names,
+    get_short_to_long_option_names,
+)
 from genice3.plugin import safe_import
 
 try:
@@ -104,7 +108,7 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
     i = 0
     while i < len(args):
-        if args[i] in ("--config", "-C"):
+        if args[i] in ("--config", "-Y"):
             i += 1
             if i < len(args):
                 config = load_config_file(args[i])
@@ -116,7 +120,7 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
     line_parts = []
     i = 0
     while i < len(argv):
-        if argv[i] in ("--config", "-C"):
+        if argv[i] in ("--config", "-Y"):
             i += 2
             continue
         line_parts.append(argv[i])
@@ -139,6 +143,10 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
             parsed = parse_options(line)
         except ValueError as e:
             raise RuntimeError(f"オプションのパースに失敗しました: {e}") from e
+        # 短いオプション名 (-e → exporter 等) を long 名に正規化
+        for short, long_name in get_short_to_long_option_names().items():
+            if short in parsed:
+                parsed.setdefault(long_name, parsed.pop(short))
         display = structure_for_display(parsed)
         merged = _merge_config_cmdline(config, display)
 
@@ -164,22 +172,48 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
     # unitcell プラグインの parse_options（新構造を受け取る）
     # モジュール級 parse_options を優先（CIF の file/osite 等はこちらで処理）
     unitcell_processed: Dict[str, Any] = {}
+    unitcell_unprocessed: Dict[str, Any] = {}
     try:
         uc_module = safe_import("unitcell", unitcell_name)
         if hasattr(uc_module, "parse_options"):
-            unitcell_processed, _ = uc_module.parse_options(unitcell_options)
-        elif hasattr(uc_module, "UnitCell") and hasattr(uc_module.UnitCell, "parse_options"):
-            unitcell_processed, _ = uc_module.UnitCell.parse_options(unitcell_options)
+            unitcell_processed, unitcell_unprocessed = uc_module.parse_options(
+                unitcell_options
+            )
+        elif hasattr(uc_module, "UnitCell") and hasattr(
+            uc_module.UnitCell, "parse_options"
+        ):
+            unitcell_processed, unitcell_unprocessed = uc_module.UnitCell.parse_options(
+                unitcell_options
+            )
+        else:
+            # parse_options がない unitcell: 共通オプションのみ消費、残りは unprocessed（警告対象）
+            common = get_common_unitcell_option_names()
+            unitcell_processed = {
+                k: v for k, v in unitcell_options.items() if k in common
+            }
+            unitcell_unprocessed = {
+                k: v for k, v in unitcell_options.items() if k not in common
+            }
     except Exception:
-        pass
+        # 読み込み失敗時も同様に共通のみ消費、残りは unprocessed
+        common = get_common_unitcell_option_names()
+        unitcell_processed = {
+            k: v for k, v in unitcell_options.items() if k in common
+        }
+        unitcell_unprocessed = {
+            k: v for k, v in unitcell_options.items() if k not in common
+        }
 
     # exporter
     exporter_name, exporter_subopts = _get_exporter_name_and_options(merged)
     exporter_processed: Dict[str, Any] = {}
+    exporter_unprocessed: Dict[str, Any] = {}
     try:
         ex_module = safe_import("exporter", exporter_name)
         if hasattr(ex_module, "parse_options"):
-            exporter_processed, _ = ex_module.parse_options(exporter_subopts)
+            exporter_processed, exporter_unprocessed = ex_module.parse_options(
+                exporter_subopts
+            )
     except Exception:
         pass
 
@@ -189,11 +223,13 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
             "name": unitcell_name,
             "options": unitcell_options,
             "processed": unitcell_processed,
+            "unprocessed": unitcell_unprocessed,
         },
         "exporter": {
             "name": exporter_name,
             "options": exporter_subopts,
             "processed": exporter_processed,
+            "unprocessed": exporter_unprocessed,
         },
         "plugin_chain": [],
     }

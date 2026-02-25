@@ -2,11 +2,11 @@
 
 <span id="abascal-2005"></span>
 
-- **[Abascal 2005](https://doi.org/10.1063/1.1931662)**: 
+- **[Abascal 2005](https://doi.org/10.1063/1.1931662)**: ABASCAL, J. L. F., SANZ, E., GARCÍA FERNÁNDEZ, R. and VEGA, C., 2005. A potential model for the study of ices and amorphous water: TIP4P/Ice. The Journal of Chemical Physics. Online. 15 June 2005. Vol. 122, no. 23. DOI 10.1063/1.1931662.
 
 <span id="avogadro"></span>
 
-- **[Avogadro]**: Avogadro https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif
+- **[Avogadro](https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif)**: Avogadro https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif
 
 <span id="baez-1998"></span>
 
@@ -14,7 +14,7 @@
 
 <span id="berendsen-1987"></span>
 
-- **[Berendsen 1987]**: H. J. C. Berendsen, J. R. Grigera, and T. P. Straatsma, J. Phys. Chem. 91, 6269 1987.
+- **[Berendsen 1987](https://doi.org/10.1021/j100308a038)**: H. J. C. Berendsen, J. R. Grigera, and T. P. Straatsma, J. Phys. Chem. 91, 6269 1987.
 
 <span id="cockayne-1995"></span>
 
@@ -62,31 +62,31 @@
 
 <span id="iza-database"></span>
 
-- **[IZA Database]**: http://www.iza-structure.org/databases/
+- **[IZA Database](http://www.iza-structure.org/databases/)**: http://www.iza-structure.org/databases/
 
 <span id="jackson-1997"></span>
 
-- **[Jackson 1997]**: Jackson, S. M., V. M. Nield, R. W. Whitworth, M. Oguro, and C. C. Wilson, 1997, ‘‘Single-crystal neutron diffraction studies of the structure of ice XI,’’ J. Phys. Chem. B 101, 6142.
+- **[Jackson 1997](https://doi.org/10.1021/jp9632551)**: Jackson, S. M., V. M. Nield, R. W. Whitworth, M. Oguro, and C. C. Wilson, 1997, ‘‘Single-crystal neutron diffraction studies of the structure of ice XI,’’ J. Phys. Chem. B 101, 6142.
 
 <span id="jeffrey-1984"></span>
 
-- **[Jeffrey 1984]**: G. A. Jeffrey, In Inclusion Compounds; J. L. Atwood, J. E. D. Davies, D. D. MacNicol, Eds.; Academic Press: London, 1984, Vol. 1, Chap. 5.
+- **[Jeffrey 1984](https://books.google.com/books?id=akFL0AEACAAJ)**: G. A. Jeffrey, In Inclusion Compounds; J. L. Atwood, J. E. D. Davies, D. D. MacNicol, Eds.; Academic Press: London, 1984, Vol. 1, Chap. 5.
 
 <span id="jorgensen-1983"></span>
 
-- **[Jorgensen 1983]**: W. L. Jorgensen, J. Chandrasekhar, J. D. Madura, R. W. Impey, and M. L. Klein, Comparison of simple potential functions for simulating liquid water, J. Chem. Phys. 79 (1983) 926-935.
+- **[Jorgensen 1983](https://doi.org/10.1063/1.445869)**: W. L. Jorgensen, J. Chandrasekhar, J. D. Madura, R. W. Impey, and M. L. Klein, Comparison of simple potential functions for simulating liquid water, J. Chem. Phys. 79 (1983) 926-935.
 
 <span id="jorgensen-1985"></span>
 
-- **[Jorgensen 1985]**: W. L. Jorgensen and J. D. Madura, Temperature and size dependence for monte carlo simulations of TIP4P water, Mol. Phys. 56 (1985) 1381-1392.
+- **[Jorgensen 1985](https://doi.org/10.1080/00268978500103111)**: W. L. Jorgensen and J. D. Madura, Temperature and size dependence for monte carlo simulations of TIP4P water, Mol. Phys. 56 (1985) 1381-1392.
 
 <span id="kamb-1964"></span>
 
-- **[Kamb 1964]**: Kamb, B.IUCr. Ice. II. A proton-ordered form of ice. Acta Cryst 17, 1437–1449 (1964).
+- **[Kamb 1964](https://doi.org/10.1107/S0365110X64003553)**: Kamb, B.IUCr. Ice. II. A proton-ordered form of ice. Acta Cryst 17, 1437–1449 (1964).
 
 <span id="kamb-2003"></span>
 
-- **[Kamb 2003]**: Kamb, B., Hamilton, W. C., LaPlaca, S. J. & Prakash, A. Ordered Proton Configuration in Ice II, from Single‐Crystal Neutron Diffraction. J. Chem. Phys. 55, 1934–1945 (2003).
+- **[Kamb 2003](https://doi.org/10.1063/1.1676331)**: Kamb, B., Hamilton, W. C., LaPlaca, S. J. & Prakash, A. Ordered Proton Configuration in Ice II, from Single‐Crystal Neutron Diffraction. J. Chem. Phys. 55, 1934–1945 (2003).
 
 <span id="karttunen-2011"></span>
 
@@ -138,7 +138,7 @@
 
 <span id="matsui-2017"></span>
 
-- **[Matsui 2017](https://doi.org//10.1063/1.4994757)**: MATSUI, Takahiro, HIRATA, Masanori, YAGASAKI, Takuma, MATSUMOTO, Masakazu and TANAKA, Hideki, 2017, Communication: Hypothetical ultralow-density ice polymorphs. The Journal of Chemical Physics [online]. 7 September 2017. Vol. 147, no. 9, p. 091101. DOI 10.1063/1.4994757. Available from: http://dx.doi.org/10.1063/1.4994757
+- **[Matsui 2017](https://doi.org/10.1063/1.4994757)**: MATSUI, Takahiro, HIRATA, Masanori, YAGASAKI, Takuma, MATSUMOTO, Masakazu and TANAKA, Hideki, 2017, Communication: Hypothetical ultralow-density ice polymorphs. The Journal of Chemical Physics [online]. 7 September 2017. Vol. 147, no. 9, p. 091101. DOI 10.1063/1.4994757. Available from: http://dx.doi.org/10.1063/1.4994757
 
 <span id="matsui-2019"></span>
 
@@ -178,7 +178,7 @@
 
 <span id="petrenko-1999"></span>
 
-- **[Petrenko 1999]**: Petrenko and Whitworth, Physics of Ice, Table 11.2.
+- **[Petrenko 1999](https://books.google.com/books?id=oC941a8lXWIC)**: Petrenko and Whitworth, Physics of Ice, Table 11.2.
 
 <span id="rosso-2016"></span>
 
@@ -202,11 +202,11 @@
 
 <span id="stampfli-1986"></span>
 
-- **[Stampfli 1986]**: Stampfli, P. A dodecagonal quasi-periodic lattice in 2 dimensions. Helv. Phys. Acta 59, 1260–1263 (1986).
+- **[Stampfli 1986](https://link.springer.com/journal/14230/59/2)**: Stampfli, P. A dodecagonal quasi-periodic lattice in 2 dimensions. Helv. Phys. Acta 59, 1260–1263 (1986).
 
 <span id="strobel-2016"></span>
 
-- **[Strobel 2016]**: Strobel, Timothy A et al. “Hydrogen-Stuffed, Quartz-Like Water Ice.” Journal of the American Chemical Society 138.42 (2016): 13786–13789.
+- **[Strobel 2016](https://doi.org/10.1021/jacs.6b06986)**: Strobel, Timothy A et al. “Hydrogen-Stuffed, Quartz-Like Water Ice.” Journal of the American Chemical Society 138.42 (2016): 13786–13789.
 
 <span id="svishchev-1996"></span>
 
@@ -230,4 +230,4 @@
 
 <span id="zhao-2019"></span>
 
-- **[Zhao 2019]**: Zhao, C.-L. et al. Seven-Site Effective Pair Potential for Simulating Liquid Water. J. Phys. Chem. B 123, 4594-4603 (2019).
+- **[Zhao 2019](https://doi.org/10.1021/acs.jpcb.9b03149)**: Zhao, C.-L. et al. Seven-Site Effective Pair Potential for Simulating Liquid Water. J. Phys. Chem. B 123, 4594-4603 (2019).

@@ -11,8 +11,8 @@ if _repo_root not in sys.path:
 # import distutils.core
 from logging import getLogger, INFO, basicConfig
 from jinja2 import Environment, FileSystemLoader
-import json
 import re
+import yaml
 import genice3
 from genice3.plugin import plugin_descriptors, get_exporter_format_rows, scan
 import toml
@@ -29,7 +29,7 @@ def citation_slug(key: str) -> str:
 def make_citations(r, link_base=None, citation_keys=None):
     """Format citation keys as a bracketed list.
 
-    - If link_base and key is in citation_keys (i.e. defined in citations.json),
+    - If link_base and key is in citation_keys (i.e. defined in citations.yaml),
       link to the References page anchor: references.md#slug.
     - If key looks like a URL (starts with http:// or https://), link directly to it.
     - Otherwise, render as plain text (no link).
@@ -57,7 +57,7 @@ def system_ices(markdown=True, citations=None, link_refs=True):
     documented, undocumented, refss = desc["system"]
     link_base = "references.md" if link_refs else None
 
-    header = "| Symbol | Description |\n| ------ | ----------- |\n"
+    header = "| Symbol | Description | References |\n| ------ | ----------- | ---------- |\n"
     s = ""
     for description, ices in documented.items():
         citation = make_citations(
@@ -65,8 +65,8 @@ def system_ices(markdown=True, citations=None, link_refs=True):
             link_base=link_base,
             citation_keys=citations,
         )
-        s += "| " + ", ".join(ices) + " | " + description + citation + " |\n"
-    s += "| " + ", ".join(undocumented) + " | (Undocumented) |\n"
+        s += "| " + ", ".join(ices) + " | " + description + " | " + citation.strip() + " |\n"
+    s += "| " + ", ".join(undocumented) + " | (Undocumented) | |\n"
     return header + s
 
 
@@ -75,7 +75,7 @@ def system_molecules(markdown=True, water=False, citations=None, link_refs=True)
     documented, undocumented, refss = desc["system"]
     link_base = "references.md" if link_refs else None
 
-    header = "| symbol | type |\n| ------ | ---- |\n"
+    header = "| symbol | type | References |\n| ------ | ---- | ---------- |\n"
     s = ""
     for description, ices in documented.items():
         citation = make_citations(
@@ -83,8 +83,8 @@ def system_molecules(markdown=True, water=False, citations=None, link_refs=True)
             link_base=link_base,
             citation_keys=citations,
         )
-        s += "| " + ", ".join(ices) + " | " + description + citation + " |\n"
-    s += "| " + ", ".join(undocumented) + " | (Undocumented) |\n"
+        s += "| " + ", ".join(ices) + " | " + description + " | " + citation.strip() + " |\n"
+    s += "| " + ", ".join(undocumented) + " | (Undocumented) | |\n"
     return header + s
 
 
@@ -98,7 +98,7 @@ def _plugin_file_path(category: str, group: str, mod: str) -> str:
 
 
 def collect_missing_citation_refs(citation_keys):
-    """Collect refs used in plugins that are not in citations.json and not URLs.
+    """Collect refs used in plugins that are not in citations.yaml and not URLs.
     Returns list of (file_path, ref) for each missing ref.
     """
     missing = []
@@ -125,20 +125,24 @@ basicConfig(level=INFO, format="%(levelname)s %(message)s")
 logger = getLogger()
 logger.debug("Debug mode.")
 
-with open("citations.json") as f:
-    citations = json.load(f)
+with open("citations.yaml", encoding="utf-8") as f:
+    citations = yaml.safe_load(f)
 
-citationlist = [f"[{key}] {desc}" for key, doi, desc in citations]
-citation_keys = {key for key, doi, desc in citations}
+# citations: dict of { key: { "description": str, optional "doi": str, optional "url": str } }
+citationlist = [f"[{key}] {c['description']}" for key, c in citations.items()]
+citation_keys = set(citations.keys())
 
 
-def format_reference_entry(key: str, doi: str, desc: str, anchor=True) -> str:
-    """One reference line: optional HTML anchor for in-doc links, key linked to DOI when available."""
+def format_reference_entry(key: str, doi: str, desc: str, url: str = "", anchor=True) -> str:
+    """One reference line: optional HTML anchor; key links to DOI, or to url when no DOI, or no link."""
     slug = citation_slug(key)
     anchor_html = f'<span id="{slug}"></span>\n\n' if anchor else ""
+    desc_stripped = desc.strip()
     if doi and doi.strip():
-        return anchor_html + f"- **[{key}](https://doi.org/{doi})**: {desc.strip()}"
-    return anchor_html + f"- **[{key}]**: {desc.strip()}"
+        return anchor_html + f"- **[{key}](https://doi.org/{doi})**: {desc_stripped}"
+    if url and url.strip():
+        return anchor_html + f"- **[{key}]({url})**: {desc_stripped}"
+    return anchor_html + f"- **[{key}]**: {desc_stripped}"
 
 
 def prefix(L, pre):
@@ -149,10 +153,10 @@ def format_table_markdown(rows):
     """Build markdown table from exporter format_desc rows."""
     if not rows:
         return ""
-    header = "| Name | Application | extension | water | solute | HB | remarks |"
-    sep = "| --- | --- | --- | --- | --- | --- | --- |"
+    header = "| Name | Application | extension | water | solute | HB | suboptions | remarks |"
+    sep = "| --- | --- | --- | --- | --- | --- | --- | --- |"
     line_rows = [
-        "| {name} | {application} | {extension} | {water} | {solute} | {hb} | {remarks} |".format(**r)
+        "| {name} | {application} | {extension} | {water} | {solute} | {hb} | {suboptions} | {remarks} |".format(**r)
         for r in rows
     ]
     return "\n".join([header, sep] + line_rows)
@@ -218,8 +222,11 @@ except Exception as e:
 
 exporter = format_table_markdown(get_exporter_format_rows())
 
-# Build references body from citations.json (written only to docs/references.md when --docs)
-_ref_lines = [format_reference_entry(key, doi, desc) for key, doi, desc in citations]
+# Build references body from citations.yaml (written only to docs/references.md when --docs)
+_ref_lines = [
+    format_reference_entry(key, c.get("doi", ""), c["description"], c.get("url", ""))
+    for key, c in citations.items()
+]
 references_md = "# References\n\n" + "\n\n".join(_ref_lines) + "\n"
 
 # Extra plugins from EXTRA.yaml (optional)
@@ -256,12 +263,12 @@ context = {
 env = Environment(loader=FileSystemLoader("."))
 
 if "--docs" in sys.argv:
-    # Ensure every ref used in plugins is in citations.json (or is a URL); abort if not
+    # Ensure every ref used in plugins is in citations.yaml (or is a URL); abort if not
     missing = collect_missing_citation_refs(citation_keys)
     if missing:
         for path, ref in missing:
-            logger.error("Missing citation: %s — in %s (add to citations.json or use a URL)", ref, path)
-        logger.error("make docs aborted: %d ref(s) missing from citations.json", len(missing))
+            logger.error("Missing citation: %s — in %s (add to citations.yaml or use a URL)", ref, path)
+        logger.error("make docs aborted: %d ref(s) missing from citations.yaml", len(missing))
         sys.exit(1)
 
     # Render temp_docs/*.md -> docs/*.md with same context as README

@@ -1,6 +1,6 @@
-import json
-import requests
 import sys
+import yaml
+import requests
 from logging import getLogger, basicConfig, INFO
 
 # citations = [
@@ -36,14 +36,18 @@ from logging import getLogger, basicConfig, INFO
 # ]
 
 
-citations = json.load(sys.stdin)
+citations = yaml.safe_load(sys.stdin)
 
-updated = []
+# citations: dict of { key: { "doi": str, "description": str, optional "url": str } }
+updated = {}
 basicConfig(level=INFO,
             format="%(levelname)s %(message)s")
 logger = getLogger()
 
-for key, doi, desc in citations:
+for key, entry in citations.items():
+    doi = entry.get("doi", "")
+    desc = entry.get("description", "")
+    url = entry.get("url", "")
     if len(doi) > 0 and len(desc) == 0:
         style = "iso690-author-date-en"
         headers = {"Accept": f"text/x-bibliography; style={style}"}
@@ -53,6 +57,18 @@ for key, doi, desc in citations:
         else:
             desc = ""
             logger.info(f"DOI {doi} for {key} not found.")
-    updated.append([key, doi, desc])
+    # Omit empty doi and url in output; keep as str so YAML round-trip does not turn DOI into number
+    item = {"description": desc}
+    if doi and str(doi).strip():
+        item["doi"] = str(doi).strip()
+    if url and str(url).strip():
+        item["url"] = str(url).strip()
+    updated[key] = item
 
-print(json.dumps(updated, indent=4))
+yaml.dump(
+    updated,
+    sys.stdout,
+    allow_unicode=True,
+    default_flow_style=False,
+    sort_keys=False,
+)

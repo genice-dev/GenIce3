@@ -374,8 +374,9 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
       solute: str
       hb: str (e.g. "none", "o", "auto")
       remarks: str
+      suboptions: str (optional; short description of :key value options, e.g. "water_model: 3site, 4site, 6site, tip4p")
 
-    Returns a list of dicts with keys name, application, extension, water, solute, hb, remarks.
+    Returns a list of dicts with keys name, application, extension, water, solute, hb, remarks, suboptions.
     """
     logger = getLogger()
     mods = scan(category)
@@ -416,6 +417,7 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
                         "solute": fd.get("solute", ""),
                         "hb": fd.get("hb", ""),
                         "remarks": fd.get("remarks", ""),
+                        "suboptions": fd.get("suboptions", ""),
                     }
                 )
                 seen.add(name)

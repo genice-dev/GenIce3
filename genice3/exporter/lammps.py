@@ -11,6 +11,7 @@ from genice3.molecule import Molecule
 from genice3.genice import GenIce3
 from genice3.exporter import parse_water_model_option
 format_desc = {
+    "suboptions": "water_model: 3site, 4site, 6site, tip4p, etc. (water model name).",
     "aliases": ["lammps", "lmp"],
     "application": "[LAMMPS](https://www.lammps.org/)",
     "extension": ".lammps",

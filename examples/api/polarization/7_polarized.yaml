@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 7_polarized.yaml
 # Generated from 7_polarized.sh
 
 unitcell: 1h

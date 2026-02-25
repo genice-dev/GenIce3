@@ -18,6 +18,7 @@ format_desc = {
     "solute": "Atomic positions",
     "hb": "none",
     "remarks": "Default format.",
+    "suboptions": "water_model: 3site, 4site, 6site, tip4p, etc. (water model name).",
 }
 
 

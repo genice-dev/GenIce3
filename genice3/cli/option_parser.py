@@ -14,12 +14,23 @@ from __future__ import annotations
 from typing import Any, Dict, List, Union
 
 
+def _looks_like_option(tok: str) -> bool:
+    """トークンがオプション（--long または -short）なら True。数字のみの -1 等は False。"""
+    if not tok.startswith("-"):
+        return False
+    if tok.startswith("--"):
+        return True
+    # -X: ハイフン1つのうしろが英字ならオプション（-e, -o 等）。数字なら負数として引数扱い。
+    return len(tok) >= 2 and tok[1].isalpha()
+
+
 def parse_options(line: str) -> Dict[str, Any]:
     """
     空白で分割し、先頭を unitcell、以降を -- / : のルールで構造体に格納する。
 
     - 第一引数 = unitcell（省略不可）
     - -- で始まる = 第一階層オプション名、直後からが引数
+    - - で始まり次が英字 = 短いオプション（-e 等）。引数収集はここで区切る。
     - : で始まる = 第二階層（直前の第一階層に引数が1個だけのときのみ）
     - 引数はすべて文字列のまま。= で分割しない。
 
@@ -27,22 +38,23 @@ def parse_options(line: str) -> Dict[str, Any]:
         ValueError: unitcell が空、または第二階層を引数が1個でない第一階層に付けた場合。
     """
     tokens = line.split()
-    if not tokens or tokens[0].startswith("-") or tokens[0].startswith(":"):
+    if not tokens or _looks_like_option(tokens[0]) or tokens[0].startswith(":"):
         raise ValueError("unitcell が必要（先頭に単位胞名を指定してください）")
     unitcell = tokens[0]
     i = 1
     result: Dict[str, Any] = {"unitcell": unitcell}
 
     while i < len(tokens):
-        if not tokens[i].startswith("--"):
+        if not _looks_like_option(tokens[i]):
             i += 1
             continue
-        opt_name = tokens[i][2:]
+        # --rep → rep, -e → e（短いオプションは後段で long 名にマップされないのでここではそのまま）
+        opt_name = tokens[i][2:] if tokens[i].startswith("--") else tokens[i][1:]
         i += 1
         args: List[str] = []
         subopts: Dict[str, List[str]] = {}
 
-        while i < len(tokens) and not tokens[i].startswith("--"):
+        while i < len(tokens) and not _looks_like_option(tokens[i]):
             if tokens[i].startswith(":"):
                 if len(args) != 1:
                     raise ValueError(
@@ -51,7 +63,7 @@ def parse_options(line: str) -> Dict[str, Any]:
                 sub_name = tokens[i][1:]
                 i += 1
                 sub_args: List[str] = []
-                while i < len(tokens) and not tokens[i].startswith("--") and not tokens[i].startswith(":"):
+                while i < len(tokens) and not _looks_like_option(tokens[i]) and not tokens[i].startswith(":"):
                     sub_args.append(tokens[i])
                     i += 1
                 subopts[sub_name] = sub_args

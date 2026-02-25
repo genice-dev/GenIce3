@@ -92,6 +92,30 @@ def print_help():
     print("Arguments:")
     for line in _opt_line("UNITCELL", "Unitcell plugin name (required)"):
         print(line)
+    print()
+    print(
+        "Unitcell options (depend on UNITCELL; some unitcell may have additional options. Pass after UNITCELL):"
+    )
+    for line in _opt_line(
+        "--density FLOAT",
+        "Target density (e.g. g/cm³). Supported by many unit cells.",
+    ):
+        print(line)
+    for line in _opt_line(
+        "--shift X Y Z",
+        "Shift fractional coordinates. Supported by many unit cells.",
+    ):
+        print(line)
+    for line in _opt_line(
+        "--cation INDEX=ION",
+        "Cation at lattice site (unitcell-defined). May support :group suboption.",
+    ):
+        print(line)
+    for line in _opt_line(
+        "--anion INDEX=ION",
+        "Anion at lattice site (unitcell-defined).",
+    ):
+        print(line)
 
 
 def main() -> None:
@@ -122,6 +146,18 @@ def main() -> None:
     if not is_valid:
         for error in errors:
             logger.error(error)
+        sys.exit(1)
+
+    # 消費されなかったオプションがあればエラーで終了
+    uc_unprocessed = result.get("unitcell", {}).get("unprocessed") or {}
+    ex_unprocessed = result.get("exporter", {}).get("unprocessed") or {}
+    if uc_unprocessed or ex_unprocessed:
+        parts = []
+        if uc_unprocessed:
+            parts.append(f"unitcell: {list(uc_unprocessed.keys())}")
+        if ex_unprocessed:
+            parts.append(f"exporter: {list(ex_unprocessed.keys())}")
+        logger.error("認識されなかったオプションのため終了します: %s", ", ".join(parts))
         sys.exit(1)
 
     base_options = result["base_options"]

@@ -52,6 +52,7 @@ This directory contains examples for **polarization and dipole optimization**.
 === "7_polarized.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 7_polarized.yaml
     # Generated from 7_polarized.sh
     
     unitcell: 1h

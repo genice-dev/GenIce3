@@ -8,7 +8,7 @@ from genice3.cli.options import parse_guest_option, parse_spot_guest_option
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
 #   --rep 2 2 2 \
 #   --guest A12=me --guest A14=et --spot_guest 0=4site \
-#   --exporter "gromacs[water_model=4site]" \
+#   --exporter gromacs :water_model 4site \
 #   --seed 42 --depol_loop 2000 -D
 
 basicConfig(level=INFO)
@@ -26,8 +26,7 @@ genice = GenIce3(
 
 # 単位セルを設定
 # shift: シフト（分数座標）
-# anions: アニオンで置換する水分子（インデックス: イオン名）
-# cations: カチオンで置換する水分子（インデックス: イオン名）
+# anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
 # density: 密度（g/cm³）
 # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
 genice.unitcell = UnitCell(

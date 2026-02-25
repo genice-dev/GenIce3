@@ -59,6 +59,7 @@ logger.info(f"  Public: {genice.list_public_settable_reactive_properties().keys(
 === "2_simple.yaml"
 
     ```yaml
+    # Run with GenIce3: genice3 --config 2_simple.yaml
     # Generated from 2_simple.sh
     
     unitcell: A15

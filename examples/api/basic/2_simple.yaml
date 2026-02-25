@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 2_simple.yaml
 # Generated from 2_simple.sh
 
 unitcell: A15

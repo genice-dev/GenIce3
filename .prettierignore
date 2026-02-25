@@ -1,0 +1,2 @@
+# List items use 4-space indent for continuation (CommonMark). Formatter would break it.
+docs/

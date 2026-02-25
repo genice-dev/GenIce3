@@ -17,13 +17,13 @@ This page is intended for AI/LLM systems that need to understand and explain Gen
 | **Ice rule** | Each oxygen has exactly two covalently bound hydrogens; hydrogen bonds are assigned to satisfy this. |
 | **Depolarization** | Dipole optimization so that net polarization is near a target (default zero). |
 | **Cages** | In clathrates, cavities (e.g. 12-hedra, 16-hedra) that can hold **guest molecules** (methane, THF, etc.). |
-| **Doping** | Replacing specific water sites with **anions** (`-a`, spot_anion) or **cations** (`-c`, spot_cation). |
+| **Doping** | **Unit-cell ions**: `-a`/`--anion`, `-c`/`--cation` (lattice sites). **Spot ions**: `-A`/`--spot_anion`, `-C`/`--spot_cation` (specific water in supercell). See [Doping and defects](doping-and-defects.md). |
 | **Protonic / Bjerrum defects** | H₃O⁺, OH⁻, or L/D Bjerrum defects; currently **API-only** (see [API examples](api-examples/index.md)). |
 
 ## Entry points
 
 1. **Command line**: `genice3 [OPTIONS] UNITCELL`  
-   - Unit cell name is required. Options include `--rep`, `-e` (exporter), `-g`/`-G` (guests), `-a`/`-c` (ions), `-C` (config file).  
+   - Unit cell name is required. Options include `--rep`, `-e` (exporter), `-g`/`-G` (guests), `-a`/`-c` (unitcell ions), `-A`/`-C` (spot ions), `-Y` (config file).  
    - Full list: run `genice3 --help` or see [CLI reference](cli.md).
 
 2. **Python API**: `from genice3.genice import GenIce3; from genice3.plugin import UnitCell, Exporter`  

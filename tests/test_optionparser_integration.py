@@ -57,6 +57,18 @@ def test_validation():
     print("✓ バリデーションテスト成功")
 
 
+def test_rep_followed_by_short_option():
+    """--rep 8 8 8 の直後に -e cif があるとき、-e が rep の引数に食われないこと"""
+    result = parse_argv(["1h", "--rep", "8", "8", "8", "-e", "cif"])
+    assert result["base_options"]["replication_factors"] == (8, 8, 8), (
+        "replication_factors should be (8,8,8), got %s" % result["base_options"].get("replication_factors")
+    )
+    assert result["exporter"]["name"] == "cif", (
+        "exporter should be cif, got %s" % result["exporter"].get("name")
+    )
+    print("✓ --rep の直後の -e がオプションとして認識されるテスト成功")
+
+
 def test_missing_unitcell():
     """unitcellが指定されていない場合のテスト"""
     result = parse_argv(["--exporter", "gromacs"])
@@ -64,6 +76,17 @@ def test_missing_unitcell():
     assert not is_valid, "unitcellが指定されていない場合はエラーになるべき"
     assert any("unitcell" in error.lower() for error in errors)
     print("✓ unitcell未指定のテスト成功")
+
+
+def test_unknown_option_parsed_and_in_unitcell_options():
+    """未定義オプション（--pass 等）は unitcell_options に入り、実行時に警告される"""
+    result = parse_argv(["CS2", "-c", "0=Na", "-a", "1=Cl", "--pass"])
+    assert result["unitcell"]["name"] == "CS2"
+    uopts = result["unitcell"]["options"]
+    assert "pass" in uopts, "未定義の --pass は unitcell_options に入る（警告は logger で出力される）"
+    assert uopts.get("cation") is not None
+    assert uopts.get("anion") is not None
+    print("✓ 未定義オプション --pass のパーステスト成功")
 
 
 if __name__ == "__main__":
@@ -75,8 +98,10 @@ if __name__ == "__main__":
     try:
         test_basic_parsing()
         test_complex_parsing()
+        test_rep_followed_by_short_option()
         test_validation()
         test_missing_unitcell()
+        test_unknown_option_parsed_and_in_unitcell_options()
         print()
         print("=" * 60)
         print("✓ すべてのテストが成功しました")

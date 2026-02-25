@@ -1,5 +1,5 @@
 # Water models
 
-Select a water model with the `--water` option.
+Specify a water model with the `--water_model` suboption of exporter plugins.
 
 {{ waters }}

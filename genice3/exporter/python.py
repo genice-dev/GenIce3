@@ -22,6 +22,7 @@ format_desc = {
     "solute": "none",
     "hb": "graph",
     "remarks": "Outputs a unitcell plugin where the supercell becomes the new unit cell.",
+    "suboptions": "name: output unitcell module name (default: exported).",
 }
 
 

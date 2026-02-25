@@ -69,18 +69,29 @@ _HELP_SEED = (
     "Random seed for guest molecule placement and other stochastic processes. "
     "Using the same seed will produce reproducible results."
 )
-_HELP_EXPORTER = "Exporter plugin name (e.g., 'gromacs' or 'gromacs[options]')."
+_HELP_EXPORTER = (
+    "Exporter plugin name (e.g. 'gromacs'). "
+    "Exporter-specific options are given as :key value after UNITCELL (e.g. gromacs :water_model 4site)."
+)
+_HELP_ANION = (
+    "Anion at lattice site (unitcell-defined). Passed to unitcell plugin. "
+    "Format: INDEX=ION_NAME (e.g. -a 3=Cl). Same as unitcell suboption --anion."
+)
+_HELP_CATION = (
+    "Cation at lattice site (unitcell-defined). Passed to unitcell plugin. "
+    "Format: INDEX=ION_NAME (e.g. -c 3=Na). Same as unitcell suboption --cation."
+)
 _HELP_SPOT_ANION = (
-    "Specify anion replacing the specified water molecule. "
-    "Format: WATER_INDEX=ION_NAME, where WATER_INDEX is the index of the water molecule and ION_NAME is the anion name. "
-    "Examples: -a 13=Cl (place Cl- in cage 13), -a 32=Br (place Br- in cage 32). "
-    "Multiple spot anions can be specified with multiple -a options."
+    "Specify anion replacing the specified water molecule (spot doping). "
+    "Format: WATER_INDEX=ION_NAME. "
+    "Examples: -A 13=Cl (place Cl- in cage 13), -A 32=Br (place Br- in cage 32). "
+    "Multiple spot anions can be specified with multiple -A options."
 )
 _HELP_SPOT_CATION = (
-    "Specify cation replacing the specified water molecule. "
-    "Format: WATER_INDEX=ION_NAME, where WATER_INDEX is the index of the water molecule and ION_NAME is the cation name. "
-    "Examples: -c 13=Na (place Na+ in cage 13), -c 32=K (place K+ in cage 32). "
-    "Multiple spot cations can be specified with multiple -c options."
+    "Specify cation replacing the specified water molecule (spot doping). "
+    "Format: WATER_INDEX=ION_NAME. "
+    "Examples: -C 13=Na (place Na+ in cage 13), -C 32=K (place K+ in cage 32). "
+    "Multiple spot cations can be specified with multiple -C options."
 )
 _HELP_CONFIG = (
     "Path to a YAML configuration file. "
@@ -89,8 +100,9 @@ _HELP_CONFIG = (
 )
 _HELP_GUEST = (
     "Specify guest molecules for each cage type. "
-    "Format: CAGE_LABEL=GUEST_SPEC, e.g. A12=me, A12=me+et*0.5. "
-    "Multiple cage types can be specified with multiple -g options."
+    "Format: CAGE_LABEL=GUEST_SPEC. Examples: A12=me (single), 12=co2*0.6+me*0.4 (probabilistic mix; use quotes in shell: -g \"12=co2*0.6+me*0.4\"). "
+    "Both molecule*occupancy (co2*0.6) and occupancy*molecule (0.6*co2) are accepted. "
+    "Multiple cage types with multiple -g options."
 )
 _HELP_SPOT_GUEST = (
     "Specify guest molecule at a specific cage index. "
@@ -121,8 +133,24 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         parse_validator=validate_seed,
     ),
     OptionDef(
-        "spot_anion",
+        "anion",
         short="-a",
+        level="base",
+        parse_type=OPTION_TYPE_KEYVALUE,
+        metavar="TEXT",
+        help_text=_HELP_ANION,
+    ),
+    OptionDef(
+        "cation",
+        short="-c",
+        level="base",
+        parse_type=OPTION_TYPE_KEYVALUE,
+        metavar="TEXT",
+        help_text=_HELP_CATION,
+    ),
+    OptionDef(
+        "spot_anion",
+        short="-A",
         level="base",
         parse_type=OPTION_TYPE_KEYVALUE,
         metavar="TEXT",
@@ -131,7 +159,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
     ),
     OptionDef(
         "spot_cation",
-        short="-c",
+        short="-C",
         level="base",
         parse_type=OPTION_TYPE_KEYVALUE,
         metavar="TEXT",
@@ -139,7 +167,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         parse_validator=lambda v: validate_spot_ion_dict(v, "spot_cation"),
     ),
     OptionDef(
-        "config", short="-C", level="base", metavar="PATH", help_text=_HELP_CONFIG
+        "config", short="-Y", level="base", metavar="PATH", help_text=_HELP_CONFIG
     ),
     OptionDef(
         "exporter", short="-e", level="base", metavar="TEXT", help_text=_HELP_EXPORTER
@@ -166,12 +194,13 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
     OptionDef("version", short="-V", level="base", help_text=_HELP_VERSION),
     OptionDef(
         "rep",
+        short="-r",
         max_values=3,
         level="base",
         parse_type=OPTION_TYPE_TUPLE,
         metavar="INT INT INT",
         help_text=_HELP_REPLICATION_FACTORS,
-        help_format="--rep, --replication_factors INT INT INT",
+        help_format="-r, --rep, --replication_factors INT INT INT",
         parse_validator=validate_replication_factors,
     ),
     OptionDef(
@@ -181,7 +210,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         parse_type=OPTION_TYPE_TUPLE,
         metavar="INT INT INT",
         help_text=_HELP_REPLICATION_FACTORS,
-        help_format="--rep, --replication_factors INT INT INT",
+        help_format="-r, --rep, --replication_factors INT INT INT",
         parse_validator=validate_replication_factors,
     ),
     OptionDef(
@@ -223,6 +252,8 @@ BASE_HELP_ORDER: Tuple[str, ...] = (
     "exporter",
     "guest",
     "spot_guest",
+    "anion",
+    "cation",
     "spot_anion",
     "spot_cation",
     "config",
@@ -235,6 +266,15 @@ def get_option_def(name: str) -> Optional[OptionDef]:
         if d.name == name:
             return d
     return None
+
+
+def get_short_to_long_option_names() -> Dict[str, str]:
+    """短いオプション名（- を除く）→ long 名のマッピング。option_parser の結果のキー正規化用。"""
+    return {
+        d.short.lstrip("-"): d.name
+        for d in GENICE3_OPTION_DEFS
+        if d.short
+    }
 
 
 def format_option_for_help(def_: OptionDef) -> str:
@@ -256,6 +296,18 @@ def get_base_level_options(option_defs: Tuple[OptionDef, ...]) -> Set[str]:
         "unitcell",
         "exporter",
     }
+
+
+# unitcell が parse_options を持たない場合に「消費した」とみなすオプション名。
+# これら以外は unprocessed となり、認識されなかったオプションとして警告される。
+_COMMON_UNITCELL_OPTION_NAMES = frozenset(
+    {"anion", "cation", "density", "shift", "file", "osite", "cation_groups"}
+)
+
+
+def get_common_unitcell_option_names() -> frozenset[str]:
+    """unitcell が parse_options を持たないときに消費するとみなすオプション名の集合。"""
+    return _COMMON_UNITCELL_OPTION_NAMES
 
 
 def validate_parsed_options(base_options: Dict[str, Any]) -> None:
@@ -350,9 +402,22 @@ def parse_guest_option(arg: dict) -> Dict[str, List[GuestSpec]]:
         result[cage] = []
         total_occupancy = 0.0
         for guest_spec in guest_specs.split("+"):
+            guest_spec = guest_spec.strip()
             if "*" in guest_spec:
-                occupancy_str, molecule = guest_spec.split("*")
-                occupancy = float(occupancy_str)
+                left, right = guest_spec.split("*", 1)
+                left, right = left.strip(), right.strip()
+                # 分子*占有率 (co2*0.6) または 占有率*分子 (0.6*co2) の両方を受け付ける
+                try:
+                    occupancy = float(left)
+                    molecule = right
+                except ValueError:
+                    try:
+                        occupancy = float(right)
+                        molecule = left
+                    except ValueError:
+                        raise ConfigurationError(
+                            f"guest spec {guest_spec!r}: expected molecule*occupancy or occupancy*molecule (e.g. co2*0.6 or 0.6*co2)"
+                        ) from None
             else:
                 molecule = guest_spec
                 occupancy = 1.0

@@ -1,3 +1,4 @@
+# Run with GenIce3: genice3 --config 4_from_cif.yaml
 # Generated from 4_from_cif.sh
 
 unitcell: CIF

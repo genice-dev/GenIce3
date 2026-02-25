@@ -14,7 +14,7 @@ desc = {
     "ref": {"Codes": "https://github.com/vitroid/Yaplot"},
     "brief": "Plot the topology with Matplotlib.",
     "usage": """
-Usage: genice3 icename -f matplotlib[options]
+Usage: genice3 UNITCELL --exporter plotly [:option value ...]
 
 options:
     type=x  Set the plot type
@@ -32,6 +32,7 @@ format_desc = {
     "water": "Atomic positions",
     "solute": "Atomic positions",
     "hb": "o",
+    "suboptions": "type: full, digraph, fixed, frame, graph (plot layout).",
     "remarks": "Interactive 3D visualization.",
 }
 
