@@ -21,6 +21,10 @@ docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md 
 	$(PYTHON) -m Utilities.replacer < $< > $@
 
 
+# Regenerate API.ipynb from examples/api (READMEs + .py interleaved)
+api-notebook: scripts/build_api_notebook.py $(wildcard examples/api/*/*.py) $(wildcard examples/api/*/README.md)
+	$(PYTHON) scripts/build_api_notebook.py
+
 update-citations:
 	cp citations.yaml old.citations.yaml
 	$(PYTHON) Utilities/citation.py < old.citations.yaml > citations.yaml

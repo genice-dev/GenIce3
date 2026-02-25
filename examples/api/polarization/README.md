@@ -1,4 +1,4 @@
-This directory contains examples for **polarization and dipole optimization**.
+**Polarization and dipole optimization**.
 
 - `7_polarized.py`  
   - Generate a structure with a specified polarization using `target_pol` and `depol_loop`.

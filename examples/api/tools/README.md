@@ -1,4 +1,4 @@
-This directory collects **helper scripts** used by the examples.
+**Helper scripts** for YAML ↔ shell conversion, used by the examples.
 
 - `gen_sh_from_yaml.py`  
   - Generate shell scripts (`*.sh`) from YAML configuration files.

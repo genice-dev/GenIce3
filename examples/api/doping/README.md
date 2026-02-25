@@ -1,4 +1,4 @@
-This directory contains examples for **ionic substitution and group (cation group) doping**.
+**Ionic substitution and group (cation group) doping**.
 
 CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット置換は **-A / --spot_anion**, **-C / --spot_cation**。
 

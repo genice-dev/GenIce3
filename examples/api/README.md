@@ -1,4 +1,4 @@
-This directory contains **API-level examples** for GenIce3.  
+**API-level examples** for GenIce3.  
 Each subdirectory groups examples by topic, showing how to call GenIce3 from Python.
 
 ## Example categories
