@@ -460,6 +460,47 @@ def find_nearest_sites_pbc(
     return out[0] if n_query == 1 else out
 
 
+def find_nearest_edges_pbc(
+    frac_pos: Union[Tuple[float, float, float], np.ndarray],
+    graph: nx.Graph,
+    lattice_sites: np.ndarray,
+    cell: np.ndarray,
+) -> Union[Tuple[int, int], List[Tuple[int, int]]]:
+    """分数座標に最も近い「辺（2つの格子サイトの中点）」を返す。周期境界を考慮。
+
+    手順:
+      1. まず find_nearest_sites_pbc で最寄りの格子サイト i を決める。
+      2. i に隣接するノード j との中点 (i, j) のうち、target に最も近いものを選ぶ。
+
+    1 点のときは (i, j)、複数点のときは list[(i, j)] を返す。
+    """
+    p = np.atleast_2d(frac_pos)  # (1,3) または (N,3)
+    n_query = len(p)
+
+    out: List[Tuple[int, int]] = []
+    for q in p:
+        # 最寄りサイト i を決める
+        i_site = find_nearest_sites_pbc(q, lattice_sites, cell)
+        # 隣接ノードとの中点のうち、もっとも近いものを選ぶ
+        best_edge: Tuple[int, int] | None = None
+        best_d2 = np.inf
+        for j_site in graph.neighbors(i_site):
+            midpoint = 0.5 * (lattice_sites[i_site] + lattice_sites[j_site])
+            d = midpoint - q
+            d -= np.floor(d + 0.5)
+            d_orth = d @ cell
+            d2 = float(np.dot(d_orth, d_orth))
+            if d2 < best_d2:
+                best_d2 = d2
+                best_edge = (i_site, j_site)
+        if best_edge is None:
+            # i_site に隣接ノードがない場合はエラーにしておく
+            raise ValueError(f"Node {i_site} has no neighbors in graph.")
+        out.append(best_edge)
+
+    return out[0] if n_query == 1 else out
+
+
 # Candidates for ice XI
 # {'P12_11', 'P2_12_12_1', 'Pca2_1', 'P1c1', 'Cmc2_1', 'C1c1', 'P12', 'Pbn2_1', 'Pna2_1'}
 def operations(spaceg: str, origin: int = 0):

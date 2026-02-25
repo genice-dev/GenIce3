@@ -540,6 +540,8 @@ def fixed_edges(
     spot_cations: Dict[int, str],
     spot_hydroniums: List[int],
     spot_hydroxides: List[int],
+    bjerrum_L_edges: List[Tuple[int, int]],
+    bjerrum_D_edges: List[Tuple[int, int]],
 ) -> nx.DiGraph:
     """固定エッジ（水素結合の方向が固定されたエッジ）を拡大単位胞全体に複製する。
 
@@ -562,7 +564,12 @@ def fixed_edges(
         nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ
     """
     if (
-        spot_anions or spot_cations or spot_hydroniums or spot_hydroxides
+        spot_anions
+        or spot_cations
+        or spot_hydroniums
+        or spot_hydroxides
+        or bjerrum_L_edges
+        or bjerrum_D_edges
     ) and not unitcell.SUPPORTS_ION_DOPING:
         raise ConfigurationError(
             "Ion doping (spot_anion/spot_cation/spot_hydronium/spot_hydroxide) "
@@ -603,6 +610,71 @@ def fixed_edges(
         dg.add_edge(site_index, neis[0])
         for nei in neis[1:]:
             dg.add_edge(nei, site_index)
+    # Bjerrum L 欠陥: i ノードを hydronium と同様に扱う。
+    for i, j in bjerrum_L_edges or []:
+        neis = sorted(graph.neighbors(i))
+        if len(neis) != 4:
+            raise ConfigurationError(
+                f"bjerrum_L at {i} must have 4 neighbors, got {len(neis)}."
+            )
+        if j not in neis:
+            raise ConfigurationError(
+                f"bjerrum_L edge ({i}, {j}) is not an edge in the graph."
+            )
+        # 受容側となる隣接ノードを j 以外から 1 つ選ぶ
+        acceptor = next((nei for nei in neis if nei != j), None)
+        if acceptor is None:
+            raise ConfigurationError(
+                f"bjerrum_L at {i} cannot choose acceptor neighbor distinct from {j}."
+            )
+        # hydronium と同様のチェック・追加ロジック
+        for nei in neis:
+            if nei == acceptor:
+                # nei -> i （受容）
+                if dg.has_edge(i, nei):
+                    raise ConfigurationError(
+                        f"矛盾する辺の固定 at {i}; すでに({i} --> {nei})が固定されています。"
+                    )
+                dg.add_edge(nei, i)
+            else:
+                # i -> nei （供与）
+                if dg.has_edge(nei, i):
+                    raise ConfigurationError(
+                        f"矛盾する辺の固定 at {i}; すでに({nei} --> {i})が固定されています。"
+                    )
+                dg.add_edge(i, nei)
+    # Bjerrum D 欠陥: i ノードを hydroxide と同様に扱う（ただし j は供与側にしない）。
+    for i, j in bjerrum_D_edges or []:
+        neis = sorted(graph.neighbors(i))
+        if len(neis) != 4:
+            raise ConfigurationError(
+                f"bjerrum_D at {i} must have 4 neighbors, got {len(neis)}."
+            )
+        if j not in neis:
+            raise ConfigurationError(
+                f"bjerrum_D edge ({i}, {j}) is not an edge in the graph."
+            )
+        # 供与側となる隣接ノードを j 以外から 1 つ選ぶ
+        donor = next((nei for nei in neis if nei != j), None)
+        if donor is None:
+            raise ConfigurationError(
+                f"bjerrum_D at {i} cannot choose donor neighbor distinct from {j}."
+            )
+        for nei in neis:
+            if nei == donor:
+                # i -> nei （供与）
+                if dg.has_edge(nei, i):
+                    raise ConfigurationError(
+                        f"矛盾する辺の固定 at {i}; すでに({nei} --> {i})が固定されています。"
+                    )
+                dg.add_edge(i, nei)
+            else:
+                # nei -> i （受容）
+                if dg.has_edge(i, nei):
+                    raise ConfigurationError(
+                        f"矛盾する辺の固定 at {i}; すでに({i} --> {nei})が固定されています。"
+                    )
+                dg.add_edge(nei, i)
     return dg
 
 
@@ -613,6 +685,8 @@ def digraph(
     lattice_sites: np.ndarray,
     fixed_edges: nx.DiGraph,
     target_pol: np.ndarray,
+    bjerrum_L_edges: List[Tuple[int, int]],
+    bjerrum_D_edges: List[Tuple[int, int]],
 ) -> nx.DiGraph:
     """水素結合ネットワークの有向グラフを生成する。
 
@@ -643,6 +717,20 @@ def digraph(
     )
     if not dg:
         raise ConfigurationError("Failed to generate a directed graph.")
+    # Bjerrum L 欠陥: 対応するエッジを削除する（両方向とも取り除く）
+    for edge in bjerrum_L_edges or []:
+        i, j = edge
+        if dg.has_edge(i, j):
+            dg.remove_edge(i, j)
+        if dg.has_edge(j, i):
+            dg.remove_edge(j, i)
+    # Bjerrum D 欠陥: 対応するエッジを両方向とも存在させる
+    for edge in bjerrum_D_edges or []:
+        i, j = edge
+        if not dg.has_edge(i, j):
+            dg.add_edge(i, j)
+        if not dg.has_edge(j, i):
+            dg.add_edge(j, i)
     return dg
 
 
@@ -926,6 +1014,8 @@ class GenIce3:
         spot_cations: Dict[int, str] = {},
         spot_hydroniums: List[int] = None,
         spot_hydroxides: List[int] = None,
+        bjerrum_L_edges: List[Tuple[int, int]] | None = None,
+        bjerrum_D_edges: List[Tuple[int, int]] | None = None,
         guests: Dict[str, List["GuestSpec"]] = None,
         spot_guests: Dict[int, Molecule] = None,
         spot_cation_groups: Dict[int, Dict[int, str]] = None,
@@ -964,6 +1054,8 @@ class GenIce3:
         self.spot_cations = spot_cations
         self.spot_hydroniums = spot_hydroniums if spot_hydroniums is not None else []
         self.spot_hydroxides = spot_hydroxides if spot_hydroxides is not None else []
+        self.bjerrum_L_edges = bjerrum_L_edges if bjerrum_L_edges is not None else []
+        self.bjerrum_D_edges = bjerrum_D_edges if bjerrum_D_edges is not None else []
         self.guests = guests if guests is not None else {}
         self.spot_guests = spot_guests if spot_guests is not None else {}
         self.spot_cation_groups = (
@@ -1076,6 +1168,91 @@ class GenIce3:
         )
         self.logger.debug(f"  {spot_hydroxides=}")
         self.engine.cache.clear()
+
+    # Bjerrum L 欠陥に対応するエッジ集合（(i, j) のリスト）
+    @property
+    def bjerrum_L_edges(self) -> List[Tuple[int, int]]:
+        if not hasattr(self, "_bjerrum_L_edges"):
+            self._bjerrum_L_edges = []
+        return self._bjerrum_L_edges
+
+    @bjerrum_L_edges.setter
+    def bjerrum_L_edges(self, edges: List[Tuple[int, int]] | None):
+        self._bjerrum_L_edges = list(edges) if edges is not None else []
+        self.logger.debug(f"  {self._bjerrum_L_edges=}")
+        self.engine.cache.clear()
+
+    # Bjerrum D 欠陥に対応するエッジ集合（(i, j) のリスト）
+    @property
+    def bjerrum_D_edges(self) -> List[Tuple[int, int]]:
+        if not hasattr(self, "_bjerrum_D_edges"):
+            self._bjerrum_D_edges = []
+        return self._bjerrum_D_edges
+
+    @bjerrum_D_edges.setter
+    def bjerrum_D_edges(self, edges: List[Tuple[int, int]] | None):
+        self._bjerrum_D_edges = list(edges) if edges is not None else []
+        self.logger.debug(f"  {self._bjerrum_D_edges=}")
+        self.engine.cache.clear()
+
+    def add_spot_hydronium(self, sites):
+        """H3O+ を置くサイトを追加登録するヘルパー。
+
+        Args:
+            sites: サイトインデックス（int）またはその反復可能オブジェクト。
+        """
+        if sites is None:
+            return
+        # numpy のスカラーも受け付ける
+        if isinstance(sites, (int, np.integer)):
+            new_sites = [int(sites)]
+        else:
+            new_sites = list(sites)
+        # setter を経由してキャッシュを無効化する
+        self.spot_hydroniums = list(self.spot_hydroniums) + new_sites
+
+    def add_spot_hydroxide(self, sites):
+        """OH- を置くサイトを追加登録するヘルパー。
+
+        Args:
+            sites: サイトインデックス（int）またはその反復可能オブジェクト。
+        """
+        if sites is None:
+            return
+        if isinstance(sites, (int, np.integer)):
+            new_sites = [int(sites)]
+        else:
+            new_sites = list(sites)
+        self.spot_hydroxides = list(self.spot_hydroxides) + new_sites
+
+    def add_bjerrum_L(self, edges):
+        """Bjerrum L 欠陥を追加登録するヘルパー。
+
+        Args:
+            edges: (i, j) のタプル、またはその反復可能オブジェクト。
+        """
+        if edges is None:
+            return
+        # 単一タプル (i, j) も許容する
+        if isinstance(edges, tuple) and len(edges) == 2:
+            new_edges = [edges]
+        else:
+            new_edges = list(edges)
+        self.bjerrum_L_edges = list(self.bjerrum_L_edges) + new_edges
+
+    def add_bjerrum_D(self, edges):
+        """Bjerrum D 欠陥を追加登録するヘルパー。
+
+        Args:
+            edges: (i, j) のタプル、またはその反復可能オブジェクト。
+        """
+        if edges is None:
+            return
+        if isinstance(edges, tuple) and len(edges) == 2:
+            new_edges = [edges]
+        else:
+            new_edges = list(edges)
+        self.bjerrum_D_edges = list(self.bjerrum_D_edges) + new_edges
 
     @property
     def seed(self):
@@ -1216,6 +1393,8 @@ class GenIce3:
             "spot_cations": self.spot_cations,
             "spot_hydroniums": self.spot_hydroniums,
             "spot_hydroxides": self.spot_hydroxides,
+            "bjerrum_L_edges": self.bjerrum_L_edges,
+            "bjerrum_D_edges": self.bjerrum_D_edges,
         }
 
     def __getattr__(self, name: str):

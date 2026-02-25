@@ -16,7 +16,7 @@
 - [x] spot anion & cation
 - 目玉機能。この 2 つが完成するまでは公表できない。
   - [ ] group!
-    - [ ] API呼び出しでgroupを指定する方法を文書化する。
+    - [x] API呼び出しでgroupを指定する方法を文書化する。
     - [ ] CLI以外だとケージヒントを自分で表示する必要がある。
     - [x] Spotカチオンのサブオプションとしてgroupを指定する。例: `--cation 0=[N --group 1=methyl 2=butyl 4=hexyl 12=methyl]`（階層記法）。flat記法も検討。
     - [x] Spotでないカチオンにも対応
@@ -24,6 +24,12 @@
   - [ ] topological defects
     - 指定方法を真剣に考える。本来なら、edge を指定する必要がある。まあそれでいいか。-D 0 2 -L 4 5
     - GenIce3 CLI に登録する必要はないと思う。API で簡単に書ければ十分。
+    - 指定方法のメモ: docs/design/topological_defect_spec.md を参照。
+    - [x] H3O+/OH-を置くところまではできた。
+    - [x] exporter(gromacs)での対処
+    - [x] Bjerrumへの変換
+    - [ ] 3:1に辺を分ける分け方はどうする?
+    - [ ] 4辺を持たなくてもいいようにfixed_edgesを変換。
 - [x] Loader (CIF, mdanalysis)
 - [x] API レベルでの mdanalysis との連携方法。gro ファイルを経由するのが手っ取り早いのか。
 - [ ] Exporter を増やす。
