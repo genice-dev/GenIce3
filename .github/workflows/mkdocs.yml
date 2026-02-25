@@ -1,0 +1,41 @@
+name: Deploy MkDocs to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project and MkDocs dependencies
+        run: |
+          pip install -e .
+          pip install mkdocs "mkdocs-material>=9.0" "pymdown-extensions>=10.0"
+
+      - name: Generate docs from templates (usage, ices, waters, guests, exporter)
+        run: python Utilities/replacer.py --docs
+
+      - name: Generate API example docs (embed code, tabs, GitHub links)
+        run: python scripts/build_api_docs.py
+
+      - name: Build MkDocs
+        run: mkdocs build --strict
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          force_orphan: true

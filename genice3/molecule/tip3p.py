@@ -3,6 +3,7 @@ import numpy as np
 import genice3.molecule
 
 desc = {
+    "ref": {"TIP3P": "Jorgensen 1983"},
     "usage": "No options available.",
     "brief": "A typical 3-site model.",
 }

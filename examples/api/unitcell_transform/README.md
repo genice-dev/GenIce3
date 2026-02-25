@@ -1,5 +1,5 @@
-単位胞の拡張や変換に関するサンプル集です。
+This directory contains examples for **extending or transforming the unit cell**.
 
-- `10_extend_unitcell.py`:
-  - `replication_matrix` を用いて単位胞を拡張し、大きなスーパーセルを作る例。
+- `10_extend_unitcell.py`  
+  - Use `replication_matrix` to extend the unit cell and build a larger supercell.
 

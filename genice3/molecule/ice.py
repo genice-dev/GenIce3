@@ -1,10 +1,19 @@
 """
-[1] J. L. F. Abascal, E. Sanz, R. G. Fernández, and C. Vega, A potential model for the study of ices and amorphous water: TIP4P/Ice, J. Chem. Phys. 122 (2005) 234511.
+[1]
+    Abascal, J.L.F., Sanz, E., García Fernández, R., Vega, C., 2005. A potential model for the study of ices and amorphous water: TIP4P/Ice. The Journal of chemical physics 122(23), 234511. DOI: 10.1063/1.1931662
+
+J. L. F. Abascal, E. Sanz, R. G. Fernández, and C. Vega, A potential model for the study of ices and amorphous water: TIP4P/Ice, J. Chem. Phys. 122 (2005) 234511.
 """
 
 from math import pi, sin, cos
 import genice3.molecule
 import numpy as np
+
+desc = {
+    "ref": {"ice": "Abascal 2005"},
+    "usage": "No options available.",
+    "brief": "TIP4P/Ice water model.",
+}
 
 
 class Molecule(genice3.molecule.Molecule):
@@ -34,4 +43,3 @@ class Molecule(genice3.molecule.Molecule):
 if __name__ == "__main__":
     water = Molecule()
     print(np.array([16, 1, 1, 0]) @ water.sites)
-

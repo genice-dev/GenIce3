@@ -3,6 +3,7 @@ import numpy as np
 import genice3.molecule
 
 desc = {
+    "ref": {"TIP5P": "Mahoney 2000"},
     "usage": "No options available.",
     "brief": "A typical 5-site model.",
 }
@@ -37,4 +38,3 @@ class Molecule(genice3.molecule.Molecule):
         labels = ["OW", "HW1", "HW2", "MW1", "MW2"]
         name = "SOL"
         super().__init__(sites=sites, labels=labels, name=name, is_water=is_water)
-

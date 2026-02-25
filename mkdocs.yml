@@ -1,0 +1,55 @@
+site_name: GenIce3
+site_url: https://genice-dev.github.io/GenIce3
+repo_url: https://github.com/genice-dev/GenIce3
+repo_name: genice-dev/GenIce3
+
+theme:
+  name: material
+  language: en
+  features:
+    - content.action.edit
+  # Make admonitions (!!! note / warning / failure) more visible
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - CLI reference: cli.md
+  - Basics: basics.md
+  - Clathrate hydrates: clathrate-hydrates.md
+  - Doping and defects: doping-and-defects.md
+  - Output formats: output-formats.md
+  - Ice structures: ice-structures.md
+  - Water models: water-models.md
+  - Guest molecules: guest-molecules.md
+  - Plugins: plugins.md
+  - Changes from GenIce2: changes-from-genice2.md
+  - For AI assistants: for-ai-assistants.md
+  - API Examples:
+    - Overview: api-examples/index.md
+    - Basic: api-examples/basic.md
+    - CIF I/O: api-examples/cif_io.md
+    - Doping: api-examples/doping.md
+    - Guest occupancy: api-examples/guest_occupancy.md
+    - Polarization: api-examples/polarization.md
+    - Unit cell transform: api-examples/unitcell_transform.md
+    - Topological defects: api-examples/topological_defects.md
+    - Tools: api-examples/tools.md
+  - Citation: citation.md
+  - References: references.md
+  - Contribute: contribute.md
+  - License: license.md
+  - README check (dev): README-check.md

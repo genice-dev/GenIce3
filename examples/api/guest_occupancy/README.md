@@ -1,7 +1,8 @@
-包接水和物のゲスト配置とケージ関連のサンプル集です。
+This directory contains examples for **guest occupancy and cage-related operations** in clathrate hydrates.
 
-- `6_with_guests.py`:
-  - cage タイプごとにゲスト分子と占有率を指定して配置する例。
-- `8_cage_survey.py`:
-  - ケージの位置やタイプを調べるサーベイ用サンプル。
+- `6_with_guests.py`  
+  - Place guest molecules with specified occupancy for each cage type.
+
+- `8_cage_survey.py`  
+  - Survey cage positions and types in the structure.
 

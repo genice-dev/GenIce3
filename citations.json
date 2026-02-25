@@ -1,4 +1,5 @@
 [
+    ["Abascal 2005", "10.1063/1.1931662", ""],
     [
         "Avogadro",
         "",
@@ -8,6 +9,11 @@
         "Baez 1998",
         "10.1063/1.469938",
         "\nB\u00c1EZ, Luis A. and CLANCY, Paulette, 1995, Phase equilibria in extended simple point charge ice\u2010water systems. The Journal of Chemical Physics [online]. 8 December 1995. Vol.\u00a0103, no.\u00a022, p.\u00a09744\u20139755. DOI\u00a010.1063/1.469938. Available from: http://dx.doi.org/10.1063/1.469938\n"
+    ],
+    [
+        "Berendsen 1987",
+        "",
+        "H. J. C. Berendsen, J. R. Grigera, and T. P. Straatsma, J. Phys. Chem. 91, 6269 1987."
     ],
     [
         "Cockayne 1995",
@@ -137,7 +143,7 @@
     [
         "Lei 2025",
         "10.1038/s41598-025-00001-w",
-        ""
+        "\nTAHERI, Bita, ZAKERHAMIDI, Mohammad Sadegh, SHAMKHALI, Amir Nasser, KIAN, Roshanak and SADEGHAN, Amir Amiri, 2025. Solvent polarity effect on photophysical properties of some aromatic azo dyes with focus on tautomeric and toxicity competition. Scientific Reports. Online. 5 May 2025. Vol.\u00a015, no.\u00a01. DOI\u00a010.1038/s41598-025-00001-w. \n"
     ],
     [
         "Lobban 1998",
@@ -153,6 +159,11 @@
         "Londono 1993",
         "10.1063/1.464942",
         "\nLONDONO, J. D., KUHS, W. F. and FINNEY, J. L., 1993, Neutron diffraction studies of ices III and IX on under\u2010pressure and recovered samples. The Journal of Chemical Physics [online]. 15 March 1993. Vol.\u00a098, no.\u00a06, p.\u00a04878\u20134888. DOI\u00a010.1063/1.464942. Available from: http://dx.doi.org/10.1063/1.464942\n"
+    ],
+    [
+        "Mahoney 2000",
+        "10.1063/1.481505",
+        "\nMAHONEY, Michael W. and JORGENSEN, William L., 2000. A five-site model for liquid water and the reproduction of the density anomaly by rigid, nonpolarizable potential functions. The Journal of Chemical Physics. Online. 22 May 2000. Vol.\u00a0112, no.\u00a020, p.\u00a08910\u20138922. DOI\u00a010.1063/1.481505. \n"
     ],
     [
         "Matsui 2017",

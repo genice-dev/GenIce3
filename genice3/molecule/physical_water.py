@@ -3,9 +3,7 @@ import numpy as np
 import math
 
 desc = {
-    "ref": {
-        "TIP3P": "Jorgensen, Chandrasekhar, Madura, Impey, Klein, J Chem Phys, 79, 926 (1983)."
-    },
+    "ref": {"TIP3P": "Jorgensen 1983"},
     "brief": "Physical model of water; Oxygen atom is on the lattice point.",
     "usage": "No options available.",
 }

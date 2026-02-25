@@ -1,40 +1,32 @@
-import math
+from math import cos, radians, sin
 import numpy as np
 import genice3.molecule
 
 desc = {
+    "ref": {"TIP4P(a)": "Jorgensen 1983", "TIP4P(b)": "Jorgensen 1985"},
     "usage": "No options available.",
-    "brief": "A typical 5-site model.",
+    "brief": "A typical 4-site model.",
 }
 
 
 class Molecule(genice3.molecule.Molecule):
     """
-    TIP4Pモデルの水分子を定義するクラス。
+    TIP4P（4サイト）モデルの水分子を定義するクラス。
     """
 
     def __init__(self):
-        oh = 0.09572  # nm
-        om = 0.07  # nm
-        hangle = 104.52 * math.pi / 180 / 2
-        mangle = 109.47 * math.pi / 180 / 2
-        mass = 18
-        ohz = oh * math.cos(hangle)
-        ohy = oh * math.sin(hangle)
-        omz = -om * math.cos(mangle)
-        omx = om * math.sin(mangle)
-        oz = -ohz * 2 / mass
-        sites = np.array(
-            [
-                [0, 0, oz],
-                [0, ohy, ohz + oz],
-                [0, -ohy, ohz + oz],
-                [omx, 0, omz + oz],
-                [-omx, 0, omz + oz],
-            ]
-        )  # nm, OHHMM
-        is_water = True
-        labels = ["OW", "HW1", "HW2", "MW1", "MW2"]
-        name = "SOL"
-        super().__init__(sites=sites, labels=labels, name=name, is_water=is_water)
+        L1 = 0.9572 / 10
+        L2 = 0.15 / 10
+        theta = radians(104.52)
 
+        hy = L1 * sin(theta / 2)
+        hz = L1 * cos(theta / 2)
+        mz = L2
+        sites = np.array(
+            [[0.0, 0.0, 0.0], [0.0, hy, hz], [0.0, -hy, hz], [0.0, 0.0, mz]]
+        )
+        sites -= (sites[1] + sites[2] + sites[3] * 0) / 18
+        labels = ["OW", "HW1", "HW2", "MW"]
+        name = "ICE"
+        is_water = True
+        super().__init__(sites=sites, labels=labels, name=name, is_water=is_water)

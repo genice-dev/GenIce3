@@ -1,9 +1,10 @@
-examples 用の補助スクリプトをまとめたディレクトリです。
+This directory collects **helper scripts** used by the examples.
 
-- `gen_sh_from_yaml.py`:
-  - YAML で記述した条件からシェルスクリプト (`*.sh`) を生成するツール。
-- `gen_yaml_from_sh.py`:
-  - 既存のシェルスクリプトから YAML 設定を生成するツール。
+- `gen_sh_from_yaml.py`  
+  - Generate shell scripts (`*.sh`) from YAML configuration files.
 
-各テーマディレクトリ内の `*.yaml` / `*.sh` は、これらのツールで生成・編集する想定です。
+- `gen_yaml_from_sh.py`  
+  - Generate YAML configuration from existing shell scripts.
+
+The `*.yaml` / `*.sh` files in each example subdirectory are meant to be generated and edited using these tools.
 

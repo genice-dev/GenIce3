@@ -5,7 +5,7 @@
 """
 
 desc = {
-    "ref": {"HS1": "Kosyakov and Polyanskaya 1999"},
+    "ref": {"HS1": "Kosyakov 1999", "Z": "Frank 1959", "sIV": "Jeffrey 1984"},
     "usage": "No options available.",
     "brief": "Hydrogen-disordered ice Ih.",
     "test": (

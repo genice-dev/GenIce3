@@ -1,5 +1,5 @@
-分極 (polarization) と双極子最適化に関するサンプル集です。
+This directory contains examples for **polarization and dipole optimization**.
 
-- `7_polarized.py`:
-  - `target_pol` や `depol_loop` を指定して、所望の分極をもつ構造を生成する例。
+- `7_polarized.py`  
+  - Generate a structure with a specified polarization using `target_pol` and `depol_loop`.
 

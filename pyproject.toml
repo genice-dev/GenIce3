@@ -24,6 +24,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "pymdown-extensions>=10.0",
     "toml>=0.10.2",
     "ipykernel>=6.27.1",
     "py3dmol>=2.0.4",
@@ -84,6 +87,9 @@ genice-core = ">=1.1"
 pyyaml = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
+mkdocs = "^1.5"
+mkdocs-material = "^9.0"
+pymdown-extensions = "^10.0"
 toml = "^0.10.2"
 ipykernel = "^6.27.1"
 matplotlib = "^3.8.2"
