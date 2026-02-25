@@ -10,7 +10,7 @@ import numpy as np
 
 from genice3.genice import GenIce3
 from genice3.plugin import UnitCell, Exporter
-from genice3.util import find_nearest_sites_pbc, find_nearest_edges_pbc
+from genice3.util import find_nearest_edges_pbc
 
 # -----------------------------------------------------------------------------
 # サンプル本体
@@ -27,8 +27,12 @@ genice.unitcell = UnitCell("A15")
 celli = np.linalg.inv(genice.cell)
 D_positions = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]) @ celli
 L_positions = np.array([[1.0, 0.0, 0.0], [2.0, 1.0, 1.0]]) @ celli
-D_edges = find_nearest_edges_pbc(D_positions, genice.graph, genice.lattice_sites, genice.cell)
-L_edges = find_nearest_edges_pbc(L_positions, genice.graph, genice.lattice_sites, genice.cell)
+D_edges = find_nearest_edges_pbc(
+    D_positions, genice.graph, genice.lattice_sites, genice.cell
+)
+L_edges = find_nearest_edges_pbc(
+    L_positions, genice.graph, genice.lattice_sites, genice.cell
+)
 
 genice.add_bjerrum_D(D_edges)
 genice.add_bjerrum_L(L_edges)

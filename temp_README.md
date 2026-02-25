@@ -15,6 +15,7 @@ Version {{version}}
   - Options can also be read from config files.
 - **API**
   - The API has been significantly improved.
+  - Python users can embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects directly into ice lattices.
 - **Algorithm**
   - A reactive programming style is used; the `DependencyEngine` was developed for this purpose.
   - Once you specify the required data, the data generation pipeline is prepared and run automatically.
@@ -166,7 +167,12 @@ genice3 CS2 -c 0=Na -a 1=Cl > CS2.gro
 
 _Note 1:_ The number of cations and anions must be equal, or the ice rule cannot be satisfied and the program may not terminate.
 
-_Note 2:_ Protonic defects (H<sub>3</sub>O<sup>+</sup> and OH<sup>−</sup>) are not yet implemented.
+_Note 2:_ Protonic and Bjerrum topological defects are currently available through the Python API (see the examples in `examples/api/12_topological_defect.py` and `examples/api/13_topological_defect2.py`), and are not exposed as command-line options yet.
+
+## Topological and protonic defects
+
+With the GenIce3 Python API you can embed protonic defects (H<sub>3</sub>O<sup>+</sup> and OH<sup>−</sup>) and Bjerrum topological defects at specified positions in the lattice.
+The examples `examples/api/12_topological_defect.py` and `examples/api/13_topological_defect2.py` demonstrate how to place these defects by giving target coordinates in fractional space and converting them to the nearest lattice sites or hydrogen bonds.
 
 <!-- ## Semiclathrate hydrates
 
