@@ -1,4 +1,4 @@
-This directory contains examples for **ionic substitution and group (cation group) doping**.
+**Ionic substitution and group (cation group) doping**.
 
 CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット置換は **-A / --spot_anion**, **-C / --spot_cation**。
 
@@ -35,6 +35,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     
     genice = GenIce3(
         replication_matrix=np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]]),
+        seed=43,
     )
     
     # 単位胞内の anion/cation と cation_groups（カチオンの腕の group 指定）
@@ -57,7 +58,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     #!/bin/bash
     # Generated from 11_ion_group_unitcell.yaml
     
-    python3 -m genice3.cli.genice A15 \
+    python3 -m genice3.cli.genice A15 --seed 43 \
       --cation 0=N :group 1=methyl 6=methyl 3=methyl 4=methyl \
       --anion 2=Cl \
       --rep 2 2 2 \
@@ -71,6 +72,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     # Generated from 11_ion_group_unitcell.sh
     
     unitcell: A15
+    seed: 43
     cation:
       0=N:
         group:

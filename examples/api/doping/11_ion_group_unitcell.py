@@ -11,6 +11,7 @@ basicConfig(level=INFO)
 
 genice = GenIce3(
     replication_matrix=np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]]),
+    seed=43,
 )
 
 # 単位胞内の anion/cation と cation_groups（カチオンの腕の group 指定）

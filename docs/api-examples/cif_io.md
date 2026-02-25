@@ -1,4 +1,4 @@
-This directory contains examples for **reading from and writing to CIF files**.
+**Reading from and writing to CIF files**.
 
 - `cif/`  
   - Symlink to the project-root `cif/` directory. Used so examples can refer to files such as `cif/MEP.cif`.

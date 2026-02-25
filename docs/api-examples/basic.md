@@ -1,4 +1,4 @@
-This directory contains **basic usage examples** of GenIce3.
+**Basic usage examples** of GenIce3.
 
 - `1_reactive_properties.py`  
   - Minimal example to explore how GenIce3's *reactive properties* behave.

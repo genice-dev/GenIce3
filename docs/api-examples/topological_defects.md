@@ -1,4 +1,4 @@
-This directory contains examples of **topological defects** (Bjerrum defects, H3O⁺, OH⁻).
+**Topological defects** (Bjerrum defects, H3O⁺, OH⁻).
 
 - `12_topological_defect.py`  
   - Introduce hydronium (H3O⁺) and hydroxide (OH⁻) defects at specified coordinates.

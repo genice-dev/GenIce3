@@ -25,6 +25,10 @@ docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md 
 api-notebook: scripts/build_api_notebook.py $(wildcard examples/api/*/*.py) $(wildcard examples/api/*/README.md)
 	$(PYTHON) scripts/build_api_notebook.py
 
+# Run all examples/api/*/*.py from project root (some may fail occasionally due to randomness)
+run-api-examples: scripts/run_api_examples.py
+	$(PYTHON) scripts/run_api_examples.py --all
+
 update-citations:
 	cp citations.yaml old.citations.yaml
 	$(PYTHON) Utilities/citation.py < old.citations.yaml > citations.yaml

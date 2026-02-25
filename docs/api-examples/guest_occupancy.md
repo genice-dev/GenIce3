@@ -1,4 +1,4 @@
-This directory contains examples for **guest occupancy and cage-related operations** in clathrate hydrates.
+**Guest occupancy and cage-related operations** in clathrate hydrates.
 
 - `6_with_guests.py`  
   - Place guest molecules with specified occupancy for each cage type.

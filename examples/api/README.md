@@ -24,4 +24,26 @@ In an environment where `genice3` can be imported, you can run each `.py` file d
 python examples/api/basic/2_simple.py
 ```
 
-For examples that use YAML configuration, you can generate the corresponding `.sh` scripts with `tools/gen_sh_from_yaml.py` and then run those shell scripts.
+**Run all examples at once** (from project root):
+
+```bash
+make run-api-examples
+# or
+python scripts/run_api_examples.py
+```
+
+By default only `.py` files are run. To include `.sh` and/or `.yaml`:
+
+```bash
+python scripts/run_api_examples.py --sh        # .py + .sh (bash)
+python scripts/run_api_examples.py --yaml      # .py + .yaml (genice3 --config)
+python scripts/run_api_examples.py --all       # .py + .sh + .yaml
+```
+
+List entries without running: `python scripts/run_api_examples.py --dry-run`.  
+On failure, stdout/stderr are written to `run_api_examples.log`.  
+Note: `doping/11_ion_group_unitcell.py` may occasionally fail due to random depolarization; re-run if needed.
+
+To generate `.sh` from YAML (or vice versa), use `tools/gen_sh_from_yaml.py` and `tools/gen_yaml_from_sh.py`.
+
+**API.ipynb** is generated from these examples (`make api-notebook`). It includes all categories except `tools` (those scripts rely on `__file__` and are meant to be run from the command line). Run the **Setup** cell first so that paths like `cif/MEP.cif` resolve correctly.

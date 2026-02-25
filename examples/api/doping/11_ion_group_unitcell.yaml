@@ -2,6 +2,7 @@
 # Generated from 11_ion_group_unitcell.sh
 
 unitcell: A15
+seed: 43
 cation:
   0=N:
     group:
