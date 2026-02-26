@@ -4,7 +4,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {},
-    "usage": "No options available.",
     "brief": "Most popular Ice I (hexagonal). ",
 }
 

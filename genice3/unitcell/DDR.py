@@ -13,7 +13,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"engel17": "Engel 2018", "DDR": "IZA Database"},
-    "usage": "No options available.",
     "brief": "Hypothetical zeolitic ice",
 }
 

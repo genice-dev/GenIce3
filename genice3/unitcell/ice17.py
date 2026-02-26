@@ -1,6 +1,5 @@
 desc = {
     "ref": {"C0(a)": "Smirnov 2013", "C0(b)": "Strobel 2016", "Ice 17": "Rosso 2016"},
-    "usage": "No options available.",
     "brief": "Ultralow-density Ice XVII.",
 }
 

@@ -15,7 +15,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"XIV": "Salzmann 2006"},
-    "usage": "No options available.",
     "brief": "Ice XIV, a partially hydrogen-ordered counterpart of ice XII. Note that it does not reproduce the occupancies (probability of occupation) of the possible hydrogen sites.",
     "test": ({"options": "--depol=none"},),
 }

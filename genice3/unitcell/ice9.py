@@ -1,6 +1,5 @@
 desc = {
     "ref": {"9": "Londono 1993"},
-    "usage": "No options available.",
     "brief": "Ice IX, a hydrogen-ordered counterpart of ice III.",
 }
 

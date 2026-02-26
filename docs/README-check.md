@@ -10,7 +10,7 @@
 | Clathrate（CS1/CS2 例、cage 一覧、EO プラグイン例、多重占有の注意） | docs/clathrate-hydrates.md |
 | Doping（-a/-c, Na/Cl 例、陽陰イオン同数、プロトン/Bjerrum は API のみ） | docs/doping-and-defects.md |
 | Output formats（表、mdanalysis、7 ステージ） | docs/output-formats.md |
-| Ice structures（表、命名対応表、cif2ice） | docs/ice-structures.md |
+| Unit cells（表、命名対応表、cif2ice、サブオプション付きプラグイン） | docs/unitcells.md（自動生成） |
 | Water models（表） | docs/water-models.md |
 | Guest molecules（表） | docs/guest-molecules.md |
 | Extra plugins（genice2-rdf 等） | docs/plugins.md |

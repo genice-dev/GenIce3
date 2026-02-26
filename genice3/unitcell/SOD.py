@@ -6,7 +6,6 @@ desc = {
         "207_1_4435": "Engel 2018",
         "engel01": "Engel 2018",
     },
-    "usage": "No options available.",
     "brief": "Hypothetical zeolitic ice",
 }
 

@@ -12,7 +12,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"13": "Salzmann 2006"},
-    "usage": "No options available.",
     "brief": "Ice XIII, a hydrogen-ordered counterpart of ice V.",
 }
 

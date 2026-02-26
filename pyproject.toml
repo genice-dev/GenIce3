@@ -62,9 +62,10 @@ authors = [
 description = "A Swiss army knife to generate hydrogen-disordered ice structures."
 readme = "README.md"
 license = "MIT"
-# genice3 package
+# genice3 + dependency_engine (独立モジュール、将来外部化の可能性あり)
 packages = [
-  { include = "genice3" }
+  { include = "genice3" },
+  { include = "dependency_engine" }
 ]
 
 # poetry install to make them work
@@ -105,7 +106,7 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["genice3*"]
+include = ["genice3*", "dependency_engine*"]
 exclude = ["tests*", "examples*", "docs*", "Utilities*", "*.tests*", "*.test*"]
 
 [tool.pytest.ini_options]

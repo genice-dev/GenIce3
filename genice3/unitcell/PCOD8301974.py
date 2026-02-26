@@ -1,6 +1,5 @@
 desc = {
     "ref": {"PCOD8301974": "Engel 2018", "engel20": "Engel 2018"},
-    "usage": "No options available.",
     "brief": "Hypothetical zeolitic ice",
 }
 

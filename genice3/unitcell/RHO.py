@@ -5,7 +5,6 @@ Huang, Y et al. “A New Phase Diagram of Water Under Negative Pressure: the Ris
 
 desc = {
     "ref": {"sIII": "Huang 2016", "RHO": "IZA Database"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice at negative pressure ice 'sIII'.",
 }
 

@@ -1,6 +1,5 @@
 desc = {
     "ref": {"2_2_623457": "Engel 2018"},
-    "usage": "No options available.",
     "brief": "Hypothetical zeolitic ice",
 }
 

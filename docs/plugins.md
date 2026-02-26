@@ -36,4 +36,4 @@ genice3 TS1 -e _RDF > TS1.rdf.txt
 
 ## Plugin source locations
 
-Built-in unit cells and water/guest molecules live in the `genice3` package (`genice3/unitcell/`, `genice3/molecule/`). For developers, the source code for each plugin is in the corresponding module file; the [Ice structures](ice-structures.md) and [Water models](water-models.md) / [Guest molecules](guest-molecules.md) tables list the symbol names that correspond to those modules.
+Built-in unit cells and water/guest molecules live in the `genice3` package (`genice3/unitcell/`, `genice3/molecule/`). For developers, the source code for each plugin is in the corresponding module file; the [Unit cells](unitcells.md) and [Water models](water-models.md) / [Guest molecules](guest-molecules.md) tables list the symbol names that correspond to those modules.

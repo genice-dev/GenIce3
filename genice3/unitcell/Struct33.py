@@ -5,7 +5,6 @@ Cage composition:
 
 desc = {
     "ref": {"CS1": "Sikiric 2010"},
-    "usage": "No options available.",
     "brief": "Cubic Structure I of clathrate hydrate.",
 }
 

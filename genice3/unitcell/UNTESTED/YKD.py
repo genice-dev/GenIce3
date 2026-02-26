@@ -1,6 +1,5 @@
 desc = {
     "ref": {"YKD": "Kawano 2024"},
-    "usage": "No options available.",
     "brief": "Ice in a d-surface (testing).",
 }
 

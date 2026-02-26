@@ -5,7 +5,6 @@ Data sources
 
 desc = {
     "ref": {"Ic": "Vos 1993"},
-    "usage": "No options available.",
     "brief": "Cubic type of ice I.",
 }
 

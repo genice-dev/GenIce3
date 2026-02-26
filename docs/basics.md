@@ -17,7 +17,7 @@ The program generates various hydrogen-disordered ice structures without defects
 - To generate an ice VI lattice at a different density with the TIP4P water model in GROMACS format:
 
     ```shell
-    genice3 6 --density 1.00 -e gromacs --water tip4p > 6d1.00.gro
+    genice3 6 --density 1.00 -e "gromacs :water_model tip4p" > 6d1.00.gro
     ```
 
 GenIce3 is modular: it loads unit cells from plugins in the `unitcell` folder, places water and guest molecules using plugins in the `molecules` folder, and writes output via plugins in the `exporter` folder. You can add your own plugins to extend GenIce3; many plugins accept options.

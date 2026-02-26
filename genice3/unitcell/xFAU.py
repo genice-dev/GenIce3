@@ -2,13 +2,8 @@
 """
 Generate a (hydrogen-ordered) Aeroice nxFAU.
 
-Usage:
-  genice xFAU[3] > 3xfau.gro
-
-Options:
-  n    Length of the hexagonal prism. (rep=1:FAU, rep=0:SOD, rep>1: aeroice)
+CLI example: genice3 xFAU --length 3
 """
-
 
 from genice3.unitcell import ice1c as ic  # base topology
 import genice3.unitcell
@@ -21,19 +16,51 @@ from collections import defaultdict
 from math import acos, pi, sin, cos
 import networkx as nx
 import pairlist as pl
+from typing import Any, Dict, Tuple
 
 desc = {
     "ref": {"xFAU": "Matsui 2017"},
-    "usage": __doc__,
     "brief": "Aeroice xFAU.",
-    "test": ( # genice3-style options 
-        {"rep": "0"},
-        {"rep": "1"},
-        {"rep": "2"},
-        {"rep": "4"},
-        {"rep": "8"},
+    "options": [
+        {
+            "name": "length",
+            "help": "Number of hexagonal prism segments. 0=SOD, 1=FAU, 2+=aeroice.",
+            "required": True,
+            "example": 3,
+        },
+    ],
+    "test": (
+        {"options": "--length 0"},
+        {"options": "--length 1"},
+        {"options": "--length 2"},
+        {"options": "--length 4"},
+        {"options": "--length 8"},
     ),
 }
+
+
+def _scalar(v: Any) -> Any:
+    if isinstance(v, (list, tuple)) and len(v) == 1:
+        return v[0]
+    return v
+
+
+def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    xFAU 固有: length（旧 rep も受け付ける）。
+    残りは基底 UnitCell.parse_options に渡す。
+    """
+    processed: Dict[str, Any] = {}
+    unprocessed = dict(options)
+    for key in ("length", "rep"):
+        if key in unprocessed:
+            processed["length"] = _scalar(unprocessed.pop(key))
+            break
+    base_processed, base_unprocessed = genice3.unitcell.UnitCell.parse_options(
+        unprocessed
+    )
+    processed.update(base_processed)
+    return processed, base_unprocessed
 # FAU Decoration of a 4-network
 # 読みこんだAR3Rの座標を、FAU構造における多面体vertexの位置とみなし、
 # それらを連結するネットワークを六角柱で修飾して大きなネットワークを作る。
@@ -168,13 +195,15 @@ class decorate:
 class UnitCell(genice3.unitcell.UnitCell):
     """
     Generate a (hydrogen-ordered) Aeroice nxFAU.
-
-    Options:
-      rep=n    Length of the hexagonal prism. (rep=1:FAU, rep=0:SOD, rep>1: aeroice)
+    Option: length (CLI: --length N). 0:SOD, 1:FAU, 2+: aeroice.
     """
 
     def __init__(self, **kwargs):
         logger = getLogger()
+        length = kwargs.get("length")
+        if length is None:
+            raise ValueError("xFAU unitcell requires --length N (e.g. genice3 xFAU --length 3)")
+        Ncyl = int(length)
         ice1c = ic.UnitCell()
         cell1c = ice1c.cell
         waters1c = ice1c.lattice_sites
@@ -182,17 +211,6 @@ class UnitCell(genice3.unitcell.UnitCell):
         #
         # 0..3を黒、4..7を白とする。もともと二部グラフになっているようだ。
         #
-        Ncyl = None
-        if len(kwargs) == 1:
-            if "rep" in kwargs:
-                Ncyl = int(kwargs["rep"])
-            else:
-                for k, v in kwargs.items():
-                    if re.match("^[0-9]+$", k) is not None and v is True:
-                        Ncyl = int(k)
-                        break
-        if Ncyl is None:
-            raise ValueError("rep=n is required")
         logger.info("Superlattice {0}xFAU".format(Ncyl))
         dec = decorate(waters1c, cell1c, graph1c, Ncyl)
 

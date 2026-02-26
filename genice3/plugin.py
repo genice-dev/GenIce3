@@ -10,6 +10,7 @@ import sys
 from collections import defaultdict
 from logging import DEBUG, INFO, basicConfig, getLogger
 from textwrap import fill
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 # import pkg_resources as pr
 
@@ -17,6 +18,59 @@ if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
     from importlib.metadata import entry_points
+
+
+def _normalize_unitcell_options(
+    options: Sequence[Union[Tuple[str, str], Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    """(name, help) or dict のリストを {name, help, required?, example?} のリストに統一。"""
+    result = []
+    for opt in options:
+        if isinstance(opt, dict):
+            result.append({
+                "name": str(opt["name"]),
+                "help": str(opt.get("help", opt.get("brief", ""))),
+                "required": bool(opt.get("required", False)),
+                "example": opt.get("example"),
+            })
+        else:
+            name, help_ = opt[0], opt[1]
+            required = opt[2] if len(opt) > 2 else False
+            example = opt[3] if len(opt) > 3 else None
+            result.append({
+                "name": str(name),
+                "help": str(help_),
+                "required": bool(required),
+                "example": example,
+            })
+    return result
+
+
+def format_unitcell_usage(
+    unitcell_name: str, options: Sequence[Union[Tuple[str, str], Dict[str, Any]]]
+) -> Dict[str, str]:
+    """
+    options 構造体から CLI / API / YAML の 3 表記を生成する。
+    Returns:
+        {"cli": "...", "api": "...", "yaml": "..."}
+    """
+    opts = _normalize_unitcell_options(options)
+    cli_parts = [f"genice3 {unitcell_name}"]
+    api_args = []
+    yaml_lines = [f"unitcell:", f"  name: {unitcell_name}"]
+    for o in opts:
+        ex = o.get("example")
+        ex_str = str(ex) if ex is not None else "VALUE"
+        cli_parts.append(f"--{o['name']} {ex_str}")
+        if o.get("required"):
+            cli_parts.append("(required)")
+        api_args.append(f"{o['name']}={repr(ex)}" if ex is not None else f"{o['name']}=None")
+        yaml_lines.append(f"  {o['name']}: {ex}" if ex is not None else f"  {o['name']}: ...")
+    return {
+        "cli": " ".join(cli_parts) + "\n  " + "\n  ".join(f"--{o['name']}: {o['help']}" for o in opts),
+        "api": f'UnitCell("{unitcell_name}", ' + ", ".join(api_args) + ")",
+        "yaml": "\n".join(yaml_lines),
+    }
 
 
 def _is_water_module(module, category):
@@ -275,15 +329,16 @@ def safe_import(category, name):
             f"category must be 'exporter', 'molecule', 'unitcell', or 'group', got: {category}"
         )
 
-    # single \? as a plugin name ==> show descriptions
+    # single ? as a plugin name ==> show descriptions (list all)
     if name == "?":
         print(descriptions(category))
         sys.exit(0)
 
+    # SYMBOL? ==> show usage for that plugin (then exit)
     usage = False
-    # if name[-1:] == "?":
-    #     usage = True
-    #     name = name[:-1]
+    if len(name) > 1 and name[-1] == "?":
+        usage = True
+        name = name[:-1]
 
     module_name = audit_name(name, category)
 
@@ -327,8 +382,17 @@ def safe_import(category, name):
 
     if usage:
         if "desc" in module.__dict__:
+            d = module.desc
             logger.info(f"Usage for '{name}' plugin")
-            print(module.desc["usage"])
+            if category == "unitcell" and d.get("options"):
+                u = format_unitcell_usage(name, d["options"])
+                print("CLI:  ", u["cli"])
+                print("API:  ", u["api"])
+                print("YAML:\n", u["yaml"])
+            elif d.get("usage"):
+                print(d["usage"])
+            else:
+                print("(no usage)")
             sys.exit(0)
 
     return module

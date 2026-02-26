@@ -13,7 +13,6 @@ import networkx as nx
 
 desc = {
     "ref": {},
-    "usage": "No options available.",
     "brief": "A layered ferroelectric Ice XI.",
     "test": ({"layers": "udud"},),
 }

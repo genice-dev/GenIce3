@@ -3,7 +3,6 @@ import genice3.unitcell
 
 desc = {
     "ref": {"EMT(a)": "Liu 2019", "EMT(b)": "IZA Database"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice with a large cavity.",
 }
 

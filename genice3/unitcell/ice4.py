@@ -1,4 +1,4 @@
-desc = {"ref": {"IV": "Avogadro"}, "usage": "No options available.", "brief": "Ice IV."}
+desc = {"ref": {"IV": "Avogadro"}, "brief": "Ice IV."}
 
 import genice3.unitcell
 import numpy as np

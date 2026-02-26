@@ -33,9 +33,9 @@ This page is intended for AI/LLM systems that need to understand and explain Gen
 
 ## Plugin architecture
 
-- **Unit cells**: Plugins in `unitcell` (built-in and user-added); name passed as first CLI argument or `UnitCell("Name", ...)`.
+- **Unit cells**: Plugins in `unitcell` (built-in and user-added); name passed as first CLI argument or `UnitCell("Name", ...)`. Some unit cells require options: pass them as keyword arguments, e.g. `UnitCell("CIF", file="path/to.cif")`, `UnitCell("aeroice", length=3)` or `UnitCell("xFAU", length=3)` (length = hexagonal prism length), `UnitCell("zeolite", code="LTA")`. See [Unit cells](unitcells.md) for the list and suboption tables.
 - **Exporters**: Plugins in `exporter`; selected with `-e` or `Exporter("name").dump(genice, ...)`.
-- **Molecules**: Water and guest models in `molecules`; `--water` for water model, `-g`/`-G` for guests.
+- **Molecules**: Water and guest models in `molecules`; water model via exporter suboption (e.g. `-e "gromacs :water_model tip4p"` or config `exporter.water_model`), or in API `Exporter("gromacs").dump(genice, water_model="tip5p")`. Symbols: tip3p, tip4p, 5site/tip5p, etc. See [Water models](water-models.md). `-g`/`-G` for guests.
 - User can add plugins by placing Python modules in `unitcell`, `exporter`, or `molecules` directories (e.g. current working directory).
 
 ## Common tasks (quick answers)
@@ -45,7 +45,7 @@ This page is intended for AI/LLM systems that need to understand and explain Gen
 - **Ions**: `genice3 CS2 -c 0=Na -a 1=Cl` (equal number of cations and anions required)
 - **H₃O⁺/OH⁻ or Bjerrum defects**: Use the Python API; see [Topological defects](api-examples/topological_defects.md).
 - **Output formats**: GROMACS (default), CIF, LAMMPS, plotly, cage_survey (JSON), etc. See [Output formats](output-formats.md).
-- **List of ice structures**: See [Ice structures](ice-structures.md) (symbols like `1h`, `4`, `CS1`, `CIF` for CIF file input).
+- **List of unit cells**: See [Unit cells](unitcells.md) (symbols like `1h`, `4`, `CS1`, `CIF` for CIF file input).
 
 ## Where to find more
 

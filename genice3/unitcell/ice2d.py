@@ -1,6 +1,5 @@
 desc = {
     "ref": {"IId": "Nakamura 2015"},
-    "usage": "No options available.",
     "brief": "A hydrogen-disordered counterpart of ice II.",
 }
 

@@ -1,6 +1,5 @@
 desc = {
     "ref": {"0": "Russo 2014"},
-    "usage": "No options available.",
     "brief": 'Metastable ice "0".',
 }
 

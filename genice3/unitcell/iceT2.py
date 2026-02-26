@@ -9,7 +9,6 @@ Reshaping the unit cell.
 
 desc = {
     "ref": {"T2": "Yagasaki 2018"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice T2.",
     "test": ({"options": "--depol=optimal"},),
 }

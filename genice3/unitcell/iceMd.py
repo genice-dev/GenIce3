@@ -6,7 +6,6 @@ import networkx as nx
 
 desc = {
     "ref": {"Md": "Mochizuki 2024"},
-    "usage": "No options available.",
     "brief": "A hydrogen-disordered counterpart of ice M.",
     "test": ({"options": "--depol=none"},),
 }

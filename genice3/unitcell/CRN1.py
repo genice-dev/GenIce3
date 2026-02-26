@@ -1,6 +1,5 @@
 desc = {
     "ref": {"CRN": "Mousseau 2001"},
-    "usage": "No options available.",
     "brief": "A continuous random network of Sillium.",
 }
 

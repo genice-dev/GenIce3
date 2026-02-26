@@ -5,7 +5,6 @@ Cage composition:
 
 desc = {
     "ref": {"SpaceFullerene": "Sikiric 2010"},
-    "usage": "No options available.",
     "brief": "A space fullerene.",
 }
 

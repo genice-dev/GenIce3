@@ -9,7 +9,6 @@ Reshaping the unit cell.
 
 desc = {
     "ref": {"IV": "Avogadro"},
-    "usage": "No options available.",
     "brief": "Orthogonalized ice IV.",
 }
 

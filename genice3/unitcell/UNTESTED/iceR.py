@@ -7,7 +7,6 @@ Data Source
 
 desc = {
     "ref": {"Methane A": "Maynard-Casely 2010", "R": "Mochizuki 2014"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice R.",
     "test": ({"options": "--depol=optimal"},),
 }

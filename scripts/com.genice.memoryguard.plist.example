@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.genice.memoryguard</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>ABSOLUTE_PATH_TO_GenIce3/scripts/memory_guard.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>60</integer>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>/tmp/memory_guard.out</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/memory_guard.err</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MEMORY_GUARD_THRESHOLD_MB</key>
+    <string>500</string>
+    <!-- 発動させたくない場合は DRY_RUN で様子見 -->
+    <!-- <key>MEMORY_GUARD_DRY_RUN</key>
+    <string>1</string> -->
+  </dict>
+</dict>
+</plist>

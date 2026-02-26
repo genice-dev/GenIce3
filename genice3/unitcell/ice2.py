@@ -5,7 +5,6 @@ Usage: genice3 2
 
 desc = {
     "ref": {"2atom": "Kamb 2003", "2cell": "Kamb 1964", "C1": "Londono 1988"},
-    "usage": "\nUsage: genice3 2\n",
     "brief": "Hydrogen-ordered ice II.",
 }
 

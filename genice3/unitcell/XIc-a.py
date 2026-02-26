@@ -5,7 +5,6 @@ Data sources
 
 desc = {
     "ref": {"XIc": "Geiger 2014"},
-    "usage": "No options available.",
     "brief": "A candidate for the proton-ordered counterpart of ice Ic. The structure 'a' in Figure 1.",
 }
 

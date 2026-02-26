@@ -18,7 +18,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"L": "Lei 2025"},
-    "usage": __doc__,
     "brief": "The hypothetical Ice L",
     "test": ({"options": "-r 2 2 2"},),
 }

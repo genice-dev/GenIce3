@@ -9,7 +9,6 @@ Reshaping the unit cell.
 
 desc = {
     "ref": {},
-    "usage": "No options available.",
     "brief": "Ice V with orthogonal unit cell. (testing)",
 }
 

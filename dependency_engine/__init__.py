@@ -1,9 +1,15 @@
+"""
+依存関係解決エンジン（リアクティブパイプライン用）。
+
+ゴールから逆算して必要なタスクだけを実行する。
+将来的に別パッケージとして切り出す可能性あり。
+"""
 import inspect
 from logging import getLogger
 import time
 
 # @reactive でデコレートされた関数を (モジュール名, 関数) で保持。
-# GenIce3 などが _register_tasks で get_reactive_tasks(__name__) により自モジュール分だけ登録する。
+# 利用側が _register_tasks で get_reactive_tasks(__name__) により自モジュール分だけ登録する。
 _REACTIVE_REGISTRY = []
 
 
@@ -21,15 +27,14 @@ def reactive(func):
 
 
 def get_reactive_tasks(module_name: str):
-    """指定モジュールで @reactive を付けた関数のリストを返す。
-
-    GenIce3._register_tasks() から呼び、task_names の手書きリストを不要にする。
-    """
+    """指定モジュールで @reactive を付けた関数のリストを返す。"""
     return [f for mod, f in _REACTIVE_REGISTRY if mod == module_name]
 
 
 class DependencyEngine:
-    logger = getLogger("DependencyEngine")
+    """ゴール(target)から依存を逆算して必要なタスクのみ実行するエンジン。"""
+
+    logger = getLogger("dependency_engine")
 
     def __init__(self):
         self.registry = {}  # { 'output_name': function }
@@ -62,7 +67,7 @@ class DependencyEngine:
             dependencies[param_name] = self.resolve(param_name, inputs)
 
         # 4. 実行して結果を保存
-        self.logger.info(f"Executing: {target}")  # 実行ログ
+        self.logger.info(f"Executing: {target}")
         now = time.time()
         result = func(**dependencies)
         delta = time.time() - now
@@ -71,8 +76,8 @@ class DependencyEngine:
         return result
 
 
-def main():
-    # --- ライブラリ定義 ---
+def _demo():
+    """パッケージ単体テスト用デモ（python -m dependency_engine で実行可能）"""
     engine = DependencyEngine()
 
     @engine.task
@@ -81,11 +86,8 @@ def main():
 
     @engine.task
     def reaction_B(reaction_A: int, catalyst: int):
-        # reaction_A が必要だと自動判別される
         return reaction_A + catalyst
 
-    # --- ユーザー利用 ---
-    # ユーザーは「reaction_B が欲しい」と言うだけ
     result = engine.resolve(
         target="reaction_B", inputs={"raw_material": 10, "catalyst": 5}
     )
@@ -93,10 +95,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
-
-
-
-
-
+    _demo()

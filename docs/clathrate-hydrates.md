@@ -5,7 +5,7 @@ For clathrate hydrates, you can build lattices with cages partially occupied by 
 - To generate a CS1 clathrate hydrate with TIP4P water and CO₂ in GROMACS .gro format (60% of small cages filled with CO₂, 40% with methane):
 
     ```shell
-    genice3 CS1 -g A12=co2*0.6+me*0.4 -g A14=co2 --water tip4p > cs1.gro
+    genice3 CS1 -g A12=co2*0.6+me*0.4 -g A14=co2 -e "gromacs :water_model tip4p" > cs1.gro
     ```
 
     You can look up cage names in advance with `cage_survey`:

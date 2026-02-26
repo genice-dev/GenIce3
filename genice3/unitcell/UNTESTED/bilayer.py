@@ -1,16 +1,12 @@
 """
 Generate a hydrogen-disordered honeycomb bilayer ice.
 
-Usage:
-  genice3 bilayer                     Default size (6,6)
-  genice3 bilayer[size=6,10]          Larger size
-  genice3 bilayer[size=6,10:sw=0.2]   With Stone-Wales defects
-
-Options:
-  size=x,y   x must be a multiple of 3.
-  sw=0.0     Z specifies the ratio of Stone-Wales defects to the number of
-               sites.
+CLI example: genice3 bilayer --size 6,10
+             genice3 bilayer --size 6,10 --sw 0.2
 """
+
+import re
+from typing import Any, Dict, Tuple
 
 from cif2ice import cellvectors
 from genice3.util import density_in_g_cm3
@@ -26,13 +22,77 @@ from logging import getLogger
 
 desc = {
     "ref": {"bilayer": "Koga 1997"},
-    "usage": __doc__,
     "brief": "A Bilayer Honeycomb Ice Phase in Hydrophobic Nanopores.",
+    "options": [
+        {
+            "name": "size",
+            "help": "Size of the bilayer (x,y). x must be a multiple of 3.",
+            "required": True,
+            "example": "6,10",
+        },
+        {
+            "name": "sw",
+            "help": "Ratio of Stone-Wales defects to the number of sites.",
+            "required": False,
+            "example": "0.2",
+        },
+    ],
     "test": (
-        {"args": {"size": "6,10"}},
-        {"args": {"size": "15,18", "sw": "0.2"}, "options": "-s 1000"},
+        {"options": "--size 6,10"},
+        {"options": "--size 15,18 --sw 0.2", "seed": 1000},
     ),
 }
+
+
+def _scalar(v: Any) -> Any:
+    if isinstance(v, (list, tuple)) and len(v) == 1:
+        return v[0]
+    return v
+
+
+def _parse_size(raw: str) -> Tuple[int, int]:
+    parts = re.split(r"[\s,]+", str(raw).strip())
+    if len(parts) != 2:
+        raise ValueError(
+            "bilayer --size must be two integers (e.g. 6,10 or 6 10)"
+        )
+    try:
+        nx_val, ny_val = int(parts[0]), int(parts[1])
+    except ValueError as e:
+        raise ValueError(
+            "bilayer --size must be two integers (e.g. 6,10)"
+        ) from e
+    if nx_val % 3 != 0:
+        raise ValueError("bilayer --size: x must be a multiple of 3.")
+    return nx_val, ny_val
+
+
+def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    bilayer 固有: size, sw。
+    残りは基底 UnitCell.parse_options に渡す。
+    """
+    processed: Dict[str, Any] = {}
+    unprocessed = dict(options)
+    if "size" in unprocessed:
+        raw = _scalar(unprocessed.pop("size"))
+        processed["size"] = _parse_size(raw)
+    if "sw" in unprocessed:
+        raw = _scalar(unprocessed.pop("sw"))
+        try:
+            sw_val = float(raw)
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                "bilayer --sw must be a number (ratio of Stone-Wales defects)"
+            ) from e
+        if not 0 <= sw_val <= 1:
+            raise ValueError("bilayer --sw must be between 0 and 1.")
+        processed["sw"] = sw_val
+    base_processed, base_unprocessed = genice3.unitcell.UnitCell.parse_options(
+        unprocessed
+    )
+    processed.update(base_processed)
+    return processed, base_unprocessed
 
 
 # Unnecessary when pairs are given.
@@ -178,17 +238,24 @@ class UnitCell(genice3.unitcell.UnitCell):
     def __init__(self, **kwargs):
         logger = getLogger()
 
-        NX, NY = 6, 6
-        sw = 0.0
-
-        for k, v in kwargs.items():
-            if k == "size":
-                NX, NY = [int(x) for x in v.split(" ")]  # ,は使えない。
-                assert NX % 3 == 0, "X must be a multiple of 3."
-            elif k == "sw":
-                sw = float(v)
-            elif v is True:
-                raise ValueError("Unlabeled option is not allowed.")
+        size = kwargs.get("size")
+        if size is None:
+            raise ValueError(
+                "bilayer unitcell requires --size x,y (e.g. genice3 bilayer --size 6,10)"
+            )
+        if isinstance(size, (list, tuple)) and len(size) == 2:
+            NX, NY = int(size[0]), int(size[1])
+        else:
+            NX, NY = _parse_size(_scalar(size))
+        if NX % 3 != 0:
+            raise ValueError("bilayer --size: x must be a multiple of 3.")
+        sw = kwargs.get("sw", 0.0)
+        try:
+            sw = float(sw)
+        except (TypeError, ValueError):
+            sw = 0.0
+        if not 0 <= sw <= 1:
+            raise ValueError("bilayer --sw must be between 0 and 1.")
 
         logger.info(f"Bilayer ice of size ({NX}x{NY})")
 

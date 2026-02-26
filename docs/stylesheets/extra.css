@@ -1,4 +1,6 @@
-/* Limit Symbol column width in ice-structures table (max 1/3) */
+/* Limit Symbol column width in unitcell / ice-structures table (max 1/3) */
+.unitcell-symbol-table table th:first-child,
+.unitcell-symbol-table table td:first-child,
 .ice-structures-symbol-table table th:first-child,
 .ice-structures-symbol-table table td:first-child {
   max-width: 33%;

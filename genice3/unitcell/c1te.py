@@ -16,7 +16,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"C1": "Teeratchanan 2015"},
-    "usage": __doc__,
     "brief": "Hydrogen-ordered hydrogen hydrate C1 by Teeratchanan. (Positions of guests are supplied.)",
 }
 
@@ -33,6 +32,7 @@ def pick_atoms(atoms, names, repeat=(1, 1, 1)):
 
 class UnitCell(genice3.unitcell.UnitCell):
     SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
     def __init__(self, **kwargs):
         logger = getLogger()
 

@@ -1,6 +1,5 @@
 desc = {
     "ref": {"0": "Fennell 2005"},
-    "usage": "No options available.",
     "brief": 'Hypothetical ice "i".',
 }
 

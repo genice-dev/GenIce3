@@ -14,7 +14,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"VIII": "Kuhs 1998"},
-    "usage": "No options available.",
     "brief": "Ice VIII, a hydrogen-ordered counterpart of ice VII.",
     "test": ({"options": "--depol=none"},),
 }

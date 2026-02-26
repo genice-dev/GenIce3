@@ -1,6 +1,5 @@
 desc = {
     "ref": {},
-    "usage": "No options available.",
     "brief": "Most popular Ice I (hexagonal). "
     + "NOTE: Due to a historical reason, the crystal axes of hexagonal ice are exchanged. "
     + "If you want the basal plane to be Z axis, please use ice1h_unit instead.",

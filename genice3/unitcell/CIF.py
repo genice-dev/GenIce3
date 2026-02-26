@@ -13,8 +13,12 @@ from logging import getLogger
 
 desc = {
     "ref": {},
-    "usage": "file=CIF file, osite=O site, hsite=H site",
     "brief": "Load a CIF file and create a unit cell.",
+    "options": [
+        {"name": "file", "help": "Path to CIF file.", "required": True, "example": "path/to/structure.cif"},
+        {"name": "osite", "help": "O site label or regex.", "required": False, "example": "O"},
+        {"name": "hsite", "help": "H site label or regex (omit to let GenIce3 place H).", "required": False, "example": None},
+    ],
     "test": ({"options": "--file ../../cif/MEP.cif --osite T"},),
 }
 
@@ -28,7 +32,7 @@ def _scalar(v: Any) -> Any:
 def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     CIF プラグインのオプションを処理する（file, osite, hsite, water_model）。
-    option_parser 由来の辞書（値はスカラーまたはリスト）を受け取る。
+    残りは基底 UnitCell.parse_options に渡し、共通オプション（shift, density 等）をマージする。
     """
     processed: Dict[str, Any] = {}
     unprocessed = dict(options)
@@ -36,7 +40,9 @@ def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, An
         if key in options:
             processed[key] = _scalar(options[key])
             unprocessed.pop(key, None)
-    return processed, unprocessed
+    base_processed, base_unprocessed = genice3.unitcell.UnitCell.parse_options(unprocessed)
+    processed.update(base_processed)
+    return processed, base_unprocessed
 
 
 class UnitCell(genice3.unitcell.UnitCell):
@@ -70,12 +76,18 @@ class UnitCell(genice3.unitcell.UnitCell):
         shortest_OO = shortest_distance(oatoms, cell)
         cell *= 0.276 / shortest_OO
 
+        # 共通 unitcell オプション（shift, density, anion, cation 等）は kwargs から親に渡す
+        uc_kwargs = {
+            k: v for k, v in kwargs.items()
+            if k in ("shift", "density", "anion", "cation", "cation_groups")
+        }
         if hsite is None:
             # 水素位置は指定されていないので、genice3にまかせる。
             super().__init__(
                 cell=cell,  # nm
                 lattice_sites=oatoms,
                 coord="relative",
+                **uc_kwargs,
             )
         else:
             hatoms = np.array([a[1:] for a in atoms if re.match(hsite, a[0])])
@@ -88,4 +100,5 @@ class UnitCell(genice3.unitcell.UnitCell):
                 graph=nx.Graph(oo_pairs),
                 fixed=nx.DiGraph(pairs),
                 coord="relative",
+                **uc_kwargs,
             )

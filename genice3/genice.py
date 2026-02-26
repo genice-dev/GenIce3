@@ -20,8 +20,24 @@ from typing import Any, Dict, Generator, List, Tuple
 from enum import Enum
 import inspect
 
-from genice3.dependencyengine import DependencyEngine, get_reactive_tasks, reactive
+from dependency_engine import DependencyEngine, get_reactive_tasks, reactive
 from genice3.unitcell import UnitCell
+
+
+def _graph_degree_stats(g: nx.Graph) -> str:
+    """グラフの次数分布（0,1,2,3,4,>4 のノード数と割合）を文字列で返す。"""
+    n = g.number_of_nodes()
+    if n == 0:
+        return "nodes=0"
+    deg = [g.degree(v) for v in g]
+    buckets = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, ">4": 0}
+    for d in deg:
+        if d <= 4:
+            buckets[d] += 1
+        else:
+            buckets[">4"] += 1
+    parts = [f"deg{k}:{c}({100*c/n:.1f}%)" for k, c in buckets.items() if c]
+    return f"nodes={n} " + " ".join(parts)
 
 
 class ShowUsageError(Exception):
@@ -414,6 +430,7 @@ def graph(
         replica_vector_index=replica_vector_labels,
         reshape=replication_matrix,
     )
+    getLogger(__name__).info("graph: %s", _graph_degree_stats(g))
     return g
 
 

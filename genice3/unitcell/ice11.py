@@ -1,6 +1,5 @@
 desc = {
     "ref": {"11#19": "Fan 2010", "11": "Jackson 1997"},
-    "usage": "No options available.",
     "brief": "A candidate for an antiferroelectric Ice XI #19.",
 }
 

@@ -18,8 +18,8 @@
 | [Clathrate hydrates](clathrate-hydrates.md) | Guest molecules, cage types, occupancy |
 | [Doping and defects](doping-and-defects.md) | Ions (CLI), H₃O⁺/OH⁻ and Bjerrum defects (API) |
 | [Output formats](output-formats.md) | Exporters (GROMACS, CIF, LAMMPS, etc.) and generation stages |
-| [Ice structures](ice-structures.md) | Table of unit cell symbols (1h, 4, CS2, CIF, …) |
-| [Water models](water-models.md) | Built-in water models (`--water`) |
+| [Unit cells](unitcells.md) | Table of unit cell symbols (1h, 4, CS2, CIF, …) |
+| [Water models](water-models.md) | Built-in water models (exporter `water_model` suboption) |
 | [Guest molecules](guest-molecules.md) | Built-in guest molecules for clathrates |
 | [Plugins](plugins.md) | Extra PyPI plugins and custom unit cell / exporter / molecule plugins |
 | [Changes from GenIce2](changes-from-genice2.md) | Cage survey and other changes |

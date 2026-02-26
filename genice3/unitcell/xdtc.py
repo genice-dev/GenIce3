@@ -7,7 +7,7 @@ Reshaping the unit cell.
   k:[0 0 1]
 """
 
-desc = {'ref': {'xdtc': 'Matsumoto 2021'}, 'usage': 'No options available.', 'brief': 'A porous ice with cylindrical channels.'}
+desc = {'ref': {'xdtc': 'Matsumoto 2021'}, 'brief': 'A porous ice with cylindrical channels.'}
 
 import genice3.unitcell
 import numpy as np

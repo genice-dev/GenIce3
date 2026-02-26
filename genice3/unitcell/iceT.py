@@ -1,6 +1,5 @@
 desc = {
     "ref": {"T": "Hirata 2017"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice T.",
 }
 

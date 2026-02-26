@@ -1,6 +1,5 @@
 desc = {
     "ref": {"sIII": "Huang 2017", "FAU": "IZA Database"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice at negative pressure ice 'sIV'.",
 }
 

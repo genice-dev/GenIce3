@@ -15,7 +15,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"C2": "Teeratchanan 2015"},
-    "usage": __doc__,
     "brief": "Filled ice C2 (cubic ice) by Teeratchanan (Hydrogen disordered). (Positions of guests are supplied.)",
 }
 

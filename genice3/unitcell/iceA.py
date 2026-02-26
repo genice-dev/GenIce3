@@ -14,7 +14,6 @@ from cif2ice import cellvectors
 
 desc = {
     "ref": {"A": "Baez 1998"},
-    "usage": "No options available.",
     "brief": "Hypothetical ice A.",
 }
 

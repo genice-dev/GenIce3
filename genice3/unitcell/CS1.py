@@ -5,7 +5,6 @@ desc = {
         "CS1": "Kosyakov 1999",
         "MEP": "IZA Database",
     },
-    "usage": "No options available.",
     "brief": "Clathrate hydrates sI.",
 }
 

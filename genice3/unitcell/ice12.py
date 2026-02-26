@@ -1,6 +1,5 @@
 desc = {
     "ref": {"12(1)": "Lobban 1998", "12(2)": "Koza 2000"},
-    "usage": "No options available.",
     "brief": "Metastable high-pressure ice XII.",
 }
 

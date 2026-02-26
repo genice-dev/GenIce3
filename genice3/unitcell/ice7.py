@@ -1,6 +1,5 @@
 desc = {
     "ref": {},
-    "usage": "No options available.",
     "brief": "Conventional high-pressure ice VII.",
 }
 

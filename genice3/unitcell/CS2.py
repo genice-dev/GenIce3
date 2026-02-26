@@ -6,7 +6,6 @@ desc = {
         "CS2": "Kosyakov 1999",
         "MTN": "IZA Database",
     },
-    "usage": "No options available.",
     "brief": "Ultralow-density Ice XVI.",
 }
 

@@ -1,6 +1,5 @@
 desc = {
     "ref": {"III": "Petrenko 1999"},
-    "usage": "No options available.",
     "brief": "Ice III.",
 }
 

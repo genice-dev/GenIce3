@@ -17,7 +17,6 @@ import networkx as nx
 
 desc = {
     "ref": {"C0": "Teeratchanan 2015"},
-    "usage": "Usage: genice3 ice1hte\n",
     "brief": "Filled ice Ih by Teeratchanan (Hydrogen disordered). (Positions of guests are supplied.)",
 }
 

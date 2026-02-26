@@ -1,6 +1,5 @@
 desc = {
     "ref": {},
-    "usage": "No options available.",
     "brief": "Half lattice of ice VI.",
     "test": ({"options": "-r 2 2 2"},),
 }

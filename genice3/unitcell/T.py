@@ -5,7 +5,6 @@ def __init__(self):
 
 desc = {
     "ref": {"II+IVa": "Karttunen 2011", "T": "Sikiric 2010"},
-    "usage": "No options available.",
     "brief": "Hypothetical clathrate type T.",
 }
 
