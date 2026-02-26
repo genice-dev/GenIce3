@@ -1,7 +1,7 @@
 PIPNAME=genice3
 GITNAME=GenIce
-# Use Poetry venv Python (genice3 の依存が入ったインタープリタ)
-PYTHON ?= /Users/matto/Library/Caches/pypoetry/virtualenvs/genice3-Xscl5EVV-py3.11/bin/python
+# Use Poetry venv Python so it works on any machine (override with make PYTHON=...)
+PYTHON ?= poetry run python
 
 all: README.md
 	echo Hello.
@@ -13,7 +13,7 @@ README.md: temp_README.md Utilities/replacer.py genice3/__init__.py genice3/plug
 # Generate docs/*.md from temp_docs/*.md (same Jinja2 context as README).
 # Then embed examples/api (py/sh/yaml) into docs/api-examples/*.md.
 # Depends on unitcell/molecule plugins so that ref/desc changes are reflected.
-docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/ice-structures.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
+docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/unitcells.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
 	$(PYTHON) -m Utilities.replacer --docs
 	$(PYTHON) scripts/build_api_docs.py
 

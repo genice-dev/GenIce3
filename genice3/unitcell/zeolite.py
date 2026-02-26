@@ -19,7 +19,6 @@ desc = {
     "options": [
         {"name": "code", "help": "3-letter IZA framework code (e.g. LTA, FAU).", "required": True, "example": "LTA"},
         {"name": "osite", "help": "O site label or regex.", "required": False, "example": "O"},
-        {"name": "hsite", "help": "H site label or regex (omit to let GenIce3 place H).", "required": False, "example": None},
     ],
     "test": ({"options": "--code LTA"},),
 }
@@ -86,15 +85,18 @@ def _download_iza_cif(framework_id: int) -> str:
 
 def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    zeolite 固有: code, osite, hsite, water_model。
+    zeolite 固有: code, osite。hsite は未対応のため指定時はエラー。
     残りは基底 UnitCell.parse_options に渡し、共通オプション（shift, density 等）をマージする。
     """
+    if "hsite" in options:
+        raise ValueError(
+            "zeolite unitcell does not accept --hsite; hydrogen positions are always placed by GenIce3."
+        )
     processed: Dict[str, Any] = {}
     unprocessed = dict(options)
-    for key in ("code", "osite", "hsite", "water_model"):
-        if key in options:
-            processed[key] = _scalar(options[key])
-            unprocessed.pop(key, None)
+    for key in ("code", "osite", "water_model"):
+        if key in unprocessed:
+            processed[key] = _scalar(unprocessed.pop(key))
     base_processed, base_unprocessed = BaseUnitCell.parse_options(unprocessed)
     processed.update(base_processed)
     unprocessed = base_unprocessed
@@ -108,6 +110,10 @@ class UnitCell(genice3.unitcell.UnitCell):
 
     def __init__(self, **kwargs):
         logger = getLogger("zeolite")
+        if "hsite" in kwargs:
+            raise ValueError(
+                "zeolite unitcell does not accept hsite; hydrogen positions are always placed by GenIce3."
+            )
         code = kwargs.get("code")
         if code is None:
             raise ValueError("zeolite unitcell requires --code (3-letter IZA framework code)")
@@ -131,6 +137,7 @@ class UnitCell(genice3.unitcell.UnitCell):
 
         kwargs_cif = dict(kwargs)
         kwargs_cif.pop("code", None)
+        kwargs_cif.pop("hsite", None)
         kwargs_cif["file"] = tmp_path
         if kwargs_cif.get("osite") is None:
             kwargs_cif["osite"] = "T"  # Zeolite DB uses T for tetrahedral (degree-4) sites

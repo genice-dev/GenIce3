@@ -14,7 +14,14 @@ from jinja2 import Environment, FileSystemLoader
 import re
 import yaml
 import genice3
-from genice3.plugin import plugin_descriptors, get_exporter_format_rows, scan
+import importlib
+from genice3.plugin import (
+    plugin_descriptors,
+    get_exporter_format_rows,
+    scan,
+    format_unitcell_usage,
+    _normalize_unitcell_options,
+)
 import toml
 
 
@@ -50,6 +57,115 @@ def make_citations(r, link_base=None, citation_keys=None):
         else:
             parts.append(k)
     return " [" + ", ".join(parts) + "]"
+
+
+def _parse_usage_key_value(usage: str) -> list:
+    """Parse usage string for key=value pairs (for legacy unitcell options)."""
+    if not usage or not isinstance(usage, str):
+        return []
+    one_line = " ".join(usage.splitlines()).strip()
+    parts = []
+    start = 0
+    depth = 0
+    for i, c in enumerate(one_line):
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            parts.append(one_line[start:i].strip())
+            start = i + 1
+    parts.append(one_line[start:].strip())
+    result = []
+    for p in parts:
+        if "=" in p:
+            k, v = p.split("=", 1)
+            result.append((k.strip(), v.strip()))
+        elif p:
+            result.append((p, ""))
+    return result
+
+
+def unitcell_suboptions_markdown():
+    """Generate markdown for unit cell plugins with sub-options (English)."""
+    mods = scan("unitcell")
+    system = mods.get("system", [])
+    lines = []
+    lines.append("## Unit cell plugins (with sub-options)")
+    lines.append("")
+    lines.append("The following unit cells require additional options (e.g. file path, IZA code).")
+    lines.append("")
+    lines.append("- **CLI:** `--option value` (e.g. `genice3 CIF --file MEP.cif`)")
+    lines.append("- **YAML:** Under `unitcell:` set `name` and option keys (examples below).")
+    lines.append("- Run `genice3 SYMBOL?` to show plugin usage.")
+    lines.append("")
+    suboption = []
+    for name in sorted(system):
+        try:
+            mod = importlib.import_module(f"genice3.unitcell.{name}")
+            d = getattr(mod, "desc", {})
+            usage = d.get("usage", "")
+            opts_list = d.get("options")
+            has_opts = isinstance(opts_list, list) and len(opts_list) > 0
+            if has_opts or (isinstance(usage, str) and "=" in usage):
+                brief = d.get("brief", "")
+                suboption.append((name, usage.strip() if isinstance(usage, str) else "", brief, opts_list))
+        except Exception:
+            pass
+    for name, usage, brief, opts_raw in suboption:
+        lines.append(f"### {name}")
+        lines.append("")
+        lines.append(brief or "")
+        lines.append("")
+        if isinstance(opts_raw, list) and opts_raw:
+            opts_norm = _normalize_unitcell_options(opts_raw)
+            valid_opts = [(o["name"], o["help"]) for o in opts_norm]
+            u = format_unitcell_usage(name, opts_raw)
+            lines.append("**CLI:**")
+            lines.append("")
+            lines.append("```")
+            lines.append(u["cli"])
+            lines.append("```")
+            lines.append("")
+            lines.append("**API:**")
+            lines.append("")
+            lines.append("```python")
+            lines.append(u["api"])
+            lines.append("```")
+            lines.append("")
+            lines.append("**YAML:**")
+            lines.append("")
+            lines.append("```yaml")
+            lines.append(u["yaml"])
+            lines.append("```")
+            lines.append("")
+            lines.append("| CLI option | Description |")
+            lines.append("| ---------- | ----------- |")
+            for k, v in valid_opts:
+                v_esc = (v or "").replace("|", "\\|")
+                lines.append(f"| `--{k}` | {v_esc} |")
+            lines.append("")
+        else:
+            opts = _parse_usage_key_value(usage)
+            valid_opts = [(k, v) for k, v in opts if k and v and len(k) <= 20 and " " not in k and "\n" not in k]
+            if valid_opts:
+                lines.append("| CLI option | Description |")
+                lines.append("| ---------- | ----------- |")
+                for k, v in valid_opts:
+                    v_esc = (v or "").replace("|", "\\|")
+                    lines.append(f"| `--{k}` | {v_esc} |")
+                lines.append("")
+                placeholders = {"file": "path/to/structure.cif", "code": "LTA", "length": "3", "osite": "O", "hsite": "H"}
+                lines.append("**YAML example:**")
+                lines.append("")
+                lines.append("```yaml")
+                lines.append("unitcell:")
+                lines.append(f"  name: {name}")
+                for k, _ in valid_opts:
+                    lines.append(f"  {k}: {placeholders.get(k, '...')}")
+                lines.append("```")
+                lines.append("")
+    return "\n".join(lines)
 
 
 def system_ices(markdown=True, citations=None, link_refs=True):
@@ -209,6 +325,12 @@ except Exception as e:
     ices = ""
 
 try:
+    unitcell_suboptions = unitcell_suboptions_markdown()
+except Exception as e:
+    logger.warning("Failed to get unitcell_suboptions: %s", e)
+    unitcell_suboptions = ""
+
+try:
     waters = system_molecules(water=True, citations=citation_keys)
 except Exception as e:
     logger.warning("Failed to get waters: %s", e)
@@ -251,6 +373,7 @@ context = {
     **project,
     "usage": usage,
     "ices": ices,
+    "unitcell_suboptions": unitcell_suboptions,
     "waters": waters,
     "guests": guests,
     "citationlist": citationlist_str,
@@ -280,7 +403,7 @@ if "--docs" in sys.argv:
         "cli",
         "getting-started",
         "output-formats",
-        "ice-structures",
+        "unitcells",
         "water-models",
         "guest-molecules",
         "plugins",

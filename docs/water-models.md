@@ -1,6 +1,6 @@
 # Water models
 
-Specify a water model with the `--water_model` suboption of exporter plugins.
+Specify a water model with the `:water_model` suboption of exporter plugins.
 
 | symbol | type | References |
 | ------ | ---- | ---------- |

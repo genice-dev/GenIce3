@@ -36,7 +36,7 @@ nav:
   - Clathrate hydrates: clathrate-hydrates.md
   - Doping and defects: doping-and-defects.md
   - Output formats: output-formats.md
-  - Ice structures: ice-structures.md
+  - Unit cells: unitcells.md
   - Water models: water-models.md
   - Guest molecules: guest-molecules.md
   - Plugins: plugins.md

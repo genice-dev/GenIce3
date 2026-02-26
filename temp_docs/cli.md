@@ -4,7 +4,7 @@
 
 {{ usage }}
 
-Give the unit cell name as the first argument (see [Ice structures](ice-structures.md) for symbols such as `1h`, `4`, `CS2`), then options. Optional settings can be read from a YAML file with `-Y path/to/config.yaml`. Use `./genice3.x` instead of `genice3` when running from the source tree.
+Give the unit cell name as the first argument (see [Unit cells](unitcells.md) for symbols such as `1h`, `4`, `CS2`), then options. Optional settings can be read from a YAML file with `-Y path/to/config.yaml`. Use `./genice3.x` instead of `genice3` when running from the source tree.
 
 ## Config file
 

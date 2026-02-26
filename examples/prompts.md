@@ -1,19 +1,19 @@
-# プロンプトによる指示例
+# Example prompts for GenIce3
 
-## プロンプト例
+Example prompts used to check whether an AI with no prior context can configure GenIce3 correctly by reading only the `docs/` directory (and [For AI assistants](docs/for-ai-assistants.md)).
 
-### CLI（sIハイドレート・GROMACS・TIP4P）
+## Example prompts
 
-- https://genice-dev.github.io/GenIce3 のマニュアルを参照して、GenIce3で以下を実現するCLIコマンドを書いて：sI型ハイドレートを2x2x2で、全ケージにUnited atomメタン、GROMACS形式、水はTIP4P。
+### CLI (sI hydrate, GROMACS, TIP4P)
 
-### API（ビルトイン構造）
+- Using the manual at https://genice-dev.github.io/GenIce3, write a GenIce3 CLI command that: generates an sI clathrate hydrate 2×2×2 with United-atom methane in all cages, GROMACS format, and TIP4P water.
 
-- このリポジトリの `docs/` を参照して、GenIce3 APIで以下を実現するPythonコードを書いて：Zeolite ITT構造の氷を2x2x2で、GROMACS形式、水はTIP4P。
+### API (zeolite, GROMACS, TIP4P)
 
-（注: Zeolite **ITT** は GenIce3 にビルトインで含まれていません。ITT を使う場合は IZA 等から CIF を取得し、単位胞に `CIF[file=path/to/ITT.cif]` を指定する必要があります。ビルトインのゼオライト氷は FAU, RHO, LTA, SOD, DDR など。）
+- Using this repository’s `docs/`, write Python code that uses the GenIce3 API to: generate a zeolite LTA ice structure 2×2×2, GROMACS format, TIP4P water.
 
-### API（aeroice・GROMACS・TIP5P）
+(Zeolite is specified with the `zeolite` unit cell and a 3-letter IZA code (e.g. LTA, FAU). See [Unit cells](docs/unitcells.md).)
 
-- このリポジトリの `docs/` を参照して、GenIce3 APIで以下を実現するPythonコードを書いて: 結合部の長さが3のaeroice構造の氷をGROMACS形式、水はTIP5P。
+### Config file / YAML (aeroice, GROMACS, TIP5P)
 
-（ヒント: 単位胞は [Unit cells](docs/unitcells.md) の「サブオプション付き」に aeroice / xFAU がある。「結合部の長さ」＝オプション `length`。API では `UnitCell("aeroice", length=3)`、水モデルは `Exporter("gromacs").dump(genice, water_model="tip5p")` または `water_model="5site"`。）
+- Using this repository’s `docs/`, write a GenIce3 config file (YAML) that: generates an aeroice structure with prism length 3, GROMACS format, TIP5P water.

@@ -45,3 +45,5 @@ On failure, stdout/stderr are written to `run_api_examples.log`.
 Note: `doping/11_ion_group_unitcell.py` may occasionally fail due to random depolarization; re-run if needed.
 
 To generate `.sh` from YAML (or vice versa), use `tools/gen_sh_from_yaml.py` and `tools/gen_yaml_from_sh.py`.
+
+**API.ipynb** is generated from these examples (`make api-notebook`). It includes all categories except `tools` (those scripts rely on `__file__` and are meant to be run from the command line). Run the **Setup** cell first so that paths like `cif/MEP.cif` resolve correctly.
