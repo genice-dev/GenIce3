@@ -83,3 +83,9 @@ ToDo.md
 GenIce2.code-workspace
 1hx888.xyz
 old.citations.json
+
+pdoc_api/
+site/
+
+scripts/pdoc-template/frame.html.jinja2
+pyproject.toml

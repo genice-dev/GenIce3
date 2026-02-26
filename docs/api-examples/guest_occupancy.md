@@ -20,7 +20,7 @@
     from logging import basicConfig, DEBUG, INFO
     import numpy as np
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter, Molecule
+    from genice3.plugin import Exporter, Molecule
     from genice3.cli.options import parse_guest_option, parse_spot_guest_option
     
     # corresponding command (guest/spot_guest は基底オプション、exporterの外で指定):
@@ -48,11 +48,7 @@
     # anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
     # density: 密度（g/cm³）
     # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
-    genice.unitcell = UnitCell(
-        "A15",
-        shift=(0.1, 0.1, 0.1),
-        density=0.8,
-    )
+    genice.set_unitcell("A15", shift=(0.1, 0.1, 0.1), density=0.8)
     
     
     # エクスポーターで出力（guest/spot_guest は GenIce3 に設定済み）
@@ -116,14 +112,14 @@
     ```python
     """DOH 構造で cage_survey を使う例（Python API）"""
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter
+    from genice3.plugin import Exporter
     from logging import basicConfig, INFO
     
     # 対応するコマンド:
     #   genice3 DOH -e cage_survey
     basicConfig(level=INFO)
     genice = GenIce3()
-    genice.unitcell = UnitCell("DOH")
+    genice.set_unitcell("DOH")
     Exporter("cage_survey").dump(genice)
     ```
 

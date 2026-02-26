@@ -25,7 +25,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     from logging import basicConfig, INFO
     import numpy as np
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter
+    from genice3.plugin import Exporter
     
     # corresponding command:
     # genice3 A15 --cation 0=N :group 1=methyl 6=methyl 3=methyl 4=methyl \
@@ -39,7 +39,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     )
     
     # 単位胞内の anion/cation と cation_groups（カチオンの腕の group 指定）
-    genice.unitcell = UnitCell(
+    genice.set_unitcell(
         "A15",
         anion={2: "Cl"},
         cation={0: "N"},
@@ -101,7 +101,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     from logging import basicConfig, DEBUG, INFO
     import numpy as np
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter, Molecule
+    from genice3.plugin import Exporter, Molecule
     
     # corresponding command:
     # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
@@ -138,7 +138,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     # cation: 単位胞内の格子サイトをカチオンで置換（サイトインデックス: イオン名）。CLI は -c / --cation
     # density: 密度（g/cm³）
     # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
-    genice.unitcell = UnitCell(
+    genice.set_unitcell(
         "A15",
         shift=(0.1, 0.1, 0.1),
         anion={15: "Cl"},
@@ -211,7 +211,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     from logging import basicConfig, DEBUG, INFO
     import numpy as np
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter, Molecule
+    from genice3.plugin import Exporter, Molecule
     
     # corresponding command:
     # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
@@ -245,11 +245,7 @@ CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット
     # anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
     # density: 密度（g/cm³）
     # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
-    genice.unitcell = UnitCell(
-        "A15",
-        shift=(0.1, 0.1, 0.1),
-        density=0.8,
-    )
+    genice.set_unitcell("A15", shift=(0.1, 0.1, 0.1), density=0.8)
     
     
     # エクスポーターで出力

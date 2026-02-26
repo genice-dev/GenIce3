@@ -1,0 +1,5543 @@
+    <main class="pdoc">
+            <section class="module-info">
+                    <h1 class="modulename">
+genice3<wbr>.genice    </h1>
+
+                
+                        <input id="mod-genice-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+
+                        <label class="view-source-button" for="mod-genice-view-source"><span>View Source</span></label>
+
+                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos">   1</span></a><span class="c1"># Another plan of reactive GenIce3 (リアクティブプロパティによる実装).</span>
+</span><span id="L-2"><a href="#L-2"><span class="linenos">   2</span></a>
+</span><span id="L-3"><a href="#L-3"><span class="linenos">   3</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationError</span>
+</span><span id="L-4"><a href="#L-4"><span class="linenos">   4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3.group</span><span class="w"> </span><span class="kn">import</span> <span class="n">Group</span>
+</span><span id="L-5"><a href="#L-5"><span class="linenos">   5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3.molecule</span><span class="w"> </span><span class="kn">import</span> <span class="n">Molecule</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos">   6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3.plugin</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnitCell</span> <span class="k">as</span> <span class="n">UnitCellPlugin</span><span class="p">,</span> <span class="n">safe_import</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos">   7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3.util</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos">   8</span></a>    <span class="n">replicate_positions</span><span class="p">,</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos">   9</span></a>    <span class="n">grandcell_wrap</span><span class="p">,</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">  10</span></a>    <span class="n">assume_tetrahedral_vectors</span><span class="p">,</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">  11</span></a><span class="p">)</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">  12</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3.cage</span><span class="w"> </span><span class="kn">import</span> <span class="n">CageSpecs</span><span class="p">,</span> <span class="n">CageSpec</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">  13</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">cif2ice</span><span class="w"> </span><span class="kn">import</span> <span class="n">cellshape</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">  14</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">genice_core</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">  15</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">  16</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">  17</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">  18</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">getLogger</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">  19</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">  20</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">  21</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">  22</span></a>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">  23</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">dependency_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">DependencyEngine</span><span class="p">,</span> <span class="n">get_reactive_tasks</span><span class="p">,</span> <span class="n">reactive</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">  24</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">genice3.unitcell</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnitCell</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos">  25</span></a>
+</span><span id="L-26"><a href="#L-26"><span class="linenos">  26</span></a>
+</span><span id="L-27"><a href="#L-27"><span class="linenos">  27</span></a><span class="k">def</span><span class="w"> </span><span class="nf">_graph_degree_stats</span><span class="p">(</span><span class="n">g</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos">  28</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;グラフの次数分布（0,1,2,3,4,&gt;4 のノード数と割合）を文字列で返す。&quot;&quot;&quot;</span>
+</span><span id="L-29"><a href="#L-29"><span class="linenos">  29</span></a>    <span class="n">n</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos">  30</span></a>    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-31"><a href="#L-31"><span class="linenos">  31</span></a>        <span class="k">return</span> <span class="s2">&quot;nodes=0&quot;</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos">  32</span></a>    <span class="n">deg</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span><span class="o">.</span><span class="n">degree</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">g</span><span class="p">]</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos">  33</span></a>    <span class="n">buckets</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;&gt;4&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">  34</span></a>    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">deg</span><span class="p">:</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">  35</span></a>        <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">  36</span></a>            <span class="n">buckets</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">  37</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">  38</span></a>            <span class="n">buckets</span><span class="p">[</span><span class="s2">&quot;&gt;4&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">  39</span></a>    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;deg</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">c</span><span class="o">/</span><span class="n">n</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">buckets</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">c</span><span class="p">]</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">  40</span></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;nodes=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">  41</span></a>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">  42</span></a>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">  43</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ShowUsageError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">  44</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Usage表示を要求する例外</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">  45</span></a>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">  46</span></a><span class="sd">    Args:</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos">  47</span></a><span class="sd">        flag_name: フラグ名（例: &quot;?&quot;, &quot;help?&quot;, &quot;cage?&quot;）</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos">  48</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos">  49</span></a>
+</span><span id="L-50"><a href="#L-50"><span class="linenos">  50</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+</span><span id="L-51"><a href="#L-51"><span class="linenos">  51</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">flag_name</span> <span class="o">=</span> <span class="n">flag_name</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos">  52</span></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;Show usage for flag: </span><span class="si">{</span><span class="n">flag_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos">  53</span></a>
+</span><span id="L-54"><a href="#L-54"><span class="linenos">  54</span></a>
+</span><span id="L-55"><a href="#L-55"><span class="linenos">  55</span></a><span class="c1"># enumのようなものはどう定義する?</span>
+</span><span id="L-56"><a href="#L-56"><span class="linenos">  56</span></a><span class="k">class</span><span class="w"> </span><span class="nc">MoleculeType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+</span><span id="L-57"><a href="#L-57"><span class="linenos">  57</span></a>    <span class="n">WATER</span> <span class="o">=</span> <span class="s2">&quot;water&quot;</span>
+</span><span id="L-58"><a href="#L-58"><span class="linenos">  58</span></a>    <span class="n">GUEST</span> <span class="o">=</span> <span class="s2">&quot;guest&quot;</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos">  59</span></a>    <span class="n">DOPANT</span> <span class="o">=</span> <span class="s2">&quot;dopant&quot;</span>
+</span><span id="L-60"><a href="#L-60"><span class="linenos">  60</span></a>    <span class="n">GROUP</span> <span class="o">=</span> <span class="s2">&quot;group&quot;</span>
+</span><span id="L-61"><a href="#L-61"><span class="linenos">  61</span></a>
+</span><span id="L-62"><a href="#L-62"><span class="linenos">  62</span></a>
+</span><span id="L-63"><a href="#L-63"><span class="linenos">  63</span></a><span class="nd">@dataclass</span>
+</span><span id="L-64"><a href="#L-64"><span class="linenos">  64</span></a><span class="k">class</span><span class="w"> </span><span class="nc">GuestSpec</span><span class="p">:</span>
+</span><span id="L-65"><a href="#L-65"><span class="linenos">  65</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-66"><a href="#L-66"><span class="linenos">  66</span></a><span class="sd">    ゲストの情報を表すデータクラス。</span>
+</span><span id="L-67"><a href="#L-67"><span class="linenos">  67</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-68"><a href="#L-68"><span class="linenos">  68</span></a>
+</span><span id="L-69"><a href="#L-69"><span class="linenos">  69</span></a>    <span class="n">molecule</span><span class="p">:</span> <span class="n">Molecule</span>
+</span><span id="L-70"><a href="#L-70"><span class="linenos">  70</span></a>    <span class="n">occupancy</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="L-71"><a href="#L-71"><span class="linenos">  71</span></a>
+</span><span id="L-72"><a href="#L-72"><span class="linenos">  72</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="L-73"><a href="#L-73"><span class="linenos">  73</span></a>        <span class="k">return</span> <span class="p">(</span>
+</span><span id="L-74"><a href="#L-74"><span class="linenos">  74</span></a>            <span class="sa">f</span><span class="s2">&quot;GuestSpec(molecule=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+</span><span id="L-75"><a href="#L-75"><span class="linenos">  75</span></a>            <span class="sa">f</span><span class="s2">&quot;occupancy=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">occupancy</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="L-76"><a href="#L-76"><span class="linenos">  76</span></a>        <span class="p">)</span>
+</span><span id="L-77"><a href="#L-77"><span class="linenos">  77</span></a>
+</span><span id="L-78"><a href="#L-78"><span class="linenos">  78</span></a>
+</span><span id="L-79"><a href="#L-79"><span class="linenos">  79</span></a><span class="nd">@dataclass</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos">  80</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AtomicStructure</span><span class="p">:</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos">  81</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-82"><a href="#L-82"><span class="linenos">  82</span></a><span class="sd">    原子構造データを統合的に保持するデータクラス。</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos">  83</span></a><span class="sd">    exporterプラグインが使用するための統一インターフェース。</span>
+</span><span id="L-84"><a href="#L-84"><span class="linenos">  84</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-85"><a href="#L-85"><span class="linenos">  85</span></a>
+</span><span id="L-86"><a href="#L-86"><span class="linenos">  86</span></a>    <span class="n">waters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+</span><span id="L-87"><a href="#L-87"><span class="linenos">  87</span></a>    <span class="n">guests</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Molecule</span><span class="p">]</span>
+</span><span id="L-88"><a href="#L-88"><span class="linenos">  88</span></a>    <span class="n">ions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+</span><span id="L-89"><a href="#L-89"><span class="linenos">  89</span></a>    <span class="n">cell</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span><span id="L-90"><a href="#L-90"><span class="linenos">  90</span></a>
+</span><span id="L-91"><a href="#L-91"><span class="linenos">  91</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="L-92"><a href="#L-92"><span class="linenos">  92</span></a>        <span class="k">return</span> <span class="p">(</span>
+</span><span id="L-93"><a href="#L-93"><span class="linenos">  93</span></a>            <span class="sa">f</span><span class="s2">&quot;AtomicStructure(n_waters=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waters</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="L-94"><a href="#L-94"><span class="linenos">  94</span></a>            <span class="sa">f</span><span class="s2">&quot;n_guests=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="L-95"><a href="#L-95"><span class="linenos">  95</span></a>            <span class="sa">f</span><span class="s2">&quot;n_ions=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ions</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="L-96"><a href="#L-96"><span class="linenos">  96</span></a>            <span class="sa">f</span><span class="s2">&quot;cell_shape=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="L-97"><a href="#L-97"><span class="linenos">  97</span></a>        <span class="p">)</span>
+</span><span id="L-98"><a href="#L-98"><span class="linenos">  98</span></a>
+</span><span id="L-99"><a href="#L-99"><span class="linenos">  99</span></a>
+</span><span id="L-100"><a href="#L-100"><span class="linenos"> 100</span></a><span class="k">def</span><span class="w"> </span><span class="nf">_assume_water_orientations</span><span class="p">(</span>
+</span><span id="L-101"><a href="#L-101"><span class="linenos"> 101</span></a>    <span class="n">coord</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">digraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span> <span class="n">cellmat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">dopants</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</span><span id="L-102"><a href="#L-102"><span class="linenos"> 102</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="L-103"><a href="#L-103"><span class="linenos"> 103</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;有向グラフと座標から各水分子の配向行列（Nx3x3）を計算する。</span>
+</span><span id="L-104"><a href="#L-104"><span class="linenos"> 104</span></a>
+</span><span id="L-105"><a href="#L-105"><span class="linenos"> 105</span></a><span class="sd">    2本のOHが一直線上にある場合は正しく動作しない。</span>
+</span><span id="L-106"><a href="#L-106"><span class="linenos"> 106</span></a>
+</span><span id="L-107"><a href="#L-107"><span class="linenos"> 107</span></a><span class="sd">    Args:</span>
+</span><span id="L-108"><a href="#L-108"><span class="linenos"> 108</span></a><span class="sd">        coord: 各ノードの分数座標（Nx3）。</span>
+</span><span id="L-109"><a href="#L-109"><span class="linenos"> 109</span></a><span class="sd">        digraph: 水素結合の向きが決まった有向グラフ。</span>
+</span><span id="L-110"><a href="#L-110"><span class="linenos"> 110</span></a><span class="sd">        cellmat: セル行列（分数→直交変換に使用）。</span>
+</span><span id="L-111"><a href="#L-111"><span class="linenos"> 111</span></a><span class="sd">        dopants: ドーパントが占めるサイト（ノード番号→イオン名）。</span>
+</span><span id="L-112"><a href="#L-112"><span class="linenos"> 112</span></a>
+</span><span id="L-113"><a href="#L-113"><span class="linenos"> 113</span></a><span class="sd">    Returns:</span>
+</span><span id="L-114"><a href="#L-114"><span class="linenos"> 114</span></a><span class="sd">        各水分子の配向行列（Nx3x3）。直交座標系での回転行列。</span>
+</span><span id="L-115"><a href="#L-115"><span class="linenos"> 115</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-116"><a href="#L-116"><span class="linenos"> 116</span></a>
+</span><span id="L-117"><a href="#L-117"><span class="linenos"> 117</span></a>    <span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">()</span>
+</span><span id="L-118"><a href="#L-118"><span class="linenos"> 118</span></a>    <span class="c1"># just for a test of pure water</span>
+</span><span id="L-119"><a href="#L-119"><span class="linenos"> 119</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span> <span class="o">!=</span> <span class="n">digraph</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">():</span>
+</span><span id="L-120"><a href="#L-120"><span class="linenos"> 120</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="L-121"><a href="#L-121"><span class="linenos"> 121</span></a>            <span class="sa">f</span><span class="s2">&quot;coord length (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span><span class="si">}</span><span class="s2">) must match digraph node count &quot;</span>
+</span><span id="L-122"><a href="#L-122"><span class="linenos"> 122</span></a>            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">digraph</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="L-123"><a href="#L-123"><span class="linenos"> 123</span></a>        <span class="p">)</span>
+</span><span id="L-124"><a href="#L-124"><span class="linenos"> 124</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dopants</span><span class="p">):</span>
+</span><span id="L-125"><a href="#L-125"><span class="linenos"> 125</span></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">dopants</span><span class="si">}</span><span class="s2"> dopants&quot;</span><span class="p">)</span>
+</span><span id="L-126"><a href="#L-126"><span class="linenos"> 126</span></a>    <span class="c1"># 通常の氷であればアルゴリズムを高速化できる。</span>
+</span><span id="L-127"><a href="#L-127"><span class="linenos"> 127</span></a>
+</span><span id="L-128"><a href="#L-128"><span class="linenos"> 128</span></a>    <span class="n">nnode</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">digraph</span><span class="p">))</span>
+</span><span id="L-129"><a href="#L-129"><span class="linenos"> 129</span></a>    <span class="n">neis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nnode</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-130"><a href="#L-130"><span class="linenos"> 130</span></a>
+</span><span id="L-131"><a href="#L-131"><span class="linenos"> 131</span></a>    <span class="c1"># 仮想ノード用の配列。第0要素は実際には第nnode要素を表す。</span>
+</span><span id="L-132"><a href="#L-132"><span class="linenos"> 132</span></a>    <span class="n">extended_coord</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-133"><a href="#L-133"><span class="linenos"> 133</span></a>
+</span><span id="L-134"><a href="#L-134"><span class="linenos"> 134</span></a>    <span class="n">celli</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">cellmat</span><span class="p">)</span>
+</span><span id="L-135"><a href="#L-135"><span class="linenos"> 135</span></a>    <span class="c1"># v0 = np.zeros([nnode, 3])</span>
+</span><span id="L-136"><a href="#L-136"><span class="linenos"> 136</span></a>    <span class="c1"># v1 = np.zeros([nnode, 3])</span>
+</span><span id="L-137"><a href="#L-137"><span class="linenos"> 137</span></a>    <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">digraph</span><span class="p">:</span>
+</span><span id="L-138"><a href="#L-138"><span class="linenos"> 138</span></a>        <span class="k">if</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">dopants</span><span class="p">:</span>
+</span><span id="L-139"><a href="#L-139"><span class="linenos"> 139</span></a>            <span class="n">h1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-140"><a href="#L-140"><span class="linenos"> 140</span></a>            <span class="n">h2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-141"><a href="#L-141"><span class="linenos"> 141</span></a>            <span class="n">r1</span> <span class="o">=</span> <span class="n">h1</span> <span class="o">@</span> <span class="n">celli</span>
+</span><span id="L-142"><a href="#L-142"><span class="linenos"> 142</span></a>            <span class="n">r2</span> <span class="o">=</span> <span class="n">h2</span> <span class="o">@</span> <span class="n">celli</span>
+</span><span id="L-143"><a href="#L-143"><span class="linenos"> 143</span></a>            <span class="c1"># 仮想ノードにさしかえる</span>
+</span><span id="L-144"><a href="#L-144"><span class="linenos"> 144</span></a>            <span class="n">neis</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">nnode</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_coord</span><span class="p">),</span> <span class="n">nnode</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_coord</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span><span id="L-145"><a href="#L-145"><span class="linenos"> 145</span></a>            <span class="n">extended_coord</span> <span class="o">+=</span> <span class="p">[</span><span class="n">coord</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">+</span> <span class="n">r1</span><span class="p">,</span> <span class="n">coord</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">+</span> <span class="n">r2</span><span class="p">]</span>
+</span><span id="L-146"><a href="#L-146"><span class="linenos"> 146</span></a>            <span class="k">continue</span>
+</span><span id="L-147"><a href="#L-147"><span class="linenos"> 147</span></a>        <span class="n">succ</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">node</span><span class="p">))</span>
+</span><span id="L-148"><a href="#L-148"><span class="linenos"> 148</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">succ</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="L-149"><a href="#L-149"><span class="linenos"> 149</span></a>            <span class="n">vsucc</span> <span class="o">=</span> <span class="p">(</span><span class="n">coord</span><span class="p">[</span><span class="n">succ</span><span class="p">]</span> <span class="o">-</span> <span class="n">coord</span><span class="p">[</span><span class="n">node</span><span class="p">])</span> <span class="o">@</span> <span class="n">cellmat</span>
+</span><span id="L-150"><a href="#L-150"><span class="linenos"> 150</span></a>            <span class="n">pred</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">digraph</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">node</span><span class="p">))</span>
+</span><span id="L-151"><a href="#L-151"><span class="linenos"> 151</span></a>            <span class="n">vpred</span> <span class="o">=</span> <span class="p">(</span><span class="n">coord</span><span class="p">[</span><span class="n">pred</span><span class="p">]</span> <span class="o">-</span> <span class="n">coord</span><span class="p">[</span><span class="n">node</span><span class="p">])</span> <span class="o">@</span> <span class="n">cellmat</span>
+</span><span id="L-152"><a href="#L-152"><span class="linenos"> 152</span></a>            <span class="n">vsucc</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">vsucc</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="L-153"><a href="#L-153"><span class="linenos"> 153</span></a>            <span class="n">vpred</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">vpred</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="L-154"><a href="#L-154"><span class="linenos"> 154</span></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vpred</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="L-155"><a href="#L-155"><span class="linenos"> 155</span></a>                <span class="c1"># number of incoming bonds should be &lt;= 2</span>
+</span><span id="L-156"><a href="#L-156"><span class="linenos"> 156</span></a>                <span class="n">vpred</span> <span class="o">=</span> <span class="n">vpred</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+</span><span id="L-157"><a href="#L-157"><span class="linenos"> 157</span></a>            <span class="n">vcomp</span> <span class="o">=</span> <span class="n">assume_tetrahedral_vectors</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">vpred</span><span class="p">,</span> <span class="n">vsucc</span><span class="p">]))</span>
+</span><span id="L-158"><a href="#L-158"><span class="linenos"> 158</span></a>            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Node </span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="s2"> vcomp </span><span class="si">{</span><span class="n">vcomp</span><span class="si">}</span><span class="s2"> vsucc </span><span class="si">{</span><span class="n">vsucc</span><span class="si">}</span><span class="s2"> vpred </span><span class="si">{</span><span class="n">vpred</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-159"><a href="#L-159"><span class="linenos"> 159</span></a>            <span class="n">vsucc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">vsucc</span><span class="p">,</span> <span class="n">vcomp</span><span class="p">])[:</span><span class="mi">2</span><span class="p">]</span>
+</span><span id="L-160"><a href="#L-160"><span class="linenos"> 160</span></a>            <span class="n">rsucc</span> <span class="o">=</span> <span class="n">vsucc</span> <span class="o">@</span> <span class="n">celli</span>
+</span><span id="L-161"><a href="#L-161"><span class="linenos"> 161</span></a>            <span class="c1"># 仮想ノードにさしかえる</span>
+</span><span id="L-162"><a href="#L-162"><span class="linenos"> 162</span></a>            <span class="n">neis</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">nnode</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_coord</span><span class="p">),</span> <span class="n">nnode</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_coord</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span><span id="L-163"><a href="#L-163"><span class="linenos"> 163</span></a>            <span class="n">extended_coord</span> <span class="o">+=</span> <span class="p">[</span><span class="n">coord</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">+</span> <span class="n">rsucc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">coord</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">+</span> <span class="n">rsucc</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+</span><span id="L-164"><a href="#L-164"><span class="linenos"> 164</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-165"><a href="#L-165"><span class="linenos"> 165</span></a>            <span class="n">neis</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">=</span> <span class="n">succ</span>
+</span><span id="L-166"><a href="#L-166"><span class="linenos"> 166</span></a>
+</span><span id="L-167"><a href="#L-167"><span class="linenos"> 167</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_coord</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-168"><a href="#L-168"><span class="linenos"> 168</span></a>        <span class="n">extended_coord</span> <span class="o">=</span> <span class="n">coord</span>
+</span><span id="L-169"><a href="#L-169"><span class="linenos"> 169</span></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="L-170"><a href="#L-170"><span class="linenos"> 170</span></a>        <span class="n">extended_coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">coord</span><span class="p">,</span> <span class="n">extended_coord</span><span class="p">])</span>
+</span><span id="L-171"><a href="#L-171"><span class="linenos"> 171</span></a>
+</span><span id="L-172"><a href="#L-172"><span class="linenos"> 172</span></a>    <span class="c1"># array of donating vectors</span>
+</span><span id="L-173"><a href="#L-173"><span class="linenos"> 173</span></a>    <span class="n">v0</span> <span class="o">=</span> <span class="n">extended_coord</span><span class="p">[</span><span class="n">neis</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]]</span> <span class="o">-</span> <span class="n">coord</span><span class="p">[:]</span>
+</span><span id="L-174"><a href="#L-174"><span class="linenos"> 174</span></a>    <span class="n">v0</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">v0</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-175"><a href="#L-175"><span class="linenos"> 175</span></a>    <span class="n">v0</span> <span class="o">=</span> <span class="n">v0</span> <span class="o">@</span> <span class="n">cellmat</span>
+</span><span id="L-176"><a href="#L-176"><span class="linenos"> 176</span></a>    <span class="n">v0</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="L-177"><a href="#L-177"><span class="linenos"> 177</span></a>    <span class="n">v1</span> <span class="o">=</span> <span class="n">extended_coord</span><span class="p">[</span><span class="n">neis</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">coord</span><span class="p">[:]</span>
+</span><span id="L-178"><a href="#L-178"><span class="linenos"> 178</span></a>    <span class="n">v1</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">v1</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-179"><a href="#L-179"><span class="linenos"> 179</span></a>    <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span> <span class="o">@</span> <span class="n">cellmat</span>
+</span><span id="L-180"><a href="#L-180"><span class="linenos"> 180</span></a>    <span class="n">v1</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="L-181"><a href="#L-181"><span class="linenos"> 181</span></a>    <span class="c1"># intramolecular axes</span>
+</span><span id="L-182"><a href="#L-182"><span class="linenos"> 182</span></a>    <span class="n">y</span> <span class="o">=</span> <span class="n">v1</span> <span class="o">-</span> <span class="n">v0</span>
+</span><span id="L-183"><a href="#L-183"><span class="linenos"> 183</span></a>    <span class="n">y</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="L-184"><a href="#L-184"><span class="linenos"> 184</span></a>    <span class="n">z</span> <span class="o">=</span> <span class="n">v0</span> <span class="o">+</span> <span class="n">v1</span>
+</span><span id="L-185"><a href="#L-185"><span class="linenos"> 185</span></a>    <span class="n">z</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="L-186"><a href="#L-186"><span class="linenos"> 186</span></a>    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">axisa</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">axisb</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="L-187"><a href="#L-187"><span class="linenos"> 187</span></a>
+</span><span id="L-188"><a href="#L-188"><span class="linenos"> 188</span></a>    <span class="n">rotmatrices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nnode</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</span><span id="L-189"><a href="#L-189"><span class="linenos"> 189</span></a>
+</span><span id="L-190"><a href="#L-190"><span class="linenos"> 190</span></a>    <span class="n">rotmatrices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">x</span>
+</span><span id="L-191"><a href="#L-191"><span class="linenos"> 191</span></a>    <span class="n">rotmatrices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">y</span>
+</span><span id="L-192"><a href="#L-192"><span class="linenos"> 192</span></a>    <span class="n">rotmatrices</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">z</span>
+</span><span id="L-193"><a href="#L-193"><span class="linenos"> 193</span></a>    <span class="k">return</span> <span class="n">rotmatrices</span>
+</span><span id="L-194"><a href="#L-194"><span class="linenos"> 194</span></a>
+</span><span id="L-195"><a href="#L-195"><span class="linenos"> 195</span></a>
+</span><span id="L-196"><a href="#L-196"><span class="linenos"> 196</span></a><span class="k">def</span><span class="w"> </span><span class="nf">_replicate_lattice_node</span><span class="p">(</span>
+</span><span id="L-197"><a href="#L-197"><span class="linenos"> 197</span></a>    <span class="n">lattice_site_node</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">nmol</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span><span id="L-198"><a href="#L-198"><span class="linenos"> 198</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="L-199"><a href="#L-199"><span class="linenos"> 199</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;1つの格子サイトを拡大単位胞内で複製したときのノード番号を列挙する。</span>
+</span><span id="L-200"><a href="#L-200"><span class="linenos"> 200</span></a>
+</span><span id="L-201"><a href="#L-201"><span class="linenos"> 201</span></a><span class="sd">    Args:</span>
+</span><span id="L-202"><a href="#L-202"><span class="linenos"> 202</span></a><span class="sd">        lattice_site_node: 複製前の単位胞内での格子サイト（ノード）番号。</span>
+</span><span id="L-203"><a href="#L-203"><span class="linenos"> 203</span></a><span class="sd">        nmol: 単位胞内の水分子数（ノード数）。</span>
+</span><span id="L-204"><a href="#L-204"><span class="linenos"> 204</span></a><span class="sd">        replication_matrix: 拡大倍率（行列式）の計算に用いる3x3行列。通常は replication_matrix を渡す。</span>
+</span><span id="L-205"><a href="#L-205"><span class="linenos"> 205</span></a>
+</span><span id="L-206"><a href="#L-206"><span class="linenos"> 206</span></a><span class="sd">    Yields:</span>
+</span><span id="L-207"><a href="#L-207"><span class="linenos"> 207</span></a><span class="sd">        拡大単位胞内でのノード番号（lattice_site_node + nmol * i for i in 0..倍率-1）。</span>
+</span><span id="L-208"><a href="#L-208"><span class="linenos"> 208</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-209"><a href="#L-209"><span class="linenos"> 209</span></a>    <span class="n">multiple</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">))</span>
+</span><span id="L-210"><a href="#L-210"><span class="linenos"> 210</span></a>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">multiple</span><span class="p">):</span>
+</span><span id="L-211"><a href="#L-211"><span class="linenos"> 211</span></a>        <span class="k">yield</span> <span class="n">lattice_site_node</span> <span class="o">+</span> <span class="n">nmol</span> <span class="o">*</span> <span class="n">i</span>
+</span><span id="L-212"><a href="#L-212"><span class="linenos"> 212</span></a>
+</span><span id="L-213"><a href="#L-213"><span class="linenos"> 213</span></a>
+</span><span id="L-214"><a href="#L-214"><span class="linenos"> 214</span></a><span class="k">def</span><span class="w"> </span><span class="nf">_replicate_graph</span><span class="p">(</span>
+</span><span id="L-215"><a href="#L-215"><span class="linenos"> 215</span></a>    <span class="n">graph1</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="L-216"><a href="#L-216"><span class="linenos"> 216</span></a>    <span class="n">cell1frac_coords</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-217"><a href="#L-217"><span class="linenos"> 217</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-218"><a href="#L-218"><span class="linenos"> 218</span></a>    <span class="n">replica_vector_index</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">],</span>
+</span><span id="L-219"><a href="#L-219"><span class="linenos"> 219</span></a>    <span class="n">reshape</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-220"><a href="#L-220"><span class="linenos"> 220</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">:</span>
+</span><span id="L-221"><a href="#L-221"><span class="linenos"> 221</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-222"><a href="#L-222"><span class="linenos"> 222</span></a><span class="sd">    指定されたレプリカベクトルと形状に基づいてグラフを複製する。</span>
+</span><span id="L-223"><a href="#L-223"><span class="linenos"> 223</span></a>
+</span><span id="L-224"><a href="#L-224"><span class="linenos"> 224</span></a><span class="sd">    2つの座標系がいりみだれているので注意。</span>
+</span><span id="L-225"><a href="#L-225"><span class="linenos"> 225</span></a><span class="sd">    cell1frac: 複製前の単位胞における小数座標</span>
+</span><span id="L-226"><a href="#L-226"><span class="linenos"> 226</span></a><span class="sd">    grandfrac: 複製後の大きな単位胞における小数座標</span>
+</span><span id="L-227"><a href="#L-227"><span class="linenos"> 227</span></a>
+</span><span id="L-228"><a href="#L-228"><span class="linenos"> 228</span></a><span class="sd">    Args:</span>
+</span><span id="L-229"><a href="#L-229"><span class="linenos"> 229</span></a><span class="sd">      graph1: 元のグラフ。</span>
+</span><span id="L-230"><a href="#L-230"><span class="linenos"> 230</span></a><span class="sd">      cell1frac_coords: 元のグラフ内の節点の分数座標 (Nx3)。</span>
+</span><span id="L-231"><a href="#L-231"><span class="linenos"> 231</span></a><span class="sd">      replica_vectors: レプリカベクトルの配列。</span>
+</span><span id="L-232"><a href="#L-232"><span class="linenos"> 232</span></a><span class="sd">      replica_vector_index: レプリカベクトル座標タプル → 一意のインデックス。</span>
+</span><span id="L-233"><a href="#L-233"><span class="linenos"> 233</span></a><span class="sd">      reshape: 拡大単位胞の積み重ね方を表す行列。</span>
+</span><span id="L-234"><a href="#L-234"><span class="linenos"> 234</span></a>
+</span><span id="L-235"><a href="#L-235"><span class="linenos"> 235</span></a><span class="sd">    Returns:</span>
+</span><span id="L-236"><a href="#L-236"><span class="linenos"> 236</span></a><span class="sd">      複製された無向グラフ。fixed の複製は行わない。</span>
+</span><span id="L-237"><a href="#L-237"><span class="linenos"> 237</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-238"><a href="#L-238"><span class="linenos"> 238</span></a>    <span class="c1"># repgraph = dg.IceGraph()</span>
+</span><span id="L-239"><a href="#L-239"><span class="linenos"> 239</span></a>    <span class="n">repgraph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+</span><span id="L-240"><a href="#L-240"><span class="linenos"> 240</span></a>    <span class="n">nmol</span> <span class="o">=</span> <span class="n">cell1frac_coords</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="L-241"><a href="#L-241"><span class="linenos"> 241</span></a>
+</span><span id="L-242"><a href="#L-242"><span class="linenos"> 242</span></a>    <span class="c1"># 正の行列式の値(倍率)。整数。</span>
+</span><span id="L-243"><a href="#L-243"><span class="linenos"> 243</span></a>    <span class="n">det</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">reshape</span><span class="p">)</span>
+</span><span id="L-244"><a href="#L-244"><span class="linenos"> 244</span></a>    <span class="k">if</span> <span class="n">det</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-245"><a href="#L-245"><span class="linenos"> 245</span></a>        <span class="n">det</span> <span class="o">=</span> <span class="o">-</span><span class="n">det</span>
+</span><span id="L-246"><a href="#L-246"><span class="linenos"> 246</span></a>    <span class="n">det</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">det</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-247"><a href="#L-247"><span class="linenos"> 247</span></a>    <span class="c1"># 逆行列に行列式をかけたもの。整数行列。</span>
+</span><span id="L-248"><a href="#L-248"><span class="linenos"> 248</span></a>    <span class="n">invdet</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">reshape</span><span class="p">)</span> <span class="o">*</span> <span class="n">det</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-249"><a href="#L-249"><span class="linenos"> 249</span></a>
+</span><span id="L-250"><a href="#L-250"><span class="linenos"> 250</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">graph1</span><span class="o">.</span><span class="n">edges</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="L-251"><a href="#L-251"><span class="linenos"> 251</span></a>        <span class="c1"># positions in the original small cell</span>
+</span><span id="L-252"><a href="#L-252"><span class="linenos"> 252</span></a>        <span class="n">cell1_delta</span> <span class="o">=</span> <span class="n">cell1frac_coords</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">cell1frac_coords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span><span id="L-253"><a href="#L-253"><span class="linenos"> 253</span></a>        <span class="n">cell1_delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">cell1_delta</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-254"><a href="#L-254"><span class="linenos"> 254</span></a>
+</span><span id="L-255"><a href="#L-255"><span class="linenos"> 255</span></a>        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">cell1frac_a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">):</span>
+</span><span id="L-256"><a href="#L-256"><span class="linenos"> 256</span></a>            <span class="n">cell1frac_b</span> <span class="o">=</span> <span class="n">cell1frac_a</span> <span class="o">+</span> <span class="n">cell1_delta</span>
+</span><span id="L-257"><a href="#L-257"><span class="linenos"> 257</span></a>            <span class="n">cell1frac_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span>
+</span><span id="L-258"><a href="#L-258"><span class="linenos"> 258</span></a>                <span class="n">grandcell_wrap</span><span class="p">(</span><span class="n">cell1frac_b</span><span class="p">,</span> <span class="n">reshape</span><span class="p">,</span> <span class="n">invdet</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+</span><span id="L-259"><a href="#L-259"><span class="linenos"> 259</span></a>            <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-260"><a href="#L-260"><span class="linenos"> 260</span></a>            <span class="n">b</span> <span class="o">=</span> <span class="n">replica_vector_index</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">cell1frac_b</span><span class="p">)]</span>
+</span><span id="L-261"><a href="#L-261"><span class="linenos"> 261</span></a>            <span class="n">newi</span> <span class="o">=</span> <span class="n">nmol</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">i</span>
+</span><span id="L-262"><a href="#L-262"><span class="linenos"> 262</span></a>            <span class="n">newj</span> <span class="o">=</span> <span class="n">nmol</span> <span class="o">*</span> <span class="n">a</span> <span class="o">+</span> <span class="n">j</span>
+</span><span id="L-263"><a href="#L-263"><span class="linenos"> 263</span></a>
+</span><span id="L-264"><a href="#L-264"><span class="linenos"> 264</span></a>            <span class="n">repgraph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">newi</span><span class="p">,</span> <span class="n">newj</span><span class="p">)</span>
+</span><span id="L-265"><a href="#L-265"><span class="linenos"> 265</span></a>
+</span><span id="L-266"><a href="#L-266"><span class="linenos"> 266</span></a>    <span class="k">return</span> <span class="n">repgraph</span>
+</span><span id="L-267"><a href="#L-267"><span class="linenos"> 267</span></a>
+</span><span id="L-268"><a href="#L-268"><span class="linenos"> 268</span></a>
+</span><span id="L-269"><a href="#L-269"><span class="linenos"> 269</span></a><span class="k">def</span><span class="w"> </span><span class="nf">_replicate_fixed_edges</span><span class="p">(</span>
+</span><span id="L-270"><a href="#L-270"><span class="linenos"> 270</span></a>    <span class="n">repgraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">fixed</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span> <span class="n">nmol</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="L-271"><a href="#L-271"><span class="linenos"> 271</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">:</span>
+</span><span id="L-272"><a href="#L-272"><span class="linenos"> 272</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;単位胞の固定エッジを拡大単位胞のグラフ上に複製した有向グラフを返す。</span>
+</span><span id="L-273"><a href="#L-273"><span class="linenos"> 273</span></a>
+</span><span id="L-274"><a href="#L-274"><span class="linenos"> 274</span></a><span class="sd">    Args:</span>
+</span><span id="L-275"><a href="#L-275"><span class="linenos"> 275</span></a><span class="sd">        repgraph: 拡大単位胞全体の無向グラフ。</span>
+</span><span id="L-276"><a href="#L-276"><span class="linenos"> 276</span></a><span class="sd">        fixed: 単位胞内の固定エッジ（有向グラフ）。</span>
+</span><span id="L-277"><a href="#L-277"><span class="linenos"> 277</span></a><span class="sd">        nmol: 単位胞内のノード数。</span>
+</span><span id="L-278"><a href="#L-278"><span class="linenos"> 278</span></a>
+</span><span id="L-279"><a href="#L-279"><span class="linenos"> 279</span></a><span class="sd">    Returns:</span>
+</span><span id="L-280"><a href="#L-280"><span class="linenos"> 280</span></a><span class="sd">        拡大単位胞全体での固定エッジを表す有向グラフ。</span>
+</span><span id="L-281"><a href="#L-281"><span class="linenos"> 281</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-282"><a href="#L-282"><span class="linenos"> 282</span></a>    <span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;replicate_fixed_edges&quot;</span><span class="p">)</span>
+</span><span id="L-283"><a href="#L-283"><span class="linenos"> 283</span></a>    <span class="n">rep_fixed_edges</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+</span><span id="L-284"><a href="#L-284"><span class="linenos"> 284</span></a>    <span class="k">for</span> <span class="n">repi</span><span class="p">,</span> <span class="n">repj</span> <span class="ow">in</span> <span class="n">repgraph</span><span class="o">.</span><span class="n">edges</span><span class="p">():</span>
+</span><span id="L-285"><a href="#L-285"><span class="linenos"> 285</span></a>        <span class="n">i</span> <span class="o">=</span> <span class="n">repi</span> <span class="o">%</span> <span class="n">nmol</span>
+</span><span id="L-286"><a href="#L-286"><span class="linenos"> 286</span></a>        <span class="n">j</span> <span class="o">=</span> <span class="n">repj</span> <span class="o">%</span> <span class="n">nmol</span>
+</span><span id="L-287"><a href="#L-287"><span class="linenos"> 287</span></a>        <span class="k">if</span> <span class="n">fixed</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+</span><span id="L-288"><a href="#L-288"><span class="linenos"> 288</span></a>            <span class="n">rep_fixed_edges</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">repi</span><span class="p">,</span> <span class="n">repj</span><span class="p">)</span>
+</span><span id="L-289"><a href="#L-289"><span class="linenos"> 289</span></a>        <span class="k">elif</span> <span class="n">fixed</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="L-290"><a href="#L-290"><span class="linenos"> 290</span></a>            <span class="n">rep_fixed_edges</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">repj</span><span class="p">,</span> <span class="n">repi</span><span class="p">)</span>
+</span><span id="L-291"><a href="#L-291"><span class="linenos"> 291</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">rep_fixed_edges</span><span class="o">.</span><span class="n">edges</span><span class="p">():</span>
+</span><span id="L-292"><a href="#L-292"><span class="linenos"> 292</span></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;* </span><span class="si">{</span><span class="n">edge</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-293"><a href="#L-293"><span class="linenos"> 293</span></a>    <span class="k">return</span> <span class="n">rep_fixed_edges</span>
+</span><span id="L-294"><a href="#L-294"><span class="linenos"> 294</span></a>
+</span><span id="L-295"><a href="#L-295"><span class="linenos"> 295</span></a>
+</span><span id="L-296"><a href="#L-296"><span class="linenos"> 296</span></a><span class="k">def</span><span class="w"> </span><span class="nf">replicate_subgraph</span><span class="p">(</span>
+</span><span id="L-297"><a href="#L-297"><span class="linenos"> 297</span></a>    <span class="n">repgraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">subgraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">nmol</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="L-298"><a href="#L-298"><span class="linenos"> 298</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="L-299"><a href="#L-299"><span class="linenos"> 299</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;単位胞内の subgraph の各レプリカを repgraph から取り出して yield する。</span>
+</span><span id="L-300"><a href="#L-300"><span class="linenos"> 300</span></a>
+</span><span id="L-301"><a href="#L-301"><span class="linenos"> 301</span></a><span class="sd">    Args:</span>
+</span><span id="L-302"><a href="#L-302"><span class="linenos"> 302</span></a><span class="sd">        repgraph: 拡大単位胞全体の無向グラフ。</span>
+</span><span id="L-303"><a href="#L-303"><span class="linenos"> 303</span></a><span class="sd">        subgraph: 単位胞内の部分グラフ（例: 1ケージを構成するノードと辺）。</span>
+</span><span id="L-304"><a href="#L-304"><span class="linenos"> 304</span></a><span class="sd">        nmol: 単位胞内のノード数。</span>
+</span><span id="L-305"><a href="#L-305"><span class="linenos"> 305</span></a>
+</span><span id="L-306"><a href="#L-306"><span class="linenos"> 306</span></a><span class="sd">    Yields:</span>
+</span><span id="L-307"><a href="#L-307"><span class="linenos"> 307</span></a><span class="sd">        拡大単位胞内の各レプリカに対応する部分グラフ（nx.Graph）。</span>
+</span><span id="L-308"><a href="#L-308"><span class="linenos"> 308</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-309"><a href="#L-309"><span class="linenos"> 309</span></a>    <span class="n">origin</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">subgraph</span><span class="o">.</span><span class="n">nodes</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="L-310"><a href="#L-310"><span class="linenos"> 310</span></a>    <span class="n">nrep</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">repgraph</span><span class="p">)</span> <span class="o">//</span> <span class="n">nmol</span>  <span class="c1"># number of replicas</span>
+</span><span id="L-311"><a href="#L-311"><span class="linenos"> 311</span></a>
+</span><span id="L-312"><a href="#L-312"><span class="linenos"> 312</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_next</span><span class="p">(</span><span class="n">_reporigin</span><span class="p">):</span>
+</span><span id="L-313"><a href="#L-313"><span class="linenos"> 313</span></a>        <span class="k">for</span> <span class="n">_repnei</span> <span class="ow">in</span> <span class="n">nx</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">repgraph</span><span class="p">,</span> <span class="n">_reporigin</span><span class="p">):</span>
+</span><span id="L-314"><a href="#L-314"><span class="linenos"> 314</span></a>            <span class="n">_origin</span> <span class="o">=</span> <span class="n">_reporigin</span> <span class="o">%</span> <span class="n">nmol</span>
+</span><span id="L-315"><a href="#L-315"><span class="linenos"> 315</span></a>            <span class="n">_nei</span> <span class="o">=</span> <span class="n">_repnei</span> <span class="o">%</span> <span class="n">nmol</span>
+</span><span id="L-316"><a href="#L-316"><span class="linenos"> 316</span></a>            <span class="k">if</span> <span class="n">_nei</span> <span class="ow">in</span> <span class="n">nx</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">subgraph</span><span class="p">,</span> <span class="n">_origin</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">replica</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span>
+</span><span id="L-317"><a href="#L-317"><span class="linenos"> 317</span></a>                <span class="n">_reporigin</span><span class="p">,</span> <span class="n">_repnei</span>
+</span><span id="L-318"><a href="#L-318"><span class="linenos"> 318</span></a>            <span class="p">):</span>
+</span><span id="L-319"><a href="#L-319"><span class="linenos"> 319</span></a>                <span class="n">replica</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">_reporigin</span><span class="p">,</span> <span class="n">_repnei</span><span class="p">)</span>
+</span><span id="L-320"><a href="#L-320"><span class="linenos"> 320</span></a>                <span class="n">_next</span><span class="p">(</span><span class="n">_repnei</span><span class="p">)</span>
+</span><span id="L-321"><a href="#L-321"><span class="linenos"> 321</span></a>
+</span><span id="L-322"><a href="#L-322"><span class="linenos"> 322</span></a>    <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nrep</span><span class="p">):</span>
+</span><span id="L-323"><a href="#L-323"><span class="linenos"> 323</span></a>        <span class="n">reporigin</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">nmol</span> <span class="o">*</span> <span class="n">rep</span>
+</span><span id="L-324"><a href="#L-324"><span class="linenos"> 324</span></a>        <span class="n">replica</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+</span><span id="L-325"><a href="#L-325"><span class="linenos"> 325</span></a>        <span class="n">_next</span><span class="p">(</span><span class="n">reporigin</span><span class="p">)</span>
+</span><span id="L-326"><a href="#L-326"><span class="linenos"> 326</span></a>        <span class="k">yield</span> <span class="n">replica</span>
+</span><span id="L-327"><a href="#L-327"><span class="linenos"> 327</span></a>
+</span><span id="L-328"><a href="#L-328"><span class="linenos"> 328</span></a>
+</span><span id="L-329"><a href="#L-329"><span class="linenos"> 329</span></a><span class="c1"># ============================================================================</span>
+</span><span id="L-330"><a href="#L-330"><span class="linenos"> 330</span></a><span class="c1"># DependencyEngineタスク関数定義: 依存関係は引数名から自動推論される</span>
+</span><span id="L-331"><a href="#L-331"><span class="linenos"> 331</span></a><span class="c1"># 各関数には @reactive を付ける。関数名がそのまま genice.&lt;名前&gt; になるので名詞で書く。</span>
+</span><span id="L-332"><a href="#L-332"><span class="linenos"> 332</span></a><span class="c1"># ============================================================================</span>
+</span><span id="L-333"><a href="#L-333"><span class="linenos"> 333</span></a>
+</span><span id="L-334"><a href="#L-334"><span class="linenos"> 334</span></a><span class="n">_genice3_logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span>
+</span><span id="L-335"><a href="#L-335"><span class="linenos"> 335</span></a>
+</span><span id="L-336"><a href="#L-336"><span class="linenos"> 336</span></a>
+</span><span id="L-337"><a href="#L-337"><span class="linenos"> 337</span></a><span class="nd">@reactive</span>
+</span><span id="L-338"><a href="#L-338"><span class="linenos"> 338</span></a><span class="k">def</span><span class="w"> </span><span class="nf">cell</span><span class="p">(</span><span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="L-339"><a href="#L-339"><span class="linenos"> 339</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;拡大単位胞のセル行列&quot;&quot;&quot;</span>
+</span><span id="L-340"><a href="#L-340"><span class="linenos"> 340</span></a>    <span class="k">return</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">cell</span> <span class="o">@</span> <span class="n">replication_matrix</span>
+</span><span id="L-341"><a href="#L-341"><span class="linenos"> 341</span></a>
+</span><span id="L-342"><a href="#L-342"><span class="linenos"> 342</span></a>
+</span><span id="L-343"><a href="#L-343"><span class="linenos"> 343</span></a><span class="nd">@reactive</span>
+</span><span id="L-344"><a href="#L-344"><span class="linenos"> 344</span></a><span class="k">def</span><span class="w"> </span><span class="nf">replica_vectors</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="L-345"><a href="#L-345"><span class="linenos"> 345</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;レプリカベクトルを計算する。</span>
+</span><span id="L-346"><a href="#L-346"><span class="linenos"> 346</span></a>
+</span><span id="L-347"><a href="#L-347"><span class="linenos"> 347</span></a><span class="sd">    拡大単位胞を構成するために必要な、元の単位胞のグリッド位置を表す</span>
+</span><span id="L-348"><a href="#L-348"><span class="linenos"> 348</span></a><span class="sd">    整数ベクトルのリストを生成します。各ベクトルは、拡大単位胞内での</span>
+</span><span id="L-349"><a href="#L-349"><span class="linenos"> 349</span></a><span class="sd">    単位胞の相対位置を表します。</span>
+</span><span id="L-350"><a href="#L-350"><span class="linenos"> 350</span></a>
+</span><span id="L-351"><a href="#L-351"><span class="linenos"> 351</span></a><span class="sd">    Args:</span>
+</span><span id="L-352"><a href="#L-352"><span class="linenos"> 352</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列</span>
+</span><span id="L-353"><a href="#L-353"><span class="linenos"> 353</span></a>
+</span><span id="L-354"><a href="#L-354"><span class="linenos"> 354</span></a><span class="sd">    Returns:</span>
+</span><span id="L-355"><a href="#L-355"><span class="linenos"> 355</span></a><span class="sd">        np.ndarray: レプリカベクトルの配列（Nx3配列、Nは拡大単位胞内の単位胞数）</span>
+</span><span id="L-356"><a href="#L-356"><span class="linenos"> 356</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-357"><a href="#L-357"><span class="linenos"> 357</span></a>    <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span>
+</span><span id="L-358"><a href="#L-358"><span class="linenos"> 358</span></a>    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="L-359"><a href="#L-359"><span class="linenos"> 359</span></a>        <span class="p">[</span><span class="n">a</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">k</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+</span><span id="L-360"><a href="#L-360"><span class="linenos"> 360</span></a>    <span class="p">)</span>
+</span><span id="L-361"><a href="#L-361"><span class="linenos"> 361</span></a>
+</span><span id="L-362"><a href="#L-362"><span class="linenos"> 362</span></a>    <span class="n">mins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="L-363"><a href="#L-363"><span class="linenos"> 363</span></a>    <span class="n">maxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="L-364"><a href="#L-364"><span class="linenos"> 364</span></a>    <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">mins</span><span class="si">=}</span><span class="s2">, </span><span class="si">{</span><span class="n">maxs</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-365"><a href="#L-365"><span class="linenos"> 365</span></a>
+</span><span id="L-366"><a href="#L-366"><span class="linenos"> 366</span></a>    <span class="n">det</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">))</span>
+</span><span id="L-367"><a href="#L-367"><span class="linenos"> 367</span></a>    <span class="n">det</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">det</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-368"><a href="#L-368"><span class="linenos"> 368</span></a>    <span class="n">invdet</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span> <span class="o">*</span> <span class="n">det</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-369"><a href="#L-369"><span class="linenos"> 369</span></a>
+</span><span id="L-370"><a href="#L-370"><span class="linenos"> 370</span></a>    <span class="n">vecs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="L-371"><a href="#L-371"><span class="linenos"> 371</span></a>    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="L-372"><a href="#L-372"><span class="linenos"> 372</span></a>        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="L-373"><a href="#L-373"><span class="linenos"> 373</span></a>            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="L-374"><a href="#L-374"><span class="linenos"> 374</span></a>                <span class="n">abc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+</span><span id="L-375"><a href="#L-375"><span class="linenos"> 375</span></a>                <span class="n">rep</span> <span class="o">=</span> <span class="n">grandcell_wrap</span><span class="p">(</span><span class="n">abc</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">,</span> <span class="n">invdet</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="L-376"><a href="#L-376"><span class="linenos"> 376</span></a>                <span class="k">if</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">rep</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">vecs</span><span class="p">:</span>
+</span><span id="L-377"><a href="#L-377"><span class="linenos"> 377</span></a>                    <span class="n">vecs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">rep</span><span class="p">))</span>
+</span><span id="L-378"><a href="#L-378"><span class="linenos"> 378</span></a>
+</span><span id="L-379"><a href="#L-379"><span class="linenos"> 379</span></a>    <span class="n">vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">vecs</span><span class="p">))</span>
+</span><span id="L-380"><a href="#L-380"><span class="linenos"> 380</span></a>    <span class="n">vol</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">))</span>
+</span><span id="L-381"><a href="#L-381"><span class="linenos"> 381</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">vol</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)):</span>
+</span><span id="L-382"><a href="#L-382"><span class="linenos"> 382</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="L-383"><a href="#L-383"><span class="linenos"> 383</span></a>            <span class="sa">f</span><span class="s2">&quot;replication_matrix determinant (</span><span class="si">{</span><span class="n">vol</span><span class="si">}</span><span class="s2">) must equal number of &quot;</span>
+</span><span id="L-384"><a href="#L-384"><span class="linenos"> 384</span></a>            <span class="sa">f</span><span class="s2">&quot;replica vectors (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="L-385"><a href="#L-385"><span class="linenos"> 385</span></a>        <span class="p">)</span>
+</span><span id="L-386"><a href="#L-386"><span class="linenos"> 386</span></a>    <span class="k">return</span> <span class="n">vecs</span>
+</span><span id="L-387"><a href="#L-387"><span class="linenos"> 387</span></a>
+</span><span id="L-388"><a href="#L-388"><span class="linenos"> 388</span></a>
+</span><span id="L-389"><a href="#L-389"><span class="linenos"> 389</span></a><span class="nd">@reactive</span>
+</span><span id="L-390"><a href="#L-390"><span class="linenos"> 390</span></a><span class="k">def</span><span class="w"> </span><span class="nf">replica_vector_labels</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">]:</span>
+</span><span id="L-391"><a href="#L-391"><span class="linenos"> 391</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;レプリカベクトル座標タプル → 一意のインデックス の辞書を返す。</span>
+</span><span id="L-392"><a href="#L-392"><span class="linenos"> 392</span></a>
+</span><span id="L-393"><a href="#L-393"><span class="linenos"> 393</span></a><span class="sd">    拡大単位胞内での単位胞の位置を、グラフ複製などで参照するために使う。</span>
+</span><span id="L-394"><a href="#L-394"><span class="linenos"> 394</span></a>
+</span><span id="L-395"><a href="#L-395"><span class="linenos"> 395</span></a><span class="sd">    Args:</span>
+</span><span id="L-396"><a href="#L-396"><span class="linenos"> 396</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列（Nx3）。</span>
+</span><span id="L-397"><a href="#L-397"><span class="linenos"> 397</span></a>
+</span><span id="L-398"><a href="#L-398"><span class="linenos"> 398</span></a><span class="sd">    Returns:</span>
+</span><span id="L-399"><a href="#L-399"><span class="linenos"> 399</span></a><span class="sd">        座標タプル (a, b, c) を 0..N-1 のインデックスにマッピングする辞書。</span>
+</span><span id="L-400"><a href="#L-400"><span class="linenos"> 400</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-401"><a href="#L-401"><span class="linenos"> 401</span></a>    <span class="k">return</span> <span class="p">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">xyz</span><span class="p">):</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">xyz</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">)}</span>
+</span><span id="L-402"><a href="#L-402"><span class="linenos"> 402</span></a>
+</span><span id="L-403"><a href="#L-403"><span class="linenos"> 403</span></a>
+</span><span id="L-404"><a href="#L-404"><span class="linenos"> 404</span></a><span class="nd">@reactive</span>
+</span><span id="L-405"><a href="#L-405"><span class="linenos"> 405</span></a><span class="k">def</span><span class="w"> </span><span class="nf">graph</span><span class="p">(</span>
+</span><span id="L-406"><a href="#L-406"><span class="linenos"> 406</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="L-407"><a href="#L-407"><span class="linenos"> 407</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-408"><a href="#L-408"><span class="linenos"> 408</span></a>    <span class="n">replica_vector_labels</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">],</span>
+</span><span id="L-409"><a href="#L-409"><span class="linenos"> 409</span></a>    <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-410"><a href="#L-410"><span class="linenos"> 410</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">:</span>
+</span><span id="L-411"><a href="#L-411"><span class="linenos"> 411</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;拡大単位胞に対応するグラフを生成する。</span>
+</span><span id="L-412"><a href="#L-412"><span class="linenos"> 412</span></a>
+</span><span id="L-413"><a href="#L-413"><span class="linenos"> 413</span></a><span class="sd">    基本単位胞のグラフ（水分子間の水素結合ネットワーク）を、</span>
+</span><span id="L-414"><a href="#L-414"><span class="linenos"> 414</span></a><span class="sd">    拡大単位胞全体に複製して統合したグラフを生成します。</span>
+</span><span id="L-415"><a href="#L-415"><span class="linenos"> 415</span></a><span class="sd">    このグラフは、拡大単位胞内のすべての水分子間の接続関係を表します。</span>
+</span><span id="L-416"><a href="#L-416"><span class="linenos"> 416</span></a>
+</span><span id="L-417"><a href="#L-417"><span class="linenos"> 417</span></a><span class="sd">    Args:</span>
+</span><span id="L-418"><a href="#L-418"><span class="linenos"> 418</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="L-419"><a href="#L-419"><span class="linenos"> 419</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="L-420"><a href="#L-420"><span class="linenos"> 420</span></a><span class="sd">        replica_vector_labels: レプリカベクトル座標タプル→インデックスの辞書（replica_vector_labels タスクの戻り値）</span>
+</span><span id="L-421"><a href="#L-421"><span class="linenos"> 421</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列</span>
+</span><span id="L-422"><a href="#L-422"><span class="linenos"> 422</span></a>
+</span><span id="L-423"><a href="#L-423"><span class="linenos"> 423</span></a><span class="sd">    Returns:</span>
+</span><span id="L-424"><a href="#L-424"><span class="linenos"> 424</span></a><span class="sd">        nx.Graph: 拡大単位胞全体の水素結合ネットワークを表す無向グラフ</span>
+</span><span id="L-425"><a href="#L-425"><span class="linenos"> 425</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-426"><a href="#L-426"><span class="linenos"> 426</span></a>    <span class="n">g</span> <span class="o">=</span> <span class="n">_replicate_graph</span><span class="p">(</span>
+</span><span id="L-427"><a href="#L-427"><span class="linenos"> 427</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span>
+</span><span id="L-428"><a href="#L-428"><span class="linenos"> 428</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">,</span>
+</span><span id="L-429"><a href="#L-429"><span class="linenos"> 429</span></a>        <span class="n">replica_vectors</span><span class="p">,</span>
+</span><span id="L-430"><a href="#L-430"><span class="linenos"> 430</span></a>        <span class="n">replica_vector_index</span><span class="o">=</span><span class="n">replica_vector_labels</span><span class="p">,</span>
+</span><span id="L-431"><a href="#L-431"><span class="linenos"> 431</span></a>        <span class="n">reshape</span><span class="o">=</span><span class="n">replication_matrix</span><span class="p">,</span>
+</span><span id="L-432"><a href="#L-432"><span class="linenos"> 432</span></a>    <span class="p">)</span>
+</span><span id="L-433"><a href="#L-433"><span class="linenos"> 433</span></a>    <span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;graph: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">_graph_degree_stats</span><span class="p">(</span><span class="n">g</span><span class="p">))</span>
+</span><span id="L-434"><a href="#L-434"><span class="linenos"> 434</span></a>    <span class="k">return</span> <span class="n">g</span>
+</span><span id="L-435"><a href="#L-435"><span class="linenos"> 435</span></a>
+</span><span id="L-436"><a href="#L-436"><span class="linenos"> 436</span></a>
+</span><span id="L-437"><a href="#L-437"><span class="linenos"> 437</span></a><span class="nd">@reactive</span>
+</span><span id="L-438"><a href="#L-438"><span class="linenos"> 438</span></a><span class="k">def</span><span class="w"> </span><span class="nf">lattice_sites</span><span class="p">(</span>
+</span><span id="L-439"><a href="#L-439"><span class="linenos"> 439</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="L-440"><a href="#L-440"><span class="linenos"> 440</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-441"><a href="#L-441"><span class="linenos"> 441</span></a>    <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-442"><a href="#L-442"><span class="linenos"> 442</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="L-443"><a href="#L-443"><span class="linenos"> 443</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;格子サイト位置を拡大単位胞全体に複製する。</span>
+</span><span id="L-444"><a href="#L-444"><span class="linenos"> 444</span></a>
+</span><span id="L-445"><a href="#L-445"><span class="linenos"> 445</span></a><span class="sd">    基本単位胞内の水分子の座標を、拡大単位胞全体に複製します。</span>
+</span><span id="L-446"><a href="#L-446"><span class="linenos"> 446</span></a><span class="sd">    各水分子の位置は、単位胞の周期境界条件に従って配置されます。</span>
+</span><span id="L-447"><a href="#L-447"><span class="linenos"> 447</span></a>
+</span><span id="L-448"><a href="#L-448"><span class="linenos"> 448</span></a><span class="sd">    Args:</span>
+</span><span id="L-449"><a href="#L-449"><span class="linenos"> 449</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="L-450"><a href="#L-450"><span class="linenos"> 450</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="L-451"><a href="#L-451"><span class="linenos"> 451</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列</span>
+</span><span id="L-452"><a href="#L-452"><span class="linenos"> 452</span></a>
+</span><span id="L-453"><a href="#L-453"><span class="linenos"> 453</span></a><span class="sd">    Returns:</span>
+</span><span id="L-454"><a href="#L-454"><span class="linenos"> 454</span></a><span class="sd">        np.ndarray: 拡大単位胞内のすべての水分子の座標（Nx3配列、Nは水分子数）</span>
+</span><span id="L-455"><a href="#L-455"><span class="linenos"> 455</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-456"><a href="#L-456"><span class="linenos"> 456</span></a>    <span class="k">return</span> <span class="n">replicate_positions</span><span class="p">(</span>
+</span><span id="L-457"><a href="#L-457"><span class="linenos"> 457</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">,</span> <span class="n">replication_matrix</span>
+</span><span id="L-458"><a href="#L-458"><span class="linenos"> 458</span></a>    <span class="p">)</span>
+</span><span id="L-459"><a href="#L-459"><span class="linenos"> 459</span></a>
+</span><span id="L-460"><a href="#L-460"><span class="linenos"> 460</span></a>
+</span><span id="L-461"><a href="#L-461"><span class="linenos"> 461</span></a><span class="nd">@reactive</span>
+</span><span id="L-462"><a href="#L-462"><span class="linenos"> 462</span></a><span class="k">def</span><span class="w"> </span><span class="nf">anions</span><span class="p">(</span>
+</span><span id="L-463"><a href="#L-463"><span class="linenos"> 463</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</span><span id="L-464"><a href="#L-464"><span class="linenos"> 464</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="L-465"><a href="#L-465"><span class="linenos"> 465</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;アニオンイオンの配置情報を拡大単位胞全体に複製する。</span>
+</span><span id="L-466"><a href="#L-466"><span class="linenos"> 466</span></a>
+</span><span id="L-467"><a href="#L-467"><span class="linenos"> 467</span></a><span class="sd">    基本単位胞内で定義されたアニオンイオンと、spot_anionsで指定された</span>
+</span><span id="L-468"><a href="#L-468"><span class="linenos"> 468</span></a><span class="sd">    特定位置のアニオンを統合し、拡大単位胞全体でのアニオン配置を返します。</span>
+</span><span id="L-469"><a href="#L-469"><span class="linenos"> 469</span></a>
+</span><span id="L-470"><a href="#L-470"><span class="linenos"> 470</span></a><span class="sd">    Args:</span>
+</span><span id="L-471"><a href="#L-471"><span class="linenos"> 471</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="L-472"><a href="#L-472"><span class="linenos"> 472</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="L-473"><a href="#L-473"><span class="linenos"> 473</span></a><span class="sd">        spot_anions: 特定の格子サイト位置に配置するアニオンの辞書（サイトインデックス -&gt; イオン名）</span>
+</span><span id="L-474"><a href="#L-474"><span class="linenos"> 474</span></a>
+</span><span id="L-475"><a href="#L-475"><span class="linenos"> 475</span></a><span class="sd">    Returns:</span>
+</span><span id="L-476"><a href="#L-476"><span class="linenos"> 476</span></a><span class="sd">        Dict[int, str]: 拡大単位胞全体でのアニオン配置（サイトインデックス -&gt; イオン名）</span>
+</span><span id="L-477"><a href="#L-477"><span class="linenos"> 477</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-478"><a href="#L-478"><span class="linenos"> 478</span></a>    <span class="n">anion_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-479"><a href="#L-479"><span class="linenos"> 479</span></a>    <span class="n">Z</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="L-480"><a href="#L-480"><span class="linenos"> 480</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-481"><a href="#L-481"><span class="linenos"> 481</span></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">)):</span>
+</span><span id="L-482"><a href="#L-482"><span class="linenos"> 482</span></a>            <span class="n">site</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">Z</span> <span class="o">+</span> <span class="n">site_index</span>
+</span><span id="L-483"><a href="#L-483"><span class="linenos"> 483</span></a>            <span class="n">anion_dict</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="L-484"><a href="#L-484"><span class="linenos"> 484</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">spot_anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-485"><a href="#L-485"><span class="linenos"> 485</span></a>        <span class="n">anion_dict</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="L-486"><a href="#L-486"><span class="linenos"> 486</span></a>    <span class="k">return</span> <span class="n">anion_dict</span>
+</span><span id="L-487"><a href="#L-487"><span class="linenos"> 487</span></a>
+</span><span id="L-488"><a href="#L-488"><span class="linenos"> 488</span></a>
+</span><span id="L-489"><a href="#L-489"><span class="linenos"> 489</span></a><span class="nd">@reactive</span>
+</span><span id="L-490"><a href="#L-490"><span class="linenos"> 490</span></a><span class="k">def</span><span class="w"> </span><span class="nf">cations</span><span class="p">(</span>
+</span><span id="L-491"><a href="#L-491"><span class="linenos"> 491</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</span><span id="L-492"><a href="#L-492"><span class="linenos"> 492</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="L-493"><a href="#L-493"><span class="linenos"> 493</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;カチオンイオンの配置情報を拡大単位胞全体に複製する。</span>
+</span><span id="L-494"><a href="#L-494"><span class="linenos"> 494</span></a>
+</span><span id="L-495"><a href="#L-495"><span class="linenos"> 495</span></a><span class="sd">    基本単位胞内で定義されたカチオンイオンと、spot_cationsで指定された</span>
+</span><span id="L-496"><a href="#L-496"><span class="linenos"> 496</span></a><span class="sd">    特定位置のカチオンを統合し、拡大単位胞全体でのカチオン配置を返します。</span>
+</span><span id="L-497"><a href="#L-497"><span class="linenos"> 497</span></a>
+</span><span id="L-498"><a href="#L-498"><span class="linenos"> 498</span></a><span class="sd">    Args:</span>
+</span><span id="L-499"><a href="#L-499"><span class="linenos"> 499</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="L-500"><a href="#L-500"><span class="linenos"> 500</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="L-501"><a href="#L-501"><span class="linenos"> 501</span></a><span class="sd">        spot_cations: 特定の格子サイト位置に配置するカチオンの辞書（サイトインデックス -&gt; イオン名）</span>
+</span><span id="L-502"><a href="#L-502"><span class="linenos"> 502</span></a>
+</span><span id="L-503"><a href="#L-503"><span class="linenos"> 503</span></a><span class="sd">    Returns:</span>
+</span><span id="L-504"><a href="#L-504"><span class="linenos"> 504</span></a><span class="sd">        Dict[int, str]: 拡大単位胞全体でのカチオン配置（サイトインデックス -&gt; イオン名）</span>
+</span><span id="L-505"><a href="#L-505"><span class="linenos"> 505</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-506"><a href="#L-506"><span class="linenos"> 506</span></a>    <span class="n">cation_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-507"><a href="#L-507"><span class="linenos"> 507</span></a>    <span class="n">Z</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="L-508"><a href="#L-508"><span class="linenos"> 508</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-509"><a href="#L-509"><span class="linenos"> 509</span></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">)):</span>
+</span><span id="L-510"><a href="#L-510"><span class="linenos"> 510</span></a>            <span class="n">site</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">Z</span> <span class="o">+</span> <span class="n">site_index</span>
+</span><span id="L-511"><a href="#L-511"><span class="linenos"> 511</span></a>            <span class="n">cation_dict</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="L-512"><a href="#L-512"><span class="linenos"> 512</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">spot_cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-513"><a href="#L-513"><span class="linenos"> 513</span></a>        <span class="n">cation_dict</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="L-514"><a href="#L-514"><span class="linenos"> 514</span></a>    <span class="k">return</span> <span class="n">cation_dict</span>
+</span><span id="L-515"><a href="#L-515"><span class="linenos"> 515</span></a>
+</span><span id="L-516"><a href="#L-516"><span class="linenos"> 516</span></a>
+</span><span id="L-517"><a href="#L-517"><span class="linenos"> 517</span></a><span class="nd">@reactive</span>
+</span><span id="L-518"><a href="#L-518"><span class="linenos"> 518</span></a><span class="k">def</span><span class="w"> </span><span class="nf">site_occupants</span><span class="p">(</span>
+</span><span id="L-519"><a href="#L-519"><span class="linenos"> 519</span></a>    <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="L-520"><a href="#L-520"><span class="linenos"> 520</span></a>    <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="L-521"><a href="#L-521"><span class="linenos"> 521</span></a>    <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="L-522"><a href="#L-522"><span class="linenos"> 522</span></a>    <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="L-523"><a href="#L-523"><span class="linenos"> 523</span></a>    <span class="n">lattice_sites</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-524"><a href="#L-524"><span class="linenos"> 524</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="L-525"><a href="#L-525"><span class="linenos"> 525</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;各格子サイトの占有種（水分子・イオン・H3O+・OH-）のリストを生成する。</span>
+</span><span id="L-526"><a href="#L-526"><span class="linenos"> 526</span></a>
+</span><span id="L-527"><a href="#L-527"><span class="linenos"> 527</span></a><span class="sd">    各格子サイトが水分子、アニオン、カチオン、H3O+、OH- のいずれで占有されているかを</span>
+</span><span id="L-528"><a href="#L-528"><span class="linenos"> 528</span></a><span class="sd">    判定し、サイトインデックス順にリストとして返します。</span>
+</span><span id="L-529"><a href="#L-529"><span class="linenos"> 529</span></a>
+</span><span id="L-530"><a href="#L-530"><span class="linenos"> 530</span></a><span class="sd">    Args:</span>
+</span><span id="L-531"><a href="#L-531"><span class="linenos"> 531</span></a><span class="sd">        anions: アニオン配置の辞書</span>
+</span><span id="L-532"><a href="#L-532"><span class="linenos"> 532</span></a><span class="sd">        cations: カチオン配置の辞書</span>
+</span><span id="L-533"><a href="#L-533"><span class="linenos"> 533</span></a><span class="sd">        spot_hydroniums: H3O+ を置くサイトのリスト</span>
+</span><span id="L-534"><a href="#L-534"><span class="linenos"> 534</span></a><span class="sd">        spot_hydroxides: OH- を置くサイトのリスト</span>
+</span><span id="L-535"><a href="#L-535"><span class="linenos"> 535</span></a><span class="sd">        lattice_sites: 格子サイト位置の配列</span>
+</span><span id="L-536"><a href="#L-536"><span class="linenos"> 536</span></a>
+</span><span id="L-537"><a href="#L-537"><span class="linenos"> 537</span></a><span class="sd">    Returns:</span>
+</span><span id="L-538"><a href="#L-538"><span class="linenos"> 538</span></a><span class="sd">        List[str]: 各サイトの占有種のリスト（&quot;water&quot; またはイオン名）</span>
+</span><span id="L-539"><a href="#L-539"><span class="linenos"> 539</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-540"><a href="#L-540"><span class="linenos"> 540</span></a>    <span class="n">occupants</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="L-541"><a href="#L-541"><span class="linenos"> 541</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-542"><a href="#L-542"><span class="linenos"> 542</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="L-543"><a href="#L-543"><span class="linenos"> 543</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-544"><a href="#L-544"><span class="linenos"> 544</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="L-545"><a href="#L-545"><span class="linenos"> 545</span></a>    <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="L-546"><a href="#L-546"><span class="linenos"> 546</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;H3O+&quot;</span>
+</span><span id="L-547"><a href="#L-547"><span class="linenos"> 547</span></a>    <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="L-548"><a href="#L-548"><span class="linenos"> 548</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;OH-&quot;</span>
+</span><span id="L-549"><a href="#L-549"><span class="linenos"> 549</span></a>    <span class="k">return</span> <span class="n">occupants</span>
+</span><span id="L-550"><a href="#L-550"><span class="linenos"> 550</span></a>
+</span><span id="L-551"><a href="#L-551"><span class="linenos"> 551</span></a>
+</span><span id="L-552"><a href="#L-552"><span class="linenos"> 552</span></a><span class="nd">@reactive</span>
+</span><span id="L-553"><a href="#L-553"><span class="linenos"> 553</span></a><span class="k">def</span><span class="w"> </span><span class="nf">fixed_edges</span><span class="p">(</span>
+</span><span id="L-554"><a href="#L-554"><span class="linenos"> 554</span></a>    <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="L-555"><a href="#L-555"><span class="linenos"> 555</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="L-556"><a href="#L-556"><span class="linenos"> 556</span></a>    <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="L-557"><a href="#L-557"><span class="linenos"> 557</span></a>    <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="L-558"><a href="#L-558"><span class="linenos"> 558</span></a>    <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="L-559"><a href="#L-559"><span class="linenos"> 559</span></a>    <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="L-560"><a href="#L-560"><span class="linenos"> 560</span></a>    <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="L-561"><a href="#L-561"><span class="linenos"> 561</span></a>    <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="L-562"><a href="#L-562"><span class="linenos"> 562</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">:</span>
+</span><span id="L-563"><a href="#L-563"><span class="linenos"> 563</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;固定エッジ（水素結合の方向が固定されたエッジ）を拡大単位胞全体に複製する。</span>
+</span><span id="L-564"><a href="#L-564"><span class="linenos"> 564</span></a>
+</span><span id="L-565"><a href="#L-565"><span class="linenos"> 565</span></a><span class="sd">    基本単位胞で定義された固定エッジと、spot_anions/spot_cations/spot_hydroniums/</span>
+</span><span id="L-566"><a href="#L-566"><span class="linenos"> 566</span></a><span class="sd">    spot_hydroxides で指定されたイオン・置換種に基づく固定エッジを統合し、</span>
+</span><span id="L-567"><a href="#L-567"><span class="linenos"> 567</span></a><span class="sd">    拡大単位胞全体での固定エッジを返します。</span>
+</span><span id="L-568"><a href="#L-568"><span class="linenos"> 568</span></a><span class="sd">    - アニオン: 4本受け入れ。カチオン: 4本供与。</span>
+</span><span id="L-569"><a href="#L-569"><span class="linenos"> 569</span></a><span class="sd">    - H3O+ (spot_hydroniums): 1本受け入れ・3本供与。</span>
+</span><span id="L-570"><a href="#L-570"><span class="linenos"> 570</span></a><span class="sd">    - OH- (spot_hydroxides): 3本受け入れ・1本供与。</span>
+</span><span id="L-571"><a href="#L-571"><span class="linenos"> 571</span></a>
+</span><span id="L-572"><a href="#L-572"><span class="linenos"> 572</span></a><span class="sd">    Args:</span>
+</span><span id="L-573"><a href="#L-573"><span class="linenos"> 573</span></a><span class="sd">        graph: 拡大単位胞全体のグラフ</span>
+</span><span id="L-574"><a href="#L-574"><span class="linenos"> 574</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="L-575"><a href="#L-575"><span class="linenos"> 575</span></a><span class="sd">        spot_anions: 特定位置のアニオン配置</span>
+</span><span id="L-576"><a href="#L-576"><span class="linenos"> 576</span></a><span class="sd">        spot_cations: 特定位置のカチオン配置</span>
+</span><span id="L-577"><a href="#L-577"><span class="linenos"> 577</span></a><span class="sd">        spot_hydroniums: H3O+ を置くサイトのリスト（1受容・3供与）</span>
+</span><span id="L-578"><a href="#L-578"><span class="linenos"> 578</span></a><span class="sd">        spot_hydroxides: OH- を置くサイトのリスト（3受容・1供与）</span>
+</span><span id="L-579"><a href="#L-579"><span class="linenos"> 579</span></a>
+</span><span id="L-580"><a href="#L-580"><span class="linenos"> 580</span></a><span class="sd">    Returns:</span>
+</span><span id="L-581"><a href="#L-581"><span class="linenos"> 581</span></a><span class="sd">        nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ</span>
+</span><span id="L-582"><a href="#L-582"><span class="linenos"> 582</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-583"><a href="#L-583"><span class="linenos"> 583</span></a>    <span class="k">if</span> <span class="p">(</span>
+</span><span id="L-584"><a href="#L-584"><span class="linenos"> 584</span></a>        <span class="n">spot_anions</span>
+</span><span id="L-585"><a href="#L-585"><span class="linenos"> 585</span></a>        <span class="ow">or</span> <span class="n">spot_cations</span>
+</span><span id="L-586"><a href="#L-586"><span class="linenos"> 586</span></a>        <span class="ow">or</span> <span class="n">spot_hydroniums</span>
+</span><span id="L-587"><a href="#L-587"><span class="linenos"> 587</span></a>        <span class="ow">or</span> <span class="n">spot_hydroxides</span>
+</span><span id="L-588"><a href="#L-588"><span class="linenos"> 588</span></a>        <span class="ow">or</span> <span class="n">bjerrum_L_edges</span>
+</span><span id="L-589"><a href="#L-589"><span class="linenos"> 589</span></a>        <span class="ow">or</span> <span class="n">bjerrum_D_edges</span>
+</span><span id="L-590"><a href="#L-590"><span class="linenos"> 590</span></a>    <span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">SUPPORTS_ION_DOPING</span><span class="p">:</span>
+</span><span id="L-591"><a href="#L-591"><span class="linenos"> 591</span></a>        <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-592"><a href="#L-592"><span class="linenos"> 592</span></a>            <span class="s2">&quot;Ion doping (spot_anion/spot_cation/spot_hydronium/spot_hydroxide) &quot;</span>
+</span><span id="L-593"><a href="#L-593"><span class="linenos"> 593</span></a>            <span class="s2">&quot;is not supported for hydrogen-ordered ices.&quot;</span>
+</span><span id="L-594"><a href="#L-594"><span class="linenos"> 594</span></a>        <span class="p">)</span>
+</span><span id="L-595"><a href="#L-595"><span class="linenos"> 595</span></a>    <span class="n">dg</span> <span class="o">=</span> <span class="n">_replicate_fixed_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">fixed</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">))</span>
+</span><span id="L-596"><a href="#L-596"><span class="linenos"> 596</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_anions</span><span class="p">:</span>
+</span><span id="L-597"><a href="#L-597"><span class="linenos"> 597</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">):</span>
+</span><span id="L-598"><a href="#L-598"><span class="linenos"> 598</span></a>            <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">nei</span><span class="p">):</span>
+</span><span id="L-599"><a href="#L-599"><span class="linenos"> 599</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-600"><a href="#L-600"><span class="linenos"> 600</span></a>                    <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="L-601"><a href="#L-601"><span class="linenos"> 601</span></a>                <span class="p">)</span>
+</span><span id="L-602"><a href="#L-602"><span class="linenos"> 602</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="L-603"><a href="#L-603"><span class="linenos"> 603</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">site_index</span><span class="p">)</span>
+</span><span id="L-604"><a href="#L-604"><span class="linenos"> 604</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_cations</span><span class="p">:</span>
+</span><span id="L-605"><a href="#L-605"><span class="linenos"> 605</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">):</span>
+</span><span id="L-606"><a href="#L-606"><span class="linenos"> 606</span></a>            <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">site_index</span><span class="p">):</span>
+</span><span id="L-607"><a href="#L-607"><span class="linenos"> 607</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-608"><a href="#L-608"><span class="linenos"> 608</span></a>                    <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="L-609"><a href="#L-609"><span class="linenos"> 609</span></a>                <span class="p">)</span>
+</span><span id="L-610"><a href="#L-610"><span class="linenos"> 610</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="L-611"><a href="#L-611"><span class="linenos"> 611</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="L-612"><a href="#L-612"><span class="linenos"> 612</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="L-613"><a href="#L-613"><span class="linenos"> 613</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="L-614"><a href="#L-614"><span class="linenos"> 614</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="L-615"><a href="#L-615"><span class="linenos"> 615</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-616"><a href="#L-616"><span class="linenos"> 616</span></a>                <span class="sa">f</span><span class="s2">&quot;spot_hydronium at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-617"><a href="#L-617"><span class="linenos"> 617</span></a>            <span class="p">)</span>
+</span><span id="L-618"><a href="#L-618"><span class="linenos"> 618</span></a>        <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">neis</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">site_index</span><span class="p">)</span>
+</span><span id="L-619"><a href="#L-619"><span class="linenos"> 619</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+</span><span id="L-620"><a href="#L-620"><span class="linenos"> 620</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="L-621"><a href="#L-621"><span class="linenos"> 621</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="L-622"><a href="#L-622"><span class="linenos"> 622</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="L-623"><a href="#L-623"><span class="linenos"> 623</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="L-624"><a href="#L-624"><span class="linenos"> 624</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-625"><a href="#L-625"><span class="linenos"> 625</span></a>                <span class="sa">f</span><span class="s2">&quot;spot_hydroxide at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-626"><a href="#L-626"><span class="linenos"> 626</span></a>            <span class="p">)</span>
+</span><span id="L-627"><a href="#L-627"><span class="linenos"> 627</span></a>        <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">neis</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="L-628"><a href="#L-628"><span class="linenos"> 628</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+</span><span id="L-629"><a href="#L-629"><span class="linenos"> 629</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">site_index</span><span class="p">)</span>
+</span><span id="L-630"><a href="#L-630"><span class="linenos"> 630</span></a>    <span class="c1"># Bjerrum L 欠陥: i ノードを hydronium と同様に扱う。</span>
+</span><span id="L-631"><a href="#L-631"><span class="linenos"> 631</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">bjerrum_L_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="L-632"><a href="#L-632"><span class="linenos"> 632</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+</span><span id="L-633"><a href="#L-633"><span class="linenos"> 633</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="L-634"><a href="#L-634"><span class="linenos"> 634</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-635"><a href="#L-635"><span class="linenos"> 635</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_L at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-636"><a href="#L-636"><span class="linenos"> 636</span></a>            <span class="p">)</span>
+</span><span id="L-637"><a href="#L-637"><span class="linenos"> 637</span></a>        <span class="k">if</span> <span class="n">j</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="L-638"><a href="#L-638"><span class="linenos"> 638</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-639"><a href="#L-639"><span class="linenos"> 639</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_L edge (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) is not an edge in the graph.&quot;</span>
+</span><span id="L-640"><a href="#L-640"><span class="linenos"> 640</span></a>            <span class="p">)</span>
+</span><span id="L-641"><a href="#L-641"><span class="linenos"> 641</span></a>        <span class="c1"># 受容側となる隣接ノードを j 以外から 1 つ選ぶ</span>
+</span><span id="L-642"><a href="#L-642"><span class="linenos"> 642</span></a>        <span class="n">acceptor</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">nei</span> <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span> <span class="k">if</span> <span class="n">nei</span> <span class="o">!=</span> <span class="n">j</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="L-643"><a href="#L-643"><span class="linenos"> 643</span></a>        <span class="k">if</span> <span class="n">acceptor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-644"><a href="#L-644"><span class="linenos"> 644</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-645"><a href="#L-645"><span class="linenos"> 645</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_L at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> cannot choose acceptor neighbor distinct from </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-646"><a href="#L-646"><span class="linenos"> 646</span></a>            <span class="p">)</span>
+</span><span id="L-647"><a href="#L-647"><span class="linenos"> 647</span></a>        <span class="c1"># hydronium と同様のチェック・追加ロジック</span>
+</span><span id="L-648"><a href="#L-648"><span class="linenos"> 648</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="L-649"><a href="#L-649"><span class="linenos"> 649</span></a>            <span class="k">if</span> <span class="n">nei</span> <span class="o">==</span> <span class="n">acceptor</span><span class="p">:</span>
+</span><span id="L-650"><a href="#L-650"><span class="linenos"> 650</span></a>                <span class="c1"># nei -&gt; i （受容）</span>
+</span><span id="L-651"><a href="#L-651"><span class="linenos"> 651</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">):</span>
+</span><span id="L-652"><a href="#L-652"><span class="linenos"> 652</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-653"><a href="#L-653"><span class="linenos"> 653</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="L-654"><a href="#L-654"><span class="linenos"> 654</span></a>                    <span class="p">)</span>
+</span><span id="L-655"><a href="#L-655"><span class="linenos"> 655</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="L-656"><a href="#L-656"><span class="linenos"> 656</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="L-657"><a href="#L-657"><span class="linenos"> 657</span></a>                <span class="c1"># i -&gt; nei （供与）</span>
+</span><span id="L-658"><a href="#L-658"><span class="linenos"> 658</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="L-659"><a href="#L-659"><span class="linenos"> 659</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-660"><a href="#L-660"><span class="linenos"> 660</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="L-661"><a href="#L-661"><span class="linenos"> 661</span></a>                    <span class="p">)</span>
+</span><span id="L-662"><a href="#L-662"><span class="linenos"> 662</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="L-663"><a href="#L-663"><span class="linenos"> 663</span></a>    <span class="c1"># Bjerrum D 欠陥: i ノードを hydroxide と同様に扱う（ただし j は供与側にしない）。</span>
+</span><span id="L-664"><a href="#L-664"><span class="linenos"> 664</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">bjerrum_D_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="L-665"><a href="#L-665"><span class="linenos"> 665</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+</span><span id="L-666"><a href="#L-666"><span class="linenos"> 666</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="L-667"><a href="#L-667"><span class="linenos"> 667</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-668"><a href="#L-668"><span class="linenos"> 668</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_D at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-669"><a href="#L-669"><span class="linenos"> 669</span></a>            <span class="p">)</span>
+</span><span id="L-670"><a href="#L-670"><span class="linenos"> 670</span></a>        <span class="k">if</span> <span class="n">j</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="L-671"><a href="#L-671"><span class="linenos"> 671</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-672"><a href="#L-672"><span class="linenos"> 672</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_D edge (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) is not an edge in the graph.&quot;</span>
+</span><span id="L-673"><a href="#L-673"><span class="linenos"> 673</span></a>            <span class="p">)</span>
+</span><span id="L-674"><a href="#L-674"><span class="linenos"> 674</span></a>        <span class="c1"># 供与側となる隣接ノードを j 以外から 1 つ選ぶ</span>
+</span><span id="L-675"><a href="#L-675"><span class="linenos"> 675</span></a>        <span class="n">donor</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">nei</span> <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span> <span class="k">if</span> <span class="n">nei</span> <span class="o">!=</span> <span class="n">j</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="L-676"><a href="#L-676"><span class="linenos"> 676</span></a>        <span class="k">if</span> <span class="n">donor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-677"><a href="#L-677"><span class="linenos"> 677</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-678"><a href="#L-678"><span class="linenos"> 678</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_D at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> cannot choose donor neighbor distinct from </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-679"><a href="#L-679"><span class="linenos"> 679</span></a>            <span class="p">)</span>
+</span><span id="L-680"><a href="#L-680"><span class="linenos"> 680</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="L-681"><a href="#L-681"><span class="linenos"> 681</span></a>            <span class="k">if</span> <span class="n">nei</span> <span class="o">==</span> <span class="n">donor</span><span class="p">:</span>
+</span><span id="L-682"><a href="#L-682"><span class="linenos"> 682</span></a>                <span class="c1"># i -&gt; nei （供与）</span>
+</span><span id="L-683"><a href="#L-683"><span class="linenos"> 683</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="L-684"><a href="#L-684"><span class="linenos"> 684</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-685"><a href="#L-685"><span class="linenos"> 685</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="L-686"><a href="#L-686"><span class="linenos"> 686</span></a>                    <span class="p">)</span>
+</span><span id="L-687"><a href="#L-687"><span class="linenos"> 687</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="L-688"><a href="#L-688"><span class="linenos"> 688</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="L-689"><a href="#L-689"><span class="linenos"> 689</span></a>                <span class="c1"># nei -&gt; i （受容）</span>
+</span><span id="L-690"><a href="#L-690"><span class="linenos"> 690</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">):</span>
+</span><span id="L-691"><a href="#L-691"><span class="linenos"> 691</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-692"><a href="#L-692"><span class="linenos"> 692</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="L-693"><a href="#L-693"><span class="linenos"> 693</span></a>                    <span class="p">)</span>
+</span><span id="L-694"><a href="#L-694"><span class="linenos"> 694</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="L-695"><a href="#L-695"><span class="linenos"> 695</span></a>    <span class="k">return</span> <span class="n">dg</span>
+</span><span id="L-696"><a href="#L-696"><span class="linenos"> 696</span></a>
+</span><span id="L-697"><a href="#L-697"><span class="linenos"> 697</span></a>
+</span><span id="L-698"><a href="#L-698"><span class="linenos"> 698</span></a><span class="nd">@reactive</span>
+</span><span id="L-699"><a href="#L-699"><span class="linenos"> 699</span></a><span class="k">def</span><span class="w"> </span><span class="nf">digraph</span><span class="p">(</span>
+</span><span id="L-700"><a href="#L-700"><span class="linenos"> 700</span></a>    <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="L-701"><a href="#L-701"><span class="linenos"> 701</span></a>    <span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="L-702"><a href="#L-702"><span class="linenos"> 702</span></a>    <span class="n">lattice_sites</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-703"><a href="#L-703"><span class="linenos"> 703</span></a>    <span class="n">fixed_edges</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span>
+</span><span id="L-704"><a href="#L-704"><span class="linenos"> 704</span></a>    <span class="n">target_pol</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-705"><a href="#L-705"><span class="linenos"> 705</span></a>    <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="L-706"><a href="#L-706"><span class="linenos"> 706</span></a>    <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="L-707"><a href="#L-707"><span class="linenos"> 707</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">:</span>
+</span><span id="L-708"><a href="#L-708"><span class="linenos"> 708</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;水素結合ネットワークの有向グラフを生成する。</span>
+</span><span id="L-709"><a href="#L-709"><span class="linenos"> 709</span></a>
+</span><span id="L-710"><a href="#L-710"><span class="linenos"> 710</span></a><span class="sd">    無向グラフ（水素結合ネットワーク）から、各水素結合の方向（プロトンの向き）</span>
+</span><span id="L-711"><a href="#L-711"><span class="linenos"> 711</span></a><span class="sd">    を決定して有向グラフを生成します。固定エッジで指定された方向は維持され、</span>
+</span><span id="L-712"><a href="#L-712"><span class="linenos"> 712</span></a><span class="sd">    それ以外のエッジは双極子最適化アルゴリズムにより方向が決定されます。</span>
+</span><span id="L-713"><a href="#L-713"><span class="linenos"> 713</span></a>
+</span><span id="L-714"><a href="#L-714"><span class="linenos"> 714</span></a><span class="sd">    Args:</span>
+</span><span id="L-715"><a href="#L-715"><span class="linenos"> 715</span></a><span class="sd">        graph: 拡大単位胞全体の無向グラフ</span>
+</span><span id="L-716"><a href="#L-716"><span class="linenos"> 716</span></a><span class="sd">        depol_loop: 双極子最適化の反復回数</span>
+</span><span id="L-717"><a href="#L-717"><span class="linenos"> 717</span></a><span class="sd">        lattice_sites: 格子サイト位置の配列</span>
+</span><span id="L-718"><a href="#L-718"><span class="linenos"> 718</span></a><span class="sd">        fixed_edges: 拡大単位胞全体での固定エッジの有向グラフ</span>
+</span><span id="L-719"><a href="#L-719"><span class="linenos"> 719</span></a><span class="sd">        target_pol: 分極の目標値</span>
+</span><span id="L-720"><a href="#L-720"><span class="linenos"> 720</span></a>
+</span><span id="L-721"><a href="#L-721"><span class="linenos"> 721</span></a><span class="sd">    Returns:</span>
+</span><span id="L-722"><a href="#L-722"><span class="linenos"> 722</span></a><span class="sd">        nx.DiGraph: 水素結合の方向が決定された有向グラフ</span>
+</span><span id="L-723"><a href="#L-723"><span class="linenos"> 723</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-724"><a href="#L-724"><span class="linenos"> 724</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">fixed_edges</span><span class="o">.</span><span class="n">edges</span><span class="p">():</span>
+</span><span id="L-725"><a href="#L-725"><span class="linenos"> 725</span></a>        <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;+ </span><span class="si">{</span><span class="n">edge</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-726"><a href="#L-726"><span class="linenos"> 726</span></a>    <span class="n">dg</span> <span class="o">=</span> <span class="n">genice_core</span><span class="o">.</span><span class="n">ice_graph</span><span class="p">(</span>
+</span><span id="L-727"><a href="#L-727"><span class="linenos"> 727</span></a>        <span class="n">graph</span><span class="p">,</span>
+</span><span id="L-728"><a href="#L-728"><span class="linenos"> 728</span></a>        <span class="n">vertex_positions</span><span class="o">=</span><span class="n">lattice_sites</span><span class="p">,</span>
+</span><span id="L-729"><a href="#L-729"><span class="linenos"> 729</span></a>        <span class="n">is_periodic_boundary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="L-730"><a href="#L-730"><span class="linenos"> 730</span></a>        <span class="n">dipole_optimization_cycles</span><span class="o">=</span><span class="n">depol_loop</span><span class="p">,</span>
+</span><span id="L-731"><a href="#L-731"><span class="linenos"> 731</span></a>        <span class="n">fixed_edges</span><span class="o">=</span><span class="n">fixed_edges</span><span class="p">,</span>
+</span><span id="L-732"><a href="#L-732"><span class="linenos"> 732</span></a>        <span class="n">pairing_attempts</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+</span><span id="L-733"><a href="#L-733"><span class="linenos"> 733</span></a>        <span class="n">target_pol</span><span class="o">=</span><span class="n">target_pol</span><span class="p">,</span>
+</span><span id="L-734"><a href="#L-734"><span class="linenos"> 734</span></a>    <span class="p">)</span>
+</span><span id="L-735"><a href="#L-735"><span class="linenos"> 735</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">dg</span><span class="p">:</span>
+</span><span id="L-736"><a href="#L-736"><span class="linenos"> 736</span></a>        <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="s2">&quot;Failed to generate a directed graph.&quot;</span><span class="p">)</span>
+</span><span id="L-737"><a href="#L-737"><span class="linenos"> 737</span></a>    <span class="c1"># Bjerrum L 欠陥: 対応するエッジを削除する（両方向とも取り除く）</span>
+</span><span id="L-738"><a href="#L-738"><span class="linenos"> 738</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">bjerrum_L_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="L-739"><a href="#L-739"><span class="linenos"> 739</span></a>        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">edge</span>
+</span><span id="L-740"><a href="#L-740"><span class="linenos"> 740</span></a>        <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+</span><span id="L-741"><a href="#L-741"><span class="linenos"> 741</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">remove_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+</span><span id="L-742"><a href="#L-742"><span class="linenos"> 742</span></a>        <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="L-743"><a href="#L-743"><span class="linenos"> 743</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">remove_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="L-744"><a href="#L-744"><span class="linenos"> 744</span></a>    <span class="c1"># Bjerrum D 欠陥: 対応するエッジを両方向とも存在させる</span>
+</span><span id="L-745"><a href="#L-745"><span class="linenos"> 745</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">bjerrum_D_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="L-746"><a href="#L-746"><span class="linenos"> 746</span></a>        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">edge</span>
+</span><span id="L-747"><a href="#L-747"><span class="linenos"> 747</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+</span><span id="L-748"><a href="#L-748"><span class="linenos"> 748</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+</span><span id="L-749"><a href="#L-749"><span class="linenos"> 749</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="L-750"><a href="#L-750"><span class="linenos"> 750</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="L-751"><a href="#L-751"><span class="linenos"> 751</span></a>    <span class="k">return</span> <span class="n">dg</span>
+</span><span id="L-752"><a href="#L-752"><span class="linenos"> 752</span></a>
+</span><span id="L-753"><a href="#L-753"><span class="linenos"> 753</span></a>
+</span><span id="L-754"><a href="#L-754"><span class="linenos"> 754</span></a><span class="nd">@reactive</span>
+</span><span id="L-755"><a href="#L-755"><span class="linenos"> 755</span></a><span class="k">def</span><span class="w"> </span><span class="nf">orientations</span><span class="p">(</span>
+</span><span id="L-756"><a href="#L-756"><span class="linenos"> 756</span></a>    <span class="n">lattice_sites</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-757"><a href="#L-757"><span class="linenos"> 757</span></a>    <span class="n">digraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span>
+</span><span id="L-758"><a href="#L-758"><span class="linenos"> 758</span></a>    <span class="n">cell</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-759"><a href="#L-759"><span class="linenos"> 759</span></a>    <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="L-760"><a href="#L-760"><span class="linenos"> 760</span></a>    <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="L-761"><a href="#L-761"><span class="linenos"> 761</span></a>    <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="L-762"><a href="#L-762"><span class="linenos"> 762</span></a>    <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="L-763"><a href="#L-763"><span class="linenos"> 763</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="L-764"><a href="#L-764"><span class="linenos"> 764</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;各水分子の配向行列を計算する。</span>
+</span><span id="L-765"><a href="#L-765"><span class="linenos"> 765</span></a>
+</span><span id="L-766"><a href="#L-766"><span class="linenos"> 766</span></a><span class="sd">    有向グラフで決定された水素結合の方向に基づいて、各水分子の</span>
+</span><span id="L-767"><a href="#L-767"><span class="linenos"> 767</span></a><span class="sd">    配向（回転行列）を計算します。水分子のOHベクトルの方向から</span>
+</span><span id="L-768"><a href="#L-768"><span class="linenos"> 768</span></a><span class="sd">    分子全体の配向を決定します。</span>
+</span><span id="L-769"><a href="#L-769"><span class="linenos"> 769</span></a>
+</span><span id="L-770"><a href="#L-770"><span class="linenos"> 770</span></a><span class="sd">    Args:</span>
+</span><span id="L-771"><a href="#L-771"><span class="linenos"> 771</span></a><span class="sd">        lattice_sites: 格子サイト位置の配列</span>
+</span><span id="L-772"><a href="#L-772"><span class="linenos"> 772</span></a><span class="sd">        digraph: 水素結合の方向が決定された有向グラフ</span>
+</span><span id="L-773"><a href="#L-773"><span class="linenos"> 773</span></a><span class="sd">        cell: 拡大単位胞のセル行列</span>
+</span><span id="L-774"><a href="#L-774"><span class="linenos"> 774</span></a><span class="sd">        anions: アニオン配置の辞書</span>
+</span><span id="L-775"><a href="#L-775"><span class="linenos"> 775</span></a><span class="sd">        cations: カチオン配置の辞書</span>
+</span><span id="L-776"><a href="#L-776"><span class="linenos"> 776</span></a><span class="sd">        spot_hydroniums: H3O+ を置くサイトのリスト</span>
+</span><span id="L-777"><a href="#L-777"><span class="linenos"> 777</span></a><span class="sd">        spot_hydroxides: OH- を置くサイトのリスト</span>
+</span><span id="L-778"><a href="#L-778"><span class="linenos"> 778</span></a>
+</span><span id="L-779"><a href="#L-779"><span class="linenos"> 779</span></a><span class="sd">    Returns:</span>
+</span><span id="L-780"><a href="#L-780"><span class="linenos"> 780</span></a><span class="sd">        np.ndarray: 各水分子の配向行列（Nx3x3配列、Nは水分子数）</span>
+</span><span id="L-781"><a href="#L-781"><span class="linenos"> 781</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-782"><a href="#L-782"><span class="linenos"> 782</span></a>    <span class="k">return</span> <span class="n">_assume_water_orientations</span><span class="p">(</span>
+</span><span id="L-783"><a href="#L-783"><span class="linenos"> 783</span></a>        <span class="n">lattice_sites</span><span class="p">,</span>
+</span><span id="L-784"><a href="#L-784"><span class="linenos"> 784</span></a>        <span class="n">digraph</span><span class="p">,</span>
+</span><span id="L-785"><a href="#L-785"><span class="linenos"> 785</span></a>        <span class="n">cell</span><span class="p">,</span>
+</span><span id="L-786"><a href="#L-786"><span class="linenos"> 786</span></a>        <span class="nb">set</span><span class="p">(</span><span class="n">anions</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">cations</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">spot_hydroxides</span><span class="p">),</span>
+</span><span id="L-787"><a href="#L-787"><span class="linenos"> 787</span></a>    <span class="p">)</span>
+</span><span id="L-788"><a href="#L-788"><span class="linenos"> 788</span></a>
+</span><span id="L-789"><a href="#L-789"><span class="linenos"> 789</span></a>
+</span><span id="L-790"><a href="#L-790"><span class="linenos"> 790</span></a><span class="nd">@reactive</span>
+</span><span id="L-791"><a href="#L-791"><span class="linenos"> 791</span></a><span class="k">def</span><span class="w"> </span><span class="nf">cages</span><span class="p">(</span>
+</span><span id="L-792"><a href="#L-792"><span class="linenos"> 792</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="L-793"><a href="#L-793"><span class="linenos"> 793</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-794"><a href="#L-794"><span class="linenos"> 794</span></a>    <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="L-795"><a href="#L-795"><span class="linenos"> 795</span></a>    <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="L-796"><a href="#L-796"><span class="linenos"> 796</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CageSpecs</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-797"><a href="#L-797"><span class="linenos"> 797</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;ケージ位置とタイプを拡大単位胞全体に複製する。</span>
+</span><span id="L-798"><a href="#L-798"><span class="linenos"> 798</span></a>
+</span><span id="L-799"><a href="#L-799"><span class="linenos"> 799</span></a><span class="sd">    基本単位胞内で定義されたゲスト分子を配置するためのケージ（空隙）の</span>
+</span><span id="L-800"><a href="#L-800"><span class="linenos"> 800</span></a><span class="sd">    位置とタイプを、拡大単位胞全体に複製する。</span>
+</span><span id="L-801"><a href="#L-801"><span class="linenos"> 801</span></a>
+</span><span id="L-802"><a href="#L-802"><span class="linenos"> 802</span></a><span class="sd">    Args:</span>
+</span><span id="L-803"><a href="#L-803"><span class="linenos"> 803</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト。</span>
+</span><span id="L-804"><a href="#L-804"><span class="linenos"> 804</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列。</span>
+</span><span id="L-805"><a href="#L-805"><span class="linenos"> 805</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列。</span>
+</span><span id="L-806"><a href="#L-806"><span class="linenos"> 806</span></a><span class="sd">        graph: 拡大単位胞全体の無向グラフ（サブグラフ複製に使用）。</span>
+</span><span id="L-807"><a href="#L-807"><span class="linenos"> 807</span></a>
+</span><span id="L-808"><a href="#L-808"><span class="linenos"> 808</span></a><span class="sd">    Returns:</span>
+</span><span id="L-809"><a href="#L-809"><span class="linenos"> 809</span></a><span class="sd">        CageSpecs: 拡大単位胞全体でのケージ位置とタイプ。</span>
+</span><span id="L-810"><a href="#L-810"><span class="linenos"> 810</span></a><span class="sd">        unitcell.cages が None の場合は None。</span>
+</span><span id="L-811"><a href="#L-811"><span class="linenos"> 811</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-812"><a href="#L-812"><span class="linenos"> 812</span></a>    <span class="k">if</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-813"><a href="#L-813"><span class="linenos"> 813</span></a>        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="L-814"><a href="#L-814"><span class="linenos"> 814</span></a>    <span class="c1"># ケージが存在しない場合（空の配列）の処理</span>
+</span><span id="L-815"><a href="#L-815"><span class="linenos"> 815</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-816"><a href="#L-816"><span class="linenos"> 816</span></a>        <span class="k">return</span> <span class="n">CageSpecs</span><span class="p">(</span><span class="n">positions</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">specs</span><span class="o">=</span><span class="p">[])</span>
+</span><span id="L-817"><a href="#L-817"><span class="linenos"> 817</span></a>    <span class="n">repcagepos</span> <span class="o">=</span> <span class="n">replicate_positions</span><span class="p">(</span>
+</span><span id="L-818"><a href="#L-818"><span class="linenos"> 818</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">,</span> <span class="n">replication_matrix</span>
+</span><span id="L-819"><a href="#L-819"><span class="linenos"> 819</span></a>    <span class="p">)</span>
+</span><span id="L-820"><a href="#L-820"><span class="linenos"> 820</span></a>    <span class="n">num_cages_in_unitcell</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span>
+</span><span id="L-821"><a href="#L-821"><span class="linenos"> 821</span></a>
+</span><span id="L-822"><a href="#L-822"><span class="linenos"> 822</span></a>    <span class="c1"># replicate_subgraphはケージ一個ずつをreplicateするが、repcagespecsの並び順は単位胞単位。</span>
+</span><span id="L-823"><a href="#L-823"><span class="linenos"> 823</span></a>    <span class="n">repcagespecs</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">repcagepos</span><span class="p">)</span>
+</span><span id="L-824"><a href="#L-824"><span class="linenos"> 824</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cage</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">):</span>
+</span><span id="L-825"><a href="#L-825"><span class="linenos"> 825</span></a>        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">repgraph</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+</span><span id="L-826"><a href="#L-826"><span class="linenos"> 826</span></a>            <span class="n">replicate_subgraph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">cage</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="L-827"><a href="#L-827"><span class="linenos"> 827</span></a>        <span class="p">):</span>
+</span><span id="L-828"><a href="#L-828"><span class="linenos"> 828</span></a>            <span class="n">repcagespecs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">num_cages_in_unitcell</span><span class="p">]</span> <span class="o">=</span> <span class="n">CageSpec</span><span class="p">(</span>
+</span><span id="L-829"><a href="#L-829"><span class="linenos"> 829</span></a>                <span class="n">cage_type</span><span class="o">=</span><span class="n">cage</span><span class="o">.</span><span class="n">cage_type</span><span class="p">,</span> <span class="n">faces</span><span class="o">=</span><span class="n">cage</span><span class="o">.</span><span class="n">faces</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">repgraph</span>
+</span><span id="L-830"><a href="#L-830"><span class="linenos"> 830</span></a>            <span class="p">)</span>
+</span><span id="L-831"><a href="#L-831"><span class="linenos"> 831</span></a>    <span class="c1"># unit cellのcagesと同じ構造。</span>
+</span><span id="L-832"><a href="#L-832"><span class="linenos"> 832</span></a>    <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">repcagepos</span><span class="si">=}</span><span class="s2">, </span><span class="si">{</span><span class="n">repcagespecs</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-833"><a href="#L-833"><span class="linenos"> 833</span></a>    <span class="k">return</span> <span class="n">CageSpecs</span><span class="p">(</span><span class="n">positions</span><span class="o">=</span><span class="n">repcagepos</span><span class="p">,</span> <span class="n">specs</span><span class="o">=</span><span class="n">repcagespecs</span><span class="p">)</span>
+</span><span id="L-834"><a href="#L-834"><span class="linenos"> 834</span></a>
+</span><span id="L-835"><a href="#L-835"><span class="linenos"> 835</span></a>
+</span><span id="L-836"><a href="#L-836"><span class="linenos"> 836</span></a><span class="k">def</span><span class="w"> </span><span class="nf">place_groups_on_lattice</span><span class="p">(</span>
+</span><span id="L-837"><a href="#L-837"><span class="linenos"> 837</span></a>    <span class="n">genice</span><span class="p">:</span> <span class="s2">&quot;GenIce3&quot;</span><span class="p">,</span>
+</span><span id="L-838"><a href="#L-838"><span class="linenos"> 838</span></a>    <span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span>
+</span><span id="L-839"><a href="#L-839"><span class="linenos"> 839</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-840"><a href="#L-840"><span class="linenos"> 840</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-841"><a href="#L-841"><span class="linenos"> 841</span></a><span class="sd">    格子点に group を配置する。</span>
+</span><span id="L-842"><a href="#L-842"><span class="linenos"> 842</span></a>
+</span><span id="L-843"><a href="#L-843"><span class="linenos"> 843</span></a><span class="sd">    Args:</span>
+</span><span id="L-844"><a href="#L-844"><span class="linenos"> 844</span></a><span class="sd">        genice: GenIce3 インスタンス</span>
+</span><span id="L-845"><a href="#L-845"><span class="linenos"> 845</span></a><span class="sd">        spot_cation_groups: サイト -&gt; {ケージID -&gt; group名} の辞書</span>
+</span><span id="L-846"><a href="#L-846"><span class="linenos"> 846</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-847"><a href="#L-847"><span class="linenos"> 847</span></a>    <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="L-848"><a href="#L-848"><span class="linenos"> 848</span></a>        <span class="sa">f</span><span class="s2">&quot;place_groups_on_lattice: dummy implementation (group assignment not yet applied) </span><span class="si">{</span><span class="n">spot_cation_groups</span><span class="si">=}</span><span class="s2">&quot;</span>
+</span><span id="L-849"><a href="#L-849"><span class="linenos"> 849</span></a>    <span class="p">)</span>
+</span><span id="L-850"><a href="#L-850"><span class="linenos"> 850</span></a>
+</span><span id="L-851"><a href="#L-851"><span class="linenos"> 851</span></a>
+</span><span id="L-852"><a href="#L-852"><span class="linenos"> 852</span></a><span class="k">def</span><span class="w"> </span><span class="nf">log_spot_cation_cages</span><span class="p">(</span><span class="n">genice</span><span class="p">:</span> <span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-853"><a href="#L-853"><span class="linenos"> 853</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;spot_cation ごとに属するケージのID・cage_type・facesをログ表示する。&quot;&quot;&quot;</span>
+</span><span id="L-854"><a href="#L-854"><span class="linenos"> 854</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">genice</span><span class="o">.</span><span class="n">spot_cations</span> <span class="ow">or</span> <span class="n">genice</span><span class="o">.</span><span class="n">cages</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-855"><a href="#L-855"><span class="linenos"> 855</span></a>        <span class="k">return</span>
+</span><span id="L-856"><a href="#L-856"><span class="linenos"> 856</span></a>    <span class="n">num_replicas</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">replication_matrix</span><span class="p">)))</span>
+</span><span id="L-857"><a href="#L-857"><span class="linenos"> 857</span></a>    <span class="n">num_cages_in_unitcell</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span> <span class="o">//</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_replicas</span><span class="p">)</span>
+</span><span id="L-858"><a href="#L-858"><span class="linenos"> 858</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">genice</span><span class="o">.</span><span class="n">spot_cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-859"><a href="#L-859"><span class="linenos"> 859</span></a>        <span class="n">cage_indices</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">node_to_cage_indices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="L-860"><a href="#L-860"><span class="linenos"> 860</span></a>        <span class="k">for</span> <span class="n">cage_id</span> <span class="ow">in</span> <span class="n">cage_indices</span><span class="p">:</span>
+</span><span id="L-861"><a href="#L-861"><span class="linenos"> 861</span></a>            <span class="n">spec</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">[</span><span class="n">cage_id</span><span class="p">]</span>
+</span><span id="L-862"><a href="#L-862"><span class="linenos"> 862</span></a>            <span class="n">genice</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="L-863"><a href="#L-863"><span class="linenos"> 863</span></a>                <span class="sa">f</span><span class="s2">&quot;spot_cation </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2"> belongs to cage </span><span class="si">{</span><span class="n">cage_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">faces</span><span class="si">}</span><span class="s2">) in the supercell.&quot;</span>
+</span><span id="L-864"><a href="#L-864"><span class="linenos"> 864</span></a>            <span class="p">)</span>
+</span><span id="L-865"><a href="#L-865"><span class="linenos"> 865</span></a>
+</span><span id="L-866"><a href="#L-866"><span class="linenos"> 866</span></a>
+</span><span id="L-867"><a href="#L-867"><span class="linenos"> 867</span></a><span class="k">def</span><span class="w"> </span><span class="nf">log_cation_cages</span><span class="p">(</span><span class="n">genice</span><span class="p">:</span> <span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-868"><a href="#L-868"><span class="linenos"> 868</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;単位胞内のカチオンごとに、属するケージのID・cage_type・faces をログ表示する。&quot;&quot;&quot;</span>
+</span><span id="L-869"><a href="#L-869"><span class="linenos"> 869</span></a>    <span class="k">if</span> <span class="p">(</span>
+</span><span id="L-870"><a href="#L-870"><span class="linenos"> 870</span></a>        <span class="ow">not</span> <span class="n">genice</span><span class="o">.</span><span class="n">cations</span>
+</span><span id="L-871"><a href="#L-871"><span class="linenos"> 871</span></a>        <span class="ow">or</span> <span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="L-872"><a href="#L-872"><span class="linenos"> 872</span></a>        <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="L-873"><a href="#L-873"><span class="linenos"> 873</span></a>    <span class="p">):</span>
+</span><span id="L-874"><a href="#L-874"><span class="linenos"> 874</span></a>        <span class="k">return</span>
+</span><span id="L-875"><a href="#L-875"><span class="linenos"> 875</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">genice</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-876"><a href="#L-876"><span class="linenos"> 876</span></a>        <span class="n">cage_indices</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">node_to_cage_indices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="L-877"><a href="#L-877"><span class="linenos"> 877</span></a>        <span class="k">for</span> <span class="n">cage_id</span> <span class="ow">in</span> <span class="n">cage_indices</span><span class="p">:</span>
+</span><span id="L-878"><a href="#L-878"><span class="linenos"> 878</span></a>            <span class="n">spec</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">[</span><span class="n">cage_id</span><span class="p">]</span>
+</span><span id="L-879"><a href="#L-879"><span class="linenos"> 879</span></a>            <span class="n">genice</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="L-880"><a href="#L-880"><span class="linenos"> 880</span></a>                <span class="sa">f</span><span class="s2">&quot;cation </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2"> belongs to cage </span><span class="si">{</span><span class="n">cage_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">faces</span><span class="si">}</span><span class="s2">) in the unit cell.&quot;</span>
+</span><span id="L-881"><a href="#L-881"><span class="linenos"> 881</span></a>            <span class="p">)</span>
+</span><span id="L-882"><a href="#L-882"><span class="linenos"> 882</span></a>
+</span><span id="L-883"><a href="#L-883"><span class="linenos"> 883</span></a>
+</span><span id="L-884"><a href="#L-884"><span class="linenos"> 884</span></a><span class="k">def</span><span class="w"> </span><span class="nf">place_group</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">bondlen</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Group</span><span class="p">:</span>
+</span><span id="L-885"><a href="#L-885"><span class="linenos"> 885</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;指定方向・結合長で group プラグインを読み込み、配置した Group を返す。</span>
+</span><span id="L-886"><a href="#L-886"><span class="linenos"> 886</span></a>
+</span><span id="L-887"><a href="#L-887"><span class="linenos"> 887</span></a><span class="sd">    置換イオンから group のアンカー原子までが direction 方向に bondlen の長さで並ぶ。</span>
+</span><span id="L-888"><a href="#L-888"><span class="linenos"> 888</span></a><span class="sd">    TODO: 将来は2個以上のアンカーを持つ group を扱う可能性がある。</span>
+</span><span id="L-889"><a href="#L-889"><span class="linenos"> 889</span></a>
+</span><span id="L-890"><a href="#L-890"><span class="linenos"> 890</span></a><span class="sd">    Args:</span>
+</span><span id="L-891"><a href="#L-891"><span class="linenos"> 891</span></a><span class="sd">        direction: 配置方向（直交座標、正規化される）。</span>
+</span><span id="L-892"><a href="#L-892"><span class="linenos"> 892</span></a><span class="sd">        bondlen: アンカーまでの結合長。</span>
+</span><span id="L-893"><a href="#L-893"><span class="linenos"> 893</span></a><span class="sd">        group_name: group プラグイン名（例: &quot;ammonia&quot;）。</span>
+</span><span id="L-894"><a href="#L-894"><span class="linenos"> 894</span></a>
+</span><span id="L-895"><a href="#L-895"><span class="linenos"> 895</span></a><span class="sd">    Returns:</span>
+</span><span id="L-896"><a href="#L-896"><span class="linenos"> 896</span></a><span class="sd">        回転・並進を適用した Group インスタンス。</span>
+</span><span id="L-897"><a href="#L-897"><span class="linenos"> 897</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-898"><a href="#L-898"><span class="linenos"> 898</span></a>    <span class="c1"># logger = getLogger(&quot;GenIce3&quot;)</span>
+</span><span id="L-899"><a href="#L-899"><span class="linenos"> 899</span></a>    <span class="n">group</span> <span class="o">=</span> <span class="n">safe_import</span><span class="p">(</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="n">group_name</span><span class="p">)</span><span class="o">.</span><span class="n">Group</span><span class="p">()</span>
+</span><span id="L-900"><a href="#L-900"><span class="linenos"> 900</span></a>    <span class="c1"># logger.info(f&quot;{group_name=} {group=}&quot;)</span>
+</span><span id="L-901"><a href="#L-901"><span class="linenos"> 901</span></a>    <span class="n">direction</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="L-902"><a href="#L-902"><span class="linenos"> 902</span></a>    <span class="n">offset</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">bondlen</span>
+</span><span id="L-903"><a href="#L-903"><span class="linenos"> 903</span></a>    <span class="c1"># Z軸をdirection方向に傾ける行列</span>
+</span><span id="L-904"><a href="#L-904"><span class="linenos"> 904</span></a>    <span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span> <span class="o">=</span> <span class="n">direction</span>
+</span><span id="L-905"><a href="#L-905"><span class="linenos"> 905</span></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">ex</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ey</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+</span><span id="L-906"><a href="#L-906"><span class="linenos"> 906</span></a>    <span class="n">Ry</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">ez</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">r</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ez</span><span class="p">]])</span>
+</span><span id="L-907"><a href="#L-907"><span class="linenos"> 907</span></a>    <span class="n">Rz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">ex</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="n">ey</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">ey</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="n">ex</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+</span><span id="L-908"><a href="#L-908"><span class="linenos"> 908</span></a>    <span class="n">rotmat</span> <span class="o">=</span> <span class="n">Ry</span> <span class="o">@</span> <span class="n">Rz</span>
+</span><span id="L-909"><a href="#L-909"><span class="linenos"> 909</span></a>    <span class="n">sites</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">sites</span> <span class="o">@</span> <span class="n">rotmat</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="L-910"><a href="#L-910"><span class="linenos"> 910</span></a>    <span class="k">return</span> <span class="n">Group</span><span class="p">(</span>
+</span><span id="L-911"><a href="#L-911"><span class="linenos"> 911</span></a>        <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="L-912"><a href="#L-912"><span class="linenos"> 912</span></a>        <span class="n">labels</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="L-913"><a href="#L-913"><span class="linenos"> 913</span></a>        <span class="n">bonds</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">bonds</span><span class="p">,</span>
+</span><span id="L-914"><a href="#L-914"><span class="linenos"> 914</span></a>        <span class="n">name</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="L-915"><a href="#L-915"><span class="linenos"> 915</span></a>    <span class="p">)</span>
+</span><span id="L-916"><a href="#L-916"><span class="linenos"> 916</span></a>
+</span><span id="L-917"><a href="#L-917"><span class="linenos"> 917</span></a>
+</span><span id="L-918"><a href="#L-918"><span class="linenos"> 918</span></a><span class="c1"># ============================================================================</span>
+</span><span id="L-919"><a href="#L-919"><span class="linenos"> 919</span></a><span class="c1"># GenIce3クラス: DependencyEngineをラップ</span>
+</span><span id="L-920"><a href="#L-920"><span class="linenos"> 920</span></a><span class="c1"># ============================================================================</span>
+</span><span id="L-921"><a href="#L-921"><span class="linenos"> 921</span></a>
+</span><span id="L-922"><a href="#L-922"><span class="linenos"> 922</span></a>
+</span><span id="L-923"><a href="#L-923"><span class="linenos"> 923</span></a><span class="k">class</span><span class="w"> </span><span class="nc">GenIce3</span><span class="p">:</span>
+</span><span id="L-924"><a href="#L-924"><span class="linenos"> 924</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;GenIce3のメインクラス：リアクティブプロパティによる氷構造生成システム</span>
+</span><span id="L-925"><a href="#L-925"><span class="linenos"> 925</span></a>
+</span><span id="L-926"><a href="#L-926"><span class="linenos"> 926</span></a><span class="sd">    GenIce3は、依存関係エンジン（DependencyEngine）を使用して、必要な時に</span>
+</span><span id="L-927"><a href="#L-927"><span class="linenos"> 927</span></a><span class="sd">    自動的に計算されるリアクティブプロパティを提供します。これにより、ユーザーは</span>
+</span><span id="L-928"><a href="#L-928"><span class="linenos"> 928</span></a><span class="sd">    必要なプロパティにアクセスするだけで、そのプロパティに依存するすべての</span>
+</span><span id="L-929"><a href="#L-929"><span class="linenos"> 929</span></a><span class="sd">    計算が自動的に実行されます。</span>
+</span><span id="L-930"><a href="#L-930"><span class="linenos"> 930</span></a>
+</span><span id="L-931"><a href="#L-931"><span class="linenos"> 931</span></a><span class="sd">    リアクティブプロパティの仕組み:</span>
+</span><span id="L-932"><a href="#L-932"><span class="linenos"> 932</span></a><span class="sd">        - 各プロパティ（digraph, graph, lattice_sitesなど）は、アクセス時に</span>
+</span><span id="L-933"><a href="#L-933"><span class="linenos"> 933</span></a><span class="sd">          必要に応じて自動的に計算されます</span>
+</span><span id="L-934"><a href="#L-934"><span class="linenos"> 934</span></a><span class="sd">        - 依存関係は関数の引数名から自動的に推論されます</span>
+</span><span id="L-935"><a href="#L-935"><span class="linenos"> 935</span></a><span class="sd">        - 一度計算されたプロパティはキャッシュされ、依存する入力が変更されるまで</span>
+</span><span id="L-936"><a href="#L-936"><span class="linenos"> 936</span></a><span class="sd">          再利用されます</span>
+</span><span id="L-937"><a href="#L-937"><span class="linenos"> 937</span></a><span class="sd">        - 入力プロパティ（unitcell, replication_matrix, depol_loopなど）が</span>
+</span><span id="L-938"><a href="#L-938"><span class="linenos"> 938</span></a><span class="sd">          変更されると、それに依存するすべてのプロパティのキャッシュが自動的に</span>
+</span><span id="L-939"><a href="#L-939"><span class="linenos"> 939</span></a><span class="sd">          クリアされます</span>
+</span><span id="L-940"><a href="#L-940"><span class="linenos"> 940</span></a>
+</span><span id="L-941"><a href="#L-941"><span class="linenos"> 941</span></a><span class="sd">    使用例:</span>
+</span><span id="L-942"><a href="#L-942"><span class="linenos"> 942</span></a><span class="sd">        &gt;&gt;&gt; genice = GenIce3(unitcell=my_unitcell)</span>
+</span><span id="L-943"><a href="#L-943"><span class="linenos"> 943</span></a><span class="sd">        &gt;&gt;&gt; digraph = genice.digraph  # 自動的に必要な計算が実行される</span>
+</span><span id="L-944"><a href="#L-944"><span class="linenos"> 944</span></a><span class="sd">        &gt;&gt;&gt; orientations = genice.orientations  # digraphに依存するため、digraphが先に計算される</span>
+</span><span id="L-945"><a href="#L-945"><span class="linenos"> 945</span></a>
+</span><span id="L-946"><a href="#L-946"><span class="linenos"> 946</span></a><span class="sd">    Attributes:</span>
+</span><span id="L-947"><a href="#L-947"><span class="linenos"> 947</span></a><span class="sd">        digraph (nx.DiGraph): 水素結合の方向が決定された有向グラフ。</span>
+</span><span id="L-948"><a href="#L-948"><span class="linenos"> 948</span></a><span class="sd">            無向グラフから双極子最適化アルゴリズムにより各水素結合の方向を決定した</span>
+</span><span id="L-949"><a href="#L-949"><span class="linenos"> 949</span></a><span class="sd">            有向グラフです。固定エッジで指定された方向は維持され、それ以外のエッジは</span>
+</span><span id="L-950"><a href="#L-950"><span class="linenos"> 950</span></a><span class="sd">            最適化により決定されます。このプロパティにアクセスすると、必要な依存関係</span>
+</span><span id="L-951"><a href="#L-951"><span class="linenos"> 951</span></a><span class="sd">            （graph, lattice_sites, fixed_edges など）が自動的に計算されます。</span>
+</span><span id="L-952"><a href="#L-952"><span class="linenos"> 952</span></a>
+</span><span id="L-953"><a href="#L-953"><span class="linenos"> 953</span></a><span class="sd">        graph (nx.Graph): 水素結合ネットワークの無向グラフ。</span>
+</span><span id="L-954"><a href="#L-954"><span class="linenos"> 954</span></a><span class="sd">            拡大単位胞全体の水分子間の水素結合ネットワークを表す無向グラフです。</span>
+</span><span id="L-955"><a href="#L-955"><span class="linenos"> 955</span></a><span class="sd">            基本単位胞のグラフを拡大単位胞全体に複製して統合したものです。</span>
+</span><span id="L-956"><a href="#L-956"><span class="linenos"> 956</span></a>
+</span><span id="L-957"><a href="#L-957"><span class="linenos"> 957</span></a><span class="sd">        lattice_sites (np.ndarray): 格子サイト位置の配列。</span>
+</span><span id="L-958"><a href="#L-958"><span class="linenos"> 958</span></a><span class="sd">            拡大単位胞内のすべての水分子の座標を表すNx3配列です（Nは水分子数）。</span>
+</span><span id="L-959"><a href="#L-959"><span class="linenos"> 959</span></a><span class="sd">            基本単位胞内の水分子の座標を、単位胞の周期境界条件に従って拡大単位胞全体に</span>
+</span><span id="L-960"><a href="#L-960"><span class="linenos"> 960</span></a><span class="sd">            複製したものです。</span>
+</span><span id="L-961"><a href="#L-961"><span class="linenos"> 961</span></a>
+</span><span id="L-962"><a href="#L-962"><span class="linenos"> 962</span></a><span class="sd">        orientations (np.ndarray): 各水分子の配向行列。</span>
+</span><span id="L-963"><a href="#L-963"><span class="linenos"> 963</span></a><span class="sd">            各水分子の配向（回転行列）を表すNx3x3配列です（Nは水分子数）。</span>
+</span><span id="L-964"><a href="#L-964"><span class="linenos"> 964</span></a><span class="sd">            有向グラフで決定された水素結合の方向に基づいて、各水分子のOHベクトルの</span>
+</span><span id="L-965"><a href="#L-965"><span class="linenos"> 965</span></a><span class="sd">            方向から分子全体の配向を決定します。</span>
+</span><span id="L-966"><a href="#L-966"><span class="linenos"> 966</span></a>
+</span><span id="L-967"><a href="#L-967"><span class="linenos"> 967</span></a><span class="sd">        unitcell (UnitCell): 基本単位胞オブジェクト。</span>
+</span><span id="L-968"><a href="#L-968"><span class="linenos"> 968</span></a><span class="sd">            氷構造の基本単位胞を表すオブジェクトです。格子構造、水分子の配置、</span>
+</span><span id="L-969"><a href="#L-969"><span class="linenos"> 969</span></a><span class="sd">            水素結合ネットワーク、固定エッジなどの情報を含みます。</span>
+</span><span id="L-970"><a href="#L-970"><span class="linenos"> 970</span></a>
+</span><span id="L-971"><a href="#L-971"><span class="linenos"> 971</span></a><span class="sd">        replication_matrix (np.ndarray): 単位胞複製行列。</span>
+</span><span id="L-972"><a href="#L-972"><span class="linenos"> 972</span></a><span class="sd">            基本単位胞をどのように積み重ねて拡大単位胞を作成するかを指定する3x3整数行列です。</span>
+</span><span id="L-973"><a href="#L-973"><span class="linenos"> 973</span></a><span class="sd">            単位行列の場合は基本単位胞のみを使用します。</span>
+</span><span id="L-974"><a href="#L-974"><span class="linenos"> 974</span></a>
+</span><span id="L-975"><a href="#L-975"><span class="linenos"> 975</span></a><span class="sd">        depol_loop (int): 双極子最適化の反復回数。</span>
+</span><span id="L-976"><a href="#L-976"><span class="linenos"> 976</span></a><span class="sd">            有向グラフを生成する際の双極子最適化アルゴリズムの反復回数です。</span>
+</span><span id="L-977"><a href="#L-977"><span class="linenos"> 977</span></a><span class="sd">            値が大きいほどより最適化された構造が得られますが、計算時間も増加します。</span>
+</span><span id="L-978"><a href="#L-978"><span class="linenos"> 978</span></a>
+</span><span id="L-979"><a href="#L-979"><span class="linenos"> 979</span></a><span class="sd">        seed (int): 乱数シード。</span>
+</span><span id="L-980"><a href="#L-980"><span class="linenos"> 980</span></a><span class="sd">            乱数生成器のシード値です。digraphの生成などで使用される乱数の初期化に使用されます。</span>
+</span><span id="L-981"><a href="#L-981"><span class="linenos"> 981</span></a><span class="sd">            このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-982"><a href="#L-982"><span class="linenos"> 982</span></a><span class="sd">            キャッシュが自動的にクリアされます。</span>
+</span><span id="L-983"><a href="#L-983"><span class="linenos"> 983</span></a>
+</span><span id="L-984"><a href="#L-984"><span class="linenos"> 984</span></a><span class="sd">        spot_anions (Dict[int, str]): 特定の格子サイト位置に配置するアニオンイオンの辞書。</span>
+</span><span id="L-985"><a href="#L-985"><span class="linenos"> 985</span></a><span class="sd">            サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、</span>
+</span><span id="L-986"><a href="#L-986"><span class="linenos"> 986</span></a><span class="sd">            それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。</span>
+</span><span id="L-987"><a href="#L-987"><span class="linenos"> 987</span></a>
+</span><span id="L-988"><a href="#L-988"><span class="linenos"> 988</span></a><span class="sd">        spot_cations (Dict[int, str]): 特定の格子サイト位置に配置するカチオンイオンの辞書。</span>
+</span><span id="L-989"><a href="#L-989"><span class="linenos"> 989</span></a><span class="sd">            サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、</span>
+</span><span id="L-990"><a href="#L-990"><span class="linenos"> 990</span></a><span class="sd">            それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。</span>
+</span><span id="L-991"><a href="#L-991"><span class="linenos"> 991</span></a>
+</span><span id="L-992"><a href="#L-992"><span class="linenos"> 992</span></a><span class="sd">        spot_hydroniums (List[int]): H3O+ を置くサイトのリスト（1受容・3供与）。</span>
+</span><span id="L-993"><a href="#L-993"><span class="linenos"> 993</span></a>
+</span><span id="L-994"><a href="#L-994"><span class="linenos"> 994</span></a><span class="sd">        spot_hydroxides (List[int]): OH- を置くサイトのリスト（3受容・1供与）。</span>
+</span><span id="L-995"><a href="#L-995"><span class="linenos"> 995</span></a>
+</span><span id="L-996"><a href="#L-996"><span class="linenos"> 996</span></a><span class="sd">        cages (CageSpecs): 拡大単位胞全体でのケージ位置・タイプ。</span>
+</span><span id="L-997"><a href="#L-997"><span class="linenos"> 997</span></a><span class="sd">            単位胞のケージを replica_vectors に従って複製したもので、ゲスト配置や cage_survey 出力に利用します。</span>
+</span><span id="L-998"><a href="#L-998"><span class="linenos"> 998</span></a>
+</span><span id="L-999"><a href="#L-999"><span class="linenos"> 999</span></a><span class="sd">        fixed_edges (nx.DiGraph): 拡大単位胞全体での固定エッジの有向グラフ。</span>
+</span><span id="L-1000"><a href="#L-1000"><span class="linenos">1000</span></a><span class="sd">            単位胞の固定エッジと spot_anion/spot_cation/spot_hydronium/spot_hydroxide に基づく固定を統合したもので、digraph の生成に利用します。</span>
+</span><span id="L-1001"><a href="#L-1001"><span class="linenos">1001</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-1002"><a href="#L-1002"><span class="linenos">1002</span></a>
+</span><span id="L-1003"><a href="#L-1003"><span class="linenos">1003</span></a>    <span class="c1"># Class名でlog表示したい。</span>
+</span><span id="L-1004"><a href="#L-1004"><span class="linenos">1004</span></a>    <span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span>
+</span><span id="L-1005"><a href="#L-1005"><span class="linenos">1005</span></a>
+</span><span id="L-1006"><a href="#L-1006"><span class="linenos">1006</span></a>    <span class="c1"># ユーザー向けAPIとして公開するpropertyのリスト</span>
+</span><span id="L-1007"><a href="#L-1007"><span class="linenos">1007</span></a>    <span class="c1"># このリストに含まれるpropertyのみAPIドキュメントを作成する</span>
+</span><span id="L-1008"><a href="#L-1008"><span class="linenos">1008</span></a>    <span class="n">PUBLIC_API_PROPERTIES</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-1009"><a href="#L-1009"><span class="linenos">1009</span></a>        <span class="s2">&quot;digraph&quot;</span><span class="p">,</span>
+</span><span id="L-1010"><a href="#L-1010"><span class="linenos">1010</span></a>        <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+</span><span id="L-1011"><a href="#L-1011"><span class="linenos">1011</span></a>        <span class="s2">&quot;lattice_sites&quot;</span><span class="p">,</span>
+</span><span id="L-1012"><a href="#L-1012"><span class="linenos">1012</span></a>        <span class="s2">&quot;orientations&quot;</span><span class="p">,</span>
+</span><span id="L-1013"><a href="#L-1013"><span class="linenos">1013</span></a>        <span class="s2">&quot;unitcell&quot;</span><span class="p">,</span>
+</span><span id="L-1014"><a href="#L-1014"><span class="linenos">1014</span></a>        <span class="s2">&quot;replication_matrix&quot;</span><span class="p">,</span>
+</span><span id="L-1015"><a href="#L-1015"><span class="linenos">1015</span></a>        <span class="s2">&quot;depol_loop&quot;</span><span class="p">,</span>
+</span><span id="L-1016"><a href="#L-1016"><span class="linenos">1016</span></a>        <span class="s2">&quot;target_pol&quot;</span><span class="p">,</span>
+</span><span id="L-1017"><a href="#L-1017"><span class="linenos">1017</span></a>        <span class="s2">&quot;seed&quot;</span><span class="p">,</span>
+</span><span id="L-1018"><a href="#L-1018"><span class="linenos">1018</span></a>        <span class="s2">&quot;spot_anions&quot;</span><span class="p">,</span>
+</span><span id="L-1019"><a href="#L-1019"><span class="linenos">1019</span></a>        <span class="s2">&quot;spot_cations&quot;</span><span class="p">,</span>
+</span><span id="L-1020"><a href="#L-1020"><span class="linenos">1020</span></a>        <span class="s2">&quot;spot_hydroniums&quot;</span><span class="p">,</span>
+</span><span id="L-1021"><a href="#L-1021"><span class="linenos">1021</span></a>        <span class="s2">&quot;spot_hydroxides&quot;</span><span class="p">,</span>
+</span><span id="L-1022"><a href="#L-1022"><span class="linenos">1022</span></a>    <span class="p">]</span>
+</span><span id="L-1023"><a href="#L-1023"><span class="linenos">1023</span></a>
+</span><span id="L-1024"><a href="#L-1024"><span class="linenos">1024</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="L-1025"><a href="#L-1025"><span class="linenos">1025</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="L-1026"><a href="#L-1026"><span class="linenos">1026</span></a>        <span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+</span><span id="L-1027"><a href="#L-1027"><span class="linenos">1027</span></a>        <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+</span><span id="L-1028"><a href="#L-1028"><span class="linenos">1028</span></a>        <span class="n">target_pol</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+</span><span id="L-1029"><a href="#L-1029"><span class="linenos">1029</span></a>        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="L-1030"><a href="#L-1030"><span class="linenos">1030</span></a>        <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+</span><span id="L-1031"><a href="#L-1031"><span class="linenos">1031</span></a>        <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+</span><span id="L-1032"><a href="#L-1032"><span class="linenos">1032</span></a>        <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1033"><a href="#L-1033"><span class="linenos">1033</span></a>        <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1034"><a href="#L-1034"><span class="linenos">1034</span></a>        <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1035"><a href="#L-1035"><span class="linenos">1035</span></a>        <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1036"><a href="#L-1036"><span class="linenos">1036</span></a>        <span class="n">guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;GuestSpec&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1037"><a href="#L-1037"><span class="linenos">1037</span></a>        <span class="n">spot_guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1038"><a href="#L-1038"><span class="linenos">1038</span></a>        <span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1039"><a href="#L-1039"><span class="linenos">1039</span></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+</span><span id="L-1040"><a href="#L-1040"><span class="linenos">1040</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1041"><a href="#L-1041"><span class="linenos">1041</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;GenIce3インスタンスを初期化する。</span>
+</span><span id="L-1042"><a href="#L-1042"><span class="linenos">1042</span></a>
+</span><span id="L-1043"><a href="#L-1043"><span class="linenos">1043</span></a><span class="sd">        Args:</span>
+</span><span id="L-1044"><a href="#L-1044"><span class="linenos">1044</span></a><span class="sd">            depol_loop: 双極子最適化の反復回数（デフォルト: 1000）</span>
+</span><span id="L-1045"><a href="#L-1045"><span class="linenos">1045</span></a><span class="sd">            replication_matrix: 単位胞複製行列（デフォルト: 単位行列）</span>
+</span><span id="L-1046"><a href="#L-1046"><span class="linenos">1046</span></a><span class="sd">            target_pol: 分極の目標値（デフォルト: [0, 0, 0]）</span>
+</span><span id="L-1047"><a href="#L-1047"><span class="linenos">1047</span></a><span class="sd">            seed: 乱数シード（デフォルト: 1）</span>
+</span><span id="L-1048"><a href="#L-1048"><span class="linenos">1048</span></a><span class="sd">            spot_anions: 特定位置のアニオン配置（デフォルト: {}）</span>
+</span><span id="L-1049"><a href="#L-1049"><span class="linenos">1049</span></a><span class="sd">            spot_cations: 特定位置のカチオン配置（デフォルト: {}）</span>
+</span><span id="L-1050"><a href="#L-1050"><span class="linenos">1050</span></a><span class="sd">            spot_hydroniums: H3O+ を置くサイトのリスト（デフォルト: []）</span>
+</span><span id="L-1051"><a href="#L-1051"><span class="linenos">1051</span></a><span class="sd">            spot_hydroxides: OH- を置くサイトのリスト（デフォルト: []）</span>
+</span><span id="L-1052"><a href="#L-1052"><span class="linenos">1052</span></a><span class="sd">            guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）</span>
+</span><span id="L-1053"><a href="#L-1053"><span class="linenos">1053</span></a><span class="sd">            spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）</span>
+</span><span id="L-1054"><a href="#L-1054"><span class="linenos">1054</span></a><span class="sd">            spot_cation_groups: spot_cation の --group 指定（サイト -&gt; {ケージID -&gt; group名}）（デフォルト: {}）</span>
+</span><span id="L-1055"><a href="#L-1055"><span class="linenos">1055</span></a><span class="sd">            **kwargs: その他のリアクティブプロパティ（unitcellなど）</span>
+</span><span id="L-1056"><a href="#L-1056"><span class="linenos">1056</span></a>
+</span><span id="L-1057"><a href="#L-1057"><span class="linenos">1057</span></a><span class="sd">        Raises:</span>
+</span><span id="L-1058"><a href="#L-1058"><span class="linenos">1058</span></a><span class="sd">            ConfigurationError: 無効なキーワード引数が指定された場合</span>
+</span><span id="L-1059"><a href="#L-1059"><span class="linenos">1059</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1060"><a href="#L-1060"><span class="linenos">1060</span></a>        <span class="c1"># DependencyEngineインスタンスを作成</span>
+</span><span id="L-1061"><a href="#L-1061"><span class="linenos">1061</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">DependencyEngine</span><span class="p">()</span>
+</span><span id="L-1062"><a href="#L-1062"><span class="linenos">1062</span></a>
+</span><span id="L-1063"><a href="#L-1063"><span class="linenos">1063</span></a>        <span class="c1"># Default値が必要なもの</span>
+</span><span id="L-1064"><a href="#L-1064"><span class="linenos">1064</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="L-1065"><a href="#L-1065"><span class="linenos">1065</span></a>            <span class="n">seed</span>  <span class="c1"># reactive propertyとして設定（setterでnp.random.seed()も実行される）</span>
+</span><span id="L-1066"><a href="#L-1066"><span class="linenos">1066</span></a>        <span class="p">)</span>
+</span><span id="L-1067"><a href="#L-1067"><span class="linenos">1067</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">depol_loop</span> <span class="o">=</span> <span class="n">depol_loop</span>
+</span><span id="L-1068"><a href="#L-1068"><span class="linenos">1068</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">=</span> <span class="n">replication_matrix</span>
+</span><span id="L-1069"><a href="#L-1069"><span class="linenos">1069</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">target_pol</span> <span class="o">=</span> <span class="n">target_pol</span>
+</span><span id="L-1070"><a href="#L-1070"><span class="linenos">1070</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_anions</span> <span class="o">=</span> <span class="n">spot_anions</span>
+</span><span id="L-1071"><a href="#L-1071"><span class="linenos">1071</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_cations</span> <span class="o">=</span> <span class="n">spot_cations</span>
+</span><span id="L-1072"><a href="#L-1072"><span class="linenos">1072</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span> <span class="o">=</span> <span class="n">spot_hydroniums</span> <span class="k">if</span> <span class="n">spot_hydroniums</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1073"><a href="#L-1073"><span class="linenos">1073</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span> <span class="o">=</span> <span class="n">spot_hydroxides</span> <span class="k">if</span> <span class="n">spot_hydroxides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1074"><a href="#L-1074"><span class="linenos">1074</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span> <span class="o">=</span> <span class="n">bjerrum_L_edges</span> <span class="k">if</span> <span class="n">bjerrum_L_edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1075"><a href="#L-1075"><span class="linenos">1075</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span> <span class="o">=</span> <span class="n">bjerrum_D_edges</span> <span class="k">if</span> <span class="n">bjerrum_D_edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1076"><a href="#L-1076"><span class="linenos">1076</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">guests</span> <span class="o">=</span> <span class="n">guests</span> <span class="k">if</span> <span class="n">guests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="L-1077"><a href="#L-1077"><span class="linenos">1077</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span> <span class="o">=</span> <span class="n">spot_guests</span> <span class="k">if</span> <span class="n">spot_guests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="L-1078"><a href="#L-1078"><span class="linenos">1078</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_cation_groups</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="L-1079"><a href="#L-1079"><span class="linenos">1079</span></a>            <span class="n">spot_cation_groups</span> <span class="k">if</span> <span class="n">spot_cation_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="L-1080"><a href="#L-1080"><span class="linenos">1080</span></a>        <span class="p">)</span>
+</span><span id="L-1081"><a href="#L-1081"><span class="linenos">1081</span></a>
+</span><span id="L-1082"><a href="#L-1082"><span class="linenos">1082</span></a>        <span class="c1"># タスクを登録（モジュールレベルの関数を登録）</span>
+</span><span id="L-1083"><a href="#L-1083"><span class="linenos">1083</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_register_tasks</span><span class="p">()</span>
+</span><span id="L-1084"><a href="#L-1084"><span class="linenos">1084</span></a>
+</span><span id="L-1085"><a href="#L-1085"><span class="linenos">1085</span></a>        <span class="c1"># Default値が不要なもの</span>
+</span><span id="L-1086"><a href="#L-1086"><span class="linenos">1086</span></a>        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_settable_reactive_properties</span><span class="p">():</span>
+</span><span id="L-1087"><a href="#L-1087"><span class="linenos">1087</span></a>            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+</span><span id="L-1088"><a href="#L-1088"><span class="linenos">1088</span></a>                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+</span><span id="L-1089"><a href="#L-1089"><span class="linenos">1089</span></a>        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+</span><span id="L-1090"><a href="#L-1090"><span class="linenos">1090</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid keyword arguments: </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+</span><span id="L-1091"><a href="#L-1091"><span class="linenos">1091</span></a>
+</span><span id="L-1092"><a href="#L-1092"><span class="linenos">1092</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_register_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1093"><a href="#L-1093"><span class="linenos">1093</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;DependencyEngine に @reactive を付けたタスク関数を登録する&quot;&quot;&quot;</span>
+</span><span id="L-1094"><a href="#L-1094"><span class="linenos">1094</span></a>        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">get_reactive_tasks</span><span class="p">(</span><span class="vm">__name__</span><span class="p">):</span>
+</span><span id="L-1095"><a href="#L-1095"><span class="linenos">1095</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+</span><span id="L-1096"><a href="#L-1096"><span class="linenos">1096</span></a>
+</span><span id="L-1097"><a href="#L-1097"><span class="linenos">1097</span></a>    <span class="c1"># spot_anions</span>
+</span><span id="L-1098"><a href="#L-1098"><span class="linenos">1098</span></a>    <span class="nd">@property</span>
+</span><span id="L-1099"><a href="#L-1099"><span class="linenos">1099</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1100"><a href="#L-1100"><span class="linenos">1100</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するアニオンイオンの辞書。</span>
+</span><span id="L-1101"><a href="#L-1101"><span class="linenos">1101</span></a>
+</span><span id="L-1102"><a href="#L-1102"><span class="linenos">1102</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1103"><a href="#L-1103"><span class="linenos">1103</span></a><span class="sd">            Dict[int, str]: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="L-1104"><a href="#L-1104"><span class="linenos">1104</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1105"><a href="#L-1105"><span class="linenos">1105</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_anions&quot;</span><span class="p">):</span>
+</span><span id="L-1106"><a href="#L-1106"><span class="linenos">1106</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-1107"><a href="#L-1107"><span class="linenos">1107</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span>
+</span><span id="L-1108"><a href="#L-1108"><span class="linenos">1108</span></a>
+</span><span id="L-1109"><a href="#L-1109"><span class="linenos">1109</span></a>    <span class="nd">@spot_anions</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1110"><a href="#L-1110"><span class="linenos">1110</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_anions</span><span class="p">):</span>
+</span><span id="L-1111"><a href="#L-1111"><span class="linenos">1111</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するアニオンイオンを設定する。</span>
+</span><span id="L-1112"><a href="#L-1112"><span class="linenos">1112</span></a>
+</span><span id="L-1113"><a href="#L-1113"><span class="linenos">1113</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-1114"><a href="#L-1114"><span class="linenos">1114</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="L-1115"><a href="#L-1115"><span class="linenos">1115</span></a>
+</span><span id="L-1116"><a href="#L-1116"><span class="linenos">1116</span></a><span class="sd">        Args:</span>
+</span><span id="L-1117"><a href="#L-1117"><span class="linenos">1117</span></a><span class="sd">            spot_anions: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="L-1118"><a href="#L-1118"><span class="linenos">1118</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1119"><a href="#L-1119"><span class="linenos">1119</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span> <span class="o">=</span> <span class="n">spot_anions</span>
+</span><span id="L-1120"><a href="#L-1120"><span class="linenos">1120</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_anions</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1121"><a href="#L-1121"><span class="linenos">1121</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1122"><a href="#L-1122"><span class="linenos">1122</span></a>
+</span><span id="L-1123"><a href="#L-1123"><span class="linenos">1123</span></a>    <span class="c1"># spot_cations</span>
+</span><span id="L-1124"><a href="#L-1124"><span class="linenos">1124</span></a>    <span class="nd">@property</span>
+</span><span id="L-1125"><a href="#L-1125"><span class="linenos">1125</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1126"><a href="#L-1126"><span class="linenos">1126</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するカチオンイオンの辞書。</span>
+</span><span id="L-1127"><a href="#L-1127"><span class="linenos">1127</span></a>
+</span><span id="L-1128"><a href="#L-1128"><span class="linenos">1128</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1129"><a href="#L-1129"><span class="linenos">1129</span></a><span class="sd">            Dict[int, str]: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="L-1130"><a href="#L-1130"><span class="linenos">1130</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1131"><a href="#L-1131"><span class="linenos">1131</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_cations&quot;</span><span class="p">):</span>
+</span><span id="L-1132"><a href="#L-1132"><span class="linenos">1132</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-1133"><a href="#L-1133"><span class="linenos">1133</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span>
+</span><span id="L-1134"><a href="#L-1134"><span class="linenos">1134</span></a>
+</span><span id="L-1135"><a href="#L-1135"><span class="linenos">1135</span></a>    <span class="nd">@spot_cations</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1136"><a href="#L-1136"><span class="linenos">1136</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_cations</span><span class="p">):</span>
+</span><span id="L-1137"><a href="#L-1137"><span class="linenos">1137</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するカチオンイオンを設定する。</span>
+</span><span id="L-1138"><a href="#L-1138"><span class="linenos">1138</span></a>
+</span><span id="L-1139"><a href="#L-1139"><span class="linenos">1139</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-1140"><a href="#L-1140"><span class="linenos">1140</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="L-1141"><a href="#L-1141"><span class="linenos">1141</span></a>
+</span><span id="L-1142"><a href="#L-1142"><span class="linenos">1142</span></a><span class="sd">        Args:</span>
+</span><span id="L-1143"><a href="#L-1143"><span class="linenos">1143</span></a><span class="sd">            spot_cations: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="L-1144"><a href="#L-1144"><span class="linenos">1144</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1145"><a href="#L-1145"><span class="linenos">1145</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span> <span class="o">=</span> <span class="n">spot_cations</span>
+</span><span id="L-1146"><a href="#L-1146"><span class="linenos">1146</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_cations</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1147"><a href="#L-1147"><span class="linenos">1147</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1148"><a href="#L-1148"><span class="linenos">1148</span></a>
+</span><span id="L-1149"><a href="#L-1149"><span class="linenos">1149</span></a>    <span class="c1"># spot_hydroniums (H3O+: 1受容・3供与)</span>
+</span><span id="L-1150"><a href="#L-1150"><span class="linenos">1150</span></a>    <span class="nd">@property</span>
+</span><span id="L-1151"><a href="#L-1151"><span class="linenos">1151</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroniums</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1152"><a href="#L-1152"><span class="linenos">1152</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を置くサイトのリスト。1本受け入れ・3本供与。</span>
+</span><span id="L-1153"><a href="#L-1153"><span class="linenos">1153</span></a>
+</span><span id="L-1154"><a href="#L-1154"><span class="linenos">1154</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1155"><a href="#L-1155"><span class="linenos">1155</span></a><span class="sd">            List[int]: サイトインデックスのリスト</span>
+</span><span id="L-1156"><a href="#L-1156"><span class="linenos">1156</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1157"><a href="#L-1157"><span class="linenos">1157</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_hydroniums&quot;</span><span class="p">):</span>
+</span><span id="L-1158"><a href="#L-1158"><span class="linenos">1158</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1159"><a href="#L-1159"><span class="linenos">1159</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span>
+</span><span id="L-1160"><a href="#L-1160"><span class="linenos">1160</span></a>
+</span><span id="L-1161"><a href="#L-1161"><span class="linenos">1161</span></a>    <span class="nd">@spot_hydroniums</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1162"><a href="#L-1162"><span class="linenos">1162</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroniums</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_hydroniums</span><span class="p">):</span>
+</span><span id="L-1163"><a href="#L-1163"><span class="linenos">1163</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="L-1164"><a href="#L-1164"><span class="linenos">1164</span></a>            <span class="nb">list</span><span class="p">(</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="k">if</span> <span class="n">spot_hydroniums</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1165"><a href="#L-1165"><span class="linenos">1165</span></a>        <span class="p">)</span>
+</span><span id="L-1166"><a href="#L-1166"><span class="linenos">1166</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_hydroniums</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1167"><a href="#L-1167"><span class="linenos">1167</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1168"><a href="#L-1168"><span class="linenos">1168</span></a>
+</span><span id="L-1169"><a href="#L-1169"><span class="linenos">1169</span></a>    <span class="c1"># spot_hydroxides (OH-: 3受容・1供与)</span>
+</span><span id="L-1170"><a href="#L-1170"><span class="linenos">1170</span></a>    <span class="nd">@property</span>
+</span><span id="L-1171"><a href="#L-1171"><span class="linenos">1171</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroxides</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1172"><a href="#L-1172"><span class="linenos">1172</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を置くサイトのリスト。3本受け入れ・1本供与。</span>
+</span><span id="L-1173"><a href="#L-1173"><span class="linenos">1173</span></a>
+</span><span id="L-1174"><a href="#L-1174"><span class="linenos">1174</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1175"><a href="#L-1175"><span class="linenos">1175</span></a><span class="sd">            List[int]: サイトインデックスのリスト</span>
+</span><span id="L-1176"><a href="#L-1176"><span class="linenos">1176</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1177"><a href="#L-1177"><span class="linenos">1177</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_hydroxides&quot;</span><span class="p">):</span>
+</span><span id="L-1178"><a href="#L-1178"><span class="linenos">1178</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1179"><a href="#L-1179"><span class="linenos">1179</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span>
+</span><span id="L-1180"><a href="#L-1180"><span class="linenos">1180</span></a>
+</span><span id="L-1181"><a href="#L-1181"><span class="linenos">1181</span></a>    <span class="nd">@spot_hydroxides</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1182"><a href="#L-1182"><span class="linenos">1182</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroxides</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_hydroxides</span><span class="p">):</span>
+</span><span id="L-1183"><a href="#L-1183"><span class="linenos">1183</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="L-1184"><a href="#L-1184"><span class="linenos">1184</span></a>            <span class="nb">list</span><span class="p">(</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="k">if</span> <span class="n">spot_hydroxides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1185"><a href="#L-1185"><span class="linenos">1185</span></a>        <span class="p">)</span>
+</span><span id="L-1186"><a href="#L-1186"><span class="linenos">1186</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_hydroxides</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1187"><a href="#L-1187"><span class="linenos">1187</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1188"><a href="#L-1188"><span class="linenos">1188</span></a>
+</span><span id="L-1189"><a href="#L-1189"><span class="linenos">1189</span></a>    <span class="c1"># Bjerrum L 欠陥に対応するエッジ集合（(i, j) のリスト）</span>
+</span><span id="L-1190"><a href="#L-1190"><span class="linenos">1190</span></a>    <span class="nd">@property</span>
+</span><span id="L-1191"><a href="#L-1191"><span class="linenos">1191</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_L_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+</span><span id="L-1192"><a href="#L-1192"><span class="linenos">1192</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bjerrum_L_edges&quot;</span><span class="p">):</span>
+</span><span id="L-1193"><a href="#L-1193"><span class="linenos">1193</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1194"><a href="#L-1194"><span class="linenos">1194</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span>
+</span><span id="L-1195"><a href="#L-1195"><span class="linenos">1195</span></a>
+</span><span id="L-1196"><a href="#L-1196"><span class="linenos">1196</span></a>    <span class="nd">@bjerrum_L_edges</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1197"><a href="#L-1197"><span class="linenos">1197</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_L_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="L-1198"><a href="#L-1198"><span class="linenos">1198</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1199"><a href="#L-1199"><span class="linenos">1199</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1200"><a href="#L-1200"><span class="linenos">1200</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1201"><a href="#L-1201"><span class="linenos">1201</span></a>
+</span><span id="L-1202"><a href="#L-1202"><span class="linenos">1202</span></a>    <span class="c1"># Bjerrum D 欠陥に対応するエッジ集合（(i, j) のリスト）</span>
+</span><span id="L-1203"><a href="#L-1203"><span class="linenos">1203</span></a>    <span class="nd">@property</span>
+</span><span id="L-1204"><a href="#L-1204"><span class="linenos">1204</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_D_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+</span><span id="L-1205"><a href="#L-1205"><span class="linenos">1205</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bjerrum_D_edges&quot;</span><span class="p">):</span>
+</span><span id="L-1206"><a href="#L-1206"><span class="linenos">1206</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1207"><a href="#L-1207"><span class="linenos">1207</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span>
+</span><span id="L-1208"><a href="#L-1208"><span class="linenos">1208</span></a>
+</span><span id="L-1209"><a href="#L-1209"><span class="linenos">1209</span></a>    <span class="nd">@bjerrum_D_edges</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1210"><a href="#L-1210"><span class="linenos">1210</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_D_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="L-1211"><a href="#L-1211"><span class="linenos">1211</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="L-1212"><a href="#L-1212"><span class="linenos">1212</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1213"><a href="#L-1213"><span class="linenos">1213</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1214"><a href="#L-1214"><span class="linenos">1214</span></a>
+</span><span id="L-1215"><a href="#L-1215"><span class="linenos">1215</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_spot_hydronium</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sites</span><span class="p">):</span>
+</span><span id="L-1216"><a href="#L-1216"><span class="linenos">1216</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を置くサイトを追加登録するヘルパー。</span>
+</span><span id="L-1217"><a href="#L-1217"><span class="linenos">1217</span></a>
+</span><span id="L-1218"><a href="#L-1218"><span class="linenos">1218</span></a><span class="sd">        Args:</span>
+</span><span id="L-1219"><a href="#L-1219"><span class="linenos">1219</span></a><span class="sd">            sites: サイトインデックス（int）またはその反復可能オブジェクト。</span>
+</span><span id="L-1220"><a href="#L-1220"><span class="linenos">1220</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1221"><a href="#L-1221"><span class="linenos">1221</span></a>        <span class="k">if</span> <span class="n">sites</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1222"><a href="#L-1222"><span class="linenos">1222</span></a>            <span class="k">return</span>
+</span><span id="L-1223"><a href="#L-1223"><span class="linenos">1223</span></a>        <span class="c1"># numpy のスカラーも受け付ける</span>
+</span><span id="L-1224"><a href="#L-1224"><span class="linenos">1224</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+</span><span id="L-1225"><a href="#L-1225"><span class="linenos">1225</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sites</span><span class="p">)]</span>
+</span><span id="L-1226"><a href="#L-1226"><span class="linenos">1226</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-1227"><a href="#L-1227"><span class="linenos">1227</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+</span><span id="L-1228"><a href="#L-1228"><span class="linenos">1228</span></a>        <span class="c1"># setter を経由してキャッシュを無効化する</span>
+</span><span id="L-1229"><a href="#L-1229"><span class="linenos">1229</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_sites</span>
+</span><span id="L-1230"><a href="#L-1230"><span class="linenos">1230</span></a>
+</span><span id="L-1231"><a href="#L-1231"><span class="linenos">1231</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_spot_hydroxide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sites</span><span class="p">):</span>
+</span><span id="L-1232"><a href="#L-1232"><span class="linenos">1232</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を置くサイトを追加登録するヘルパー。</span>
+</span><span id="L-1233"><a href="#L-1233"><span class="linenos">1233</span></a>
+</span><span id="L-1234"><a href="#L-1234"><span class="linenos">1234</span></a><span class="sd">        Args:</span>
+</span><span id="L-1235"><a href="#L-1235"><span class="linenos">1235</span></a><span class="sd">            sites: サイトインデックス（int）またはその反復可能オブジェクト。</span>
+</span><span id="L-1236"><a href="#L-1236"><span class="linenos">1236</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1237"><a href="#L-1237"><span class="linenos">1237</span></a>        <span class="k">if</span> <span class="n">sites</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1238"><a href="#L-1238"><span class="linenos">1238</span></a>            <span class="k">return</span>
+</span><span id="L-1239"><a href="#L-1239"><span class="linenos">1239</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+</span><span id="L-1240"><a href="#L-1240"><span class="linenos">1240</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sites</span><span class="p">)]</span>
+</span><span id="L-1241"><a href="#L-1241"><span class="linenos">1241</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-1242"><a href="#L-1242"><span class="linenos">1242</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+</span><span id="L-1243"><a href="#L-1243"><span class="linenos">1243</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_sites</span>
+</span><span id="L-1244"><a href="#L-1244"><span class="linenos">1244</span></a>
+</span><span id="L-1245"><a href="#L-1245"><span class="linenos">1245</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_bjerrum_L</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">):</span>
+</span><span id="L-1246"><a href="#L-1246"><span class="linenos">1246</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bjerrum L 欠陥を追加登録するヘルパー。</span>
+</span><span id="L-1247"><a href="#L-1247"><span class="linenos">1247</span></a>
+</span><span id="L-1248"><a href="#L-1248"><span class="linenos">1248</span></a><span class="sd">        Args:</span>
+</span><span id="L-1249"><a href="#L-1249"><span class="linenos">1249</span></a><span class="sd">            edges: (i, j) のタプル、またはその反復可能オブジェクト。</span>
+</span><span id="L-1250"><a href="#L-1250"><span class="linenos">1250</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1251"><a href="#L-1251"><span class="linenos">1251</span></a>        <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1252"><a href="#L-1252"><span class="linenos">1252</span></a>            <span class="k">return</span>
+</span><span id="L-1253"><a href="#L-1253"><span class="linenos">1253</span></a>        <span class="c1"># 単一タプル (i, j) も許容する</span>
+</span><span id="L-1254"><a href="#L-1254"><span class="linenos">1254</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="L-1255"><a href="#L-1255"><span class="linenos">1255</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">edges</span><span class="p">]</span>
+</span><span id="L-1256"><a href="#L-1256"><span class="linenos">1256</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-1257"><a href="#L-1257"><span class="linenos">1257</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</span><span id="L-1258"><a href="#L-1258"><span class="linenos">1258</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_edges</span>
+</span><span id="L-1259"><a href="#L-1259"><span class="linenos">1259</span></a>
+</span><span id="L-1260"><a href="#L-1260"><span class="linenos">1260</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_bjerrum_D</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">):</span>
+</span><span id="L-1261"><a href="#L-1261"><span class="linenos">1261</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bjerrum D 欠陥を追加登録するヘルパー。</span>
+</span><span id="L-1262"><a href="#L-1262"><span class="linenos">1262</span></a>
+</span><span id="L-1263"><a href="#L-1263"><span class="linenos">1263</span></a><span class="sd">        Args:</span>
+</span><span id="L-1264"><a href="#L-1264"><span class="linenos">1264</span></a><span class="sd">            edges: (i, j) のタプル、またはその反復可能オブジェクト。</span>
+</span><span id="L-1265"><a href="#L-1265"><span class="linenos">1265</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1266"><a href="#L-1266"><span class="linenos">1266</span></a>        <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1267"><a href="#L-1267"><span class="linenos">1267</span></a>            <span class="k">return</span>
+</span><span id="L-1268"><a href="#L-1268"><span class="linenos">1268</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="L-1269"><a href="#L-1269"><span class="linenos">1269</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">edges</span><span class="p">]</span>
+</span><span id="L-1270"><a href="#L-1270"><span class="linenos">1270</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-1271"><a href="#L-1271"><span class="linenos">1271</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</span><span id="L-1272"><a href="#L-1272"><span class="linenos">1272</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_edges</span>
+</span><span id="L-1273"><a href="#L-1273"><span class="linenos">1273</span></a>
+</span><span id="L-1274"><a href="#L-1274"><span class="linenos">1274</span></a>    <span class="nd">@property</span>
+</span><span id="L-1275"><a href="#L-1275"><span class="linenos">1275</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1276"><a href="#L-1276"><span class="linenos">1276</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;乱数シード。</span>
+</span><span id="L-1277"><a href="#L-1277"><span class="linenos">1277</span></a>
+</span><span id="L-1278"><a href="#L-1278"><span class="linenos">1278</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1279"><a href="#L-1279"><span class="linenos">1279</span></a><span class="sd">            int: 乱数シード値</span>
+</span><span id="L-1280"><a href="#L-1280"><span class="linenos">1280</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1281"><a href="#L-1281"><span class="linenos">1281</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_seed</span>
+</span><span id="L-1282"><a href="#L-1282"><span class="linenos">1282</span></a>
+</span><span id="L-1283"><a href="#L-1283"><span class="linenos">1283</span></a>    <span class="nd">@seed</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1284"><a href="#L-1284"><span class="linenos">1284</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="p">):</span>
+</span><span id="L-1285"><a href="#L-1285"><span class="linenos">1285</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;乱数シードを設定する。</span>
+</span><span id="L-1286"><a href="#L-1286"><span class="linenos">1286</span></a>
+</span><span id="L-1287"><a href="#L-1287"><span class="linenos">1287</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-1288"><a href="#L-1288"><span class="linenos">1288</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="L-1289"><a href="#L-1289"><span class="linenos">1289</span></a>
+</span><span id="L-1290"><a href="#L-1290"><span class="linenos">1290</span></a><span class="sd">        Args:</span>
+</span><span id="L-1291"><a href="#L-1291"><span class="linenos">1291</span></a><span class="sd">            seed: 乱数シード値</span>
+</span><span id="L-1292"><a href="#L-1292"><span class="linenos">1292</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1293"><a href="#L-1293"><span class="linenos">1293</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_seed</span> <span class="o">=</span> <span class="n">seed</span>
+</span><span id="L-1294"><a href="#L-1294"><span class="linenos">1294</span></a>        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+</span><span id="L-1295"><a href="#L-1295"><span class="linenos">1295</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">seed</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1296"><a href="#L-1296"><span class="linenos">1296</span></a>        <span class="c1"># キャッシュをクリア（seedに依存するすべてのタスクを再計算させる）</span>
+</span><span id="L-1297"><a href="#L-1297"><span class="linenos">1297</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1298"><a href="#L-1298"><span class="linenos">1298</span></a>
+</span><span id="L-1299"><a href="#L-1299"><span class="linenos">1299</span></a>    <span class="nd">@property</span>
+</span><span id="L-1300"><a href="#L-1300"><span class="linenos">1300</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">depol_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1301"><a href="#L-1301"><span class="linenos">1301</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;双極子最適化の反復回数。</span>
+</span><span id="L-1302"><a href="#L-1302"><span class="linenos">1302</span></a>
+</span><span id="L-1303"><a href="#L-1303"><span class="linenos">1303</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1304"><a href="#L-1304"><span class="linenos">1304</span></a><span class="sd">            int: 双極子最適化アルゴリズムの反復回数</span>
+</span><span id="L-1305"><a href="#L-1305"><span class="linenos">1305</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1306"><a href="#L-1306"><span class="linenos">1306</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depol_loop</span>
+</span><span id="L-1307"><a href="#L-1307"><span class="linenos">1307</span></a>
+</span><span id="L-1308"><a href="#L-1308"><span class="linenos">1308</span></a>    <span class="nd">@depol_loop</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1309"><a href="#L-1309"><span class="linenos">1309</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">depol_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">depol_loop</span><span class="p">):</span>
+</span><span id="L-1310"><a href="#L-1310"><span class="linenos">1310</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;双極子最適化の反復回数を設定する。</span>
+</span><span id="L-1311"><a href="#L-1311"><span class="linenos">1311</span></a>
+</span><span id="L-1312"><a href="#L-1312"><span class="linenos">1312</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-1313"><a href="#L-1313"><span class="linenos">1313</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="L-1314"><a href="#L-1314"><span class="linenos">1314</span></a>
+</span><span id="L-1315"><a href="#L-1315"><span class="linenos">1315</span></a><span class="sd">        Args:</span>
+</span><span id="L-1316"><a href="#L-1316"><span class="linenos">1316</span></a><span class="sd">            depol_loop: 双極子最適化アルゴリズムの反復回数</span>
+</span><span id="L-1317"><a href="#L-1317"><span class="linenos">1317</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1318"><a href="#L-1318"><span class="linenos">1318</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_depol_loop</span> <span class="o">=</span> <span class="n">depol_loop</span>
+</span><span id="L-1319"><a href="#L-1319"><span class="linenos">1319</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">depol_loop</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1320"><a href="#L-1320"><span class="linenos">1320</span></a>        <span class="c1"># キャッシュをクリア（depol_loopに依存するすべてのタスクを再計算させる）</span>
+</span><span id="L-1321"><a href="#L-1321"><span class="linenos">1321</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1322"><a href="#L-1322"><span class="linenos">1322</span></a>
+</span><span id="L-1323"><a href="#L-1323"><span class="linenos">1323</span></a>    <span class="nd">@property</span>
+</span><span id="L-1324"><a href="#L-1324"><span class="linenos">1324</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">target_pol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1325"><a href="#L-1325"><span class="linenos">1325</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;分極の目標値（3要素のベクトル）。&quot;&quot;&quot;</span>
+</span><span id="L-1326"><a href="#L-1326"><span class="linenos">1326</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_pol</span>
+</span><span id="L-1327"><a href="#L-1327"><span class="linenos">1327</span></a>
+</span><span id="L-1328"><a href="#L-1328"><span class="linenos">1328</span></a>    <span class="nd">@target_pol</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1329"><a href="#L-1329"><span class="linenos">1329</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">target_pol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_pol</span><span class="p">):</span>
+</span><span id="L-1330"><a href="#L-1330"><span class="linenos">1330</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;分極の目標値を設定する。変更時は依存するキャッシュをクリアする。&quot;&quot;&quot;</span>
+</span><span id="L-1331"><a href="#L-1331"><span class="linenos">1331</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_target_pol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">target_pol</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="L-1332"><a href="#L-1332"><span class="linenos">1332</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">target_pol</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1333"><a href="#L-1333"><span class="linenos">1333</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1334"><a href="#L-1334"><span class="linenos">1334</span></a>
+</span><span id="L-1335"><a href="#L-1335"><span class="linenos">1335</span></a>    <span class="nd">@property</span>
+</span><span id="L-1336"><a href="#L-1336"><span class="linenos">1336</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1337"><a href="#L-1337"><span class="linenos">1337</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞オブジェクト。</span>
+</span><span id="L-1338"><a href="#L-1338"><span class="linenos">1338</span></a>
+</span><span id="L-1339"><a href="#L-1339"><span class="linenos">1339</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1340"><a href="#L-1340"><span class="linenos">1340</span></a><span class="sd">            UnitCell: 基本単位胞オブジェクト</span>
+</span><span id="L-1341"><a href="#L-1341"><span class="linenos">1341</span></a>
+</span><span id="L-1342"><a href="#L-1342"><span class="linenos">1342</span></a><span class="sd">        Raises:</span>
+</span><span id="L-1343"><a href="#L-1343"><span class="linenos">1343</span></a><span class="sd">            ConfigurationError: 単位胞が設定されていない場合</span>
+</span><span id="L-1344"><a href="#L-1344"><span class="linenos">1344</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1345"><a href="#L-1345"><span class="linenos">1345</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_unitcell&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1346"><a href="#L-1346"><span class="linenos">1346</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="s2">&quot;Unitcell is not set.&quot;</span><span class="p">)</span>
+</span><span id="L-1347"><a href="#L-1347"><span class="linenos">1347</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span>
+</span><span id="L-1348"><a href="#L-1348"><span class="linenos">1348</span></a>
+</span><span id="L-1349"><a href="#L-1349"><span class="linenos">1349</span></a>    <span class="nd">@unitcell</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1350"><a href="#L-1350"><span class="linenos">1350</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unitcell</span><span class="p">):</span>
+</span><span id="L-1351"><a href="#L-1351"><span class="linenos">1351</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞オブジェクトを設定する。</span>
+</span><span id="L-1352"><a href="#L-1352"><span class="linenos">1352</span></a>
+</span><span id="L-1353"><a href="#L-1353"><span class="linenos">1353</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-1354"><a href="#L-1354"><span class="linenos">1354</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="L-1355"><a href="#L-1355"><span class="linenos">1355</span></a>
+</span><span id="L-1356"><a href="#L-1356"><span class="linenos">1356</span></a><span class="sd">        Args:</span>
+</span><span id="L-1357"><a href="#L-1357"><span class="linenos">1357</span></a><span class="sd">            unitcell: 基本単位胞オブジェクト</span>
+</span><span id="L-1358"><a href="#L-1358"><span class="linenos">1358</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1359"><a href="#L-1359"><span class="linenos">1359</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span> <span class="o">=</span> <span class="n">unitcell</span>
+</span><span id="L-1360"><a href="#L-1360"><span class="linenos">1360</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1361"><a href="#L-1361"><span class="linenos">1361</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1362"><a href="#L-1362"><span class="linenos">1362</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="o">.</span><span class="n">graph</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1363"><a href="#L-1363"><span class="linenos">1363</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="o">.</span><span class="n">fixed</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1364"><a href="#L-1364"><span class="linenos">1364</span></a>
+</span><span id="L-1365"><a href="#L-1365"><span class="linenos">1365</span></a>        <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">cellshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
+</span><span id="L-1366"><a href="#L-1366"><span class="linenos">1366</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;  Reshaped cell:&quot;</span><span class="p">)</span>
+</span><span id="L-1367"><a href="#L-1367"><span class="linenos">1367</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">a</span><span class="si">=:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">b</span><span class="si">=:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">c</span><span class="si">=:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1368"><a href="#L-1368"><span class="linenos">1368</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">A</span><span class="si">=:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">B</span><span class="si">=:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">C</span><span class="si">=:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1369"><a href="#L-1369"><span class="linenos">1369</span></a>        <span class="c1"># キャッシュをクリア（unitcellに依存するすべてのタスクを再計算させる）</span>
+</span><span id="L-1370"><a href="#L-1370"><span class="linenos">1370</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1371"><a href="#L-1371"><span class="linenos">1371</span></a>
+</span><span id="L-1372"><a href="#L-1372"><span class="linenos">1372</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unitcell_or_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="L-1373"><a href="#L-1373"><span class="linenos">1373</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞を設定する（リアクティブプロパティ用のラッパー）。</span>
+</span><span id="L-1374"><a href="#L-1374"><span class="linenos">1374</span></a>
+</span><span id="L-1375"><a href="#L-1375"><span class="linenos">1375</span></a><span class="sd">        代入（genice.unitcell = ...）の代わりにこのメソッドを使うと、</span>
+</span><span id="L-1376"><a href="#L-1376"><span class="linenos">1376</span></a><span class="sd">        単位胞がリアクティブな設定であることが明確になります。</span>
+</span><span id="L-1377"><a href="#L-1377"><span class="linenos">1377</span></a>
+</span><span id="L-1378"><a href="#L-1378"><span class="linenos">1378</span></a><span class="sd">        Args:</span>
+</span><span id="L-1379"><a href="#L-1379"><span class="linenos">1379</span></a><span class="sd">            unitcell_or_name: 基本単位胞オブジェクト、または単位胞名（文字列）。</span>
+</span><span id="L-1380"><a href="#L-1380"><span class="linenos">1380</span></a><span class="sd">                文字列の場合は UnitCell(name, **kwargs) として内部で生成します。</span>
+</span><span id="L-1381"><a href="#L-1381"><span class="linenos">1381</span></a><span class="sd">            **kwargs: unitcell_or_name が文字列の場合に UnitCell(...) に渡すオプション。</span>
+</span><span id="L-1382"><a href="#L-1382"><span class="linenos">1382</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1383"><a href="#L-1383"><span class="linenos">1383</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unitcell_or_name</span><span class="p">,</span> <span class="n">UnitCell</span><span class="p">):</span>
+</span><span id="L-1384"><a href="#L-1384"><span class="linenos">1384</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span> <span class="o">=</span> <span class="n">unitcell_or_name</span>
+</span><span id="L-1385"><a href="#L-1385"><span class="linenos">1385</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="L-1386"><a href="#L-1386"><span class="linenos">1386</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span> <span class="o">=</span> <span class="n">UnitCellPlugin</span><span class="p">(</span><span class="n">unitcell_or_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="L-1387"><a href="#L-1387"><span class="linenos">1387</span></a>
+</span><span id="L-1388"><a href="#L-1388"><span class="linenos">1388</span></a>    <span class="nd">@property</span>
+</span><span id="L-1389"><a href="#L-1389"><span class="linenos">1389</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1390"><a href="#L-1390"><span class="linenos">1390</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞を複製するための3x3整数行列。</span>
+</span><span id="L-1391"><a href="#L-1391"><span class="linenos">1391</span></a>
+</span><span id="L-1392"><a href="#L-1392"><span class="linenos">1392</span></a><span class="sd">        この行列により、基本単位胞をどのように積み重ねて拡大単位胞を</span>
+</span><span id="L-1393"><a href="#L-1393"><span class="linenos">1393</span></a><span class="sd">        作成するかを指定します。</span>
+</span><span id="L-1394"><a href="#L-1394"><span class="linenos">1394</span></a>
+</span><span id="L-1395"><a href="#L-1395"><span class="linenos">1395</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1396"><a href="#L-1396"><span class="linenos">1396</span></a><span class="sd">            np.ndarray: 3x3整数行列</span>
+</span><span id="L-1397"><a href="#L-1397"><span class="linenos">1397</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1398"><a href="#L-1398"><span class="linenos">1398</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span>
+</span><span id="L-1399"><a href="#L-1399"><span class="linenos">1399</span></a>
+</span><span id="L-1400"><a href="#L-1400"><span class="linenos">1400</span></a>    <span class="nd">@replication_matrix</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="L-1401"><a href="#L-1401"><span class="linenos">1401</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">):</span>
+</span><span id="L-1402"><a href="#L-1402"><span class="linenos">1402</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞複製行列を設定する。</span>
+</span><span id="L-1403"><a href="#L-1403"><span class="linenos">1403</span></a>
+</span><span id="L-1404"><a href="#L-1404"><span class="linenos">1404</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="L-1405"><a href="#L-1405"><span class="linenos">1405</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="L-1406"><a href="#L-1406"><span class="linenos">1406</span></a>
+</span><span id="L-1407"><a href="#L-1407"><span class="linenos">1407</span></a><span class="sd">        Args:</span>
+</span><span id="L-1408"><a href="#L-1408"><span class="linenos">1408</span></a><span class="sd">            replication_matrix: 3x3整数行列</span>
+</span><span id="L-1409"><a href="#L-1409"><span class="linenos">1409</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1410"><a href="#L-1410"><span class="linenos">1410</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</span><span id="L-1411"><a href="#L-1411"><span class="linenos">1411</span></a>        <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span>
+</span><span id="L-1412"><a href="#L-1412"><span class="linenos">1412</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">i</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1413"><a href="#L-1413"><span class="linenos">1413</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">j</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1414"><a href="#L-1414"><span class="linenos">1414</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">k</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1415"><a href="#L-1415"><span class="linenos">1415</span></a>        <span class="c1"># キャッシュをクリア（replication_matrixに依存するすべてのタスクを再計算させる）</span>
+</span><span id="L-1416"><a href="#L-1416"><span class="linenos">1416</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="L-1417"><a href="#L-1417"><span class="linenos">1417</span></a>
+</span><span id="L-1418"><a href="#L-1418"><span class="linenos">1418</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">):</span>
+</span><span id="L-1419"><a href="#L-1419"><span class="linenos">1419</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞複製行列を設定する（リアクティブプロパティ用のラッパー）。</span>
+</span><span id="L-1420"><a href="#L-1420"><span class="linenos">1420</span></a>
+</span><span id="L-1421"><a href="#L-1421"><span class="linenos">1421</span></a><span class="sd">        代入（genice.replication_matrix = ...）の代わりにこのメソッドを使うと、</span>
+</span><span id="L-1422"><a href="#L-1422"><span class="linenos">1422</span></a><span class="sd">        複製行列がリアクティブな設定であることが明確になります。</span>
+</span><span id="L-1423"><a href="#L-1423"><span class="linenos">1423</span></a>
+</span><span id="L-1424"><a href="#L-1424"><span class="linenos">1424</span></a><span class="sd">        Args:</span>
+</span><span id="L-1425"><a href="#L-1425"><span class="linenos">1425</span></a><span class="sd">            replication_matrix: 3x3整数行列（リストのリストまたは ndarray）</span>
+</span><span id="L-1426"><a href="#L-1426"><span class="linenos">1426</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1427"><a href="#L-1427"><span class="linenos">1427</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">=</span> <span class="n">replication_matrix</span>
+</span><span id="L-1428"><a href="#L-1428"><span class="linenos">1428</span></a>
+</span><span id="L-1429"><a href="#L-1429"><span class="linenos">1429</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_get_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="L-1430"><a href="#L-1430"><span class="linenos">1430</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;engine.resolve()に渡すinputs辞書を取得&quot;&quot;&quot;</span>
+</span><span id="L-1431"><a href="#L-1431"><span class="linenos">1431</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="L-1432"><a href="#L-1432"><span class="linenos">1432</span></a>            <span class="s2">&quot;unitcell&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="p">,</span>
+</span><span id="L-1433"><a href="#L-1433"><span class="linenos">1433</span></a>            <span class="s2">&quot;replication_matrix&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span><span class="p">,</span>
+</span><span id="L-1434"><a href="#L-1434"><span class="linenos">1434</span></a>            <span class="s2">&quot;depol_loop&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">depol_loop</span><span class="p">,</span>
+</span><span id="L-1435"><a href="#L-1435"><span class="linenos">1435</span></a>            <span class="s2">&quot;target_pol&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_pol</span><span class="p">,</span>
+</span><span id="L-1436"><a href="#L-1436"><span class="linenos">1436</span></a>            <span class="s2">&quot;spot_anions&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_anions</span><span class="p">,</span>
+</span><span id="L-1437"><a href="#L-1437"><span class="linenos">1437</span></a>            <span class="s2">&quot;spot_cations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_cations</span><span class="p">,</span>
+</span><span id="L-1438"><a href="#L-1438"><span class="linenos">1438</span></a>            <span class="s2">&quot;spot_hydroniums&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">,</span>
+</span><span id="L-1439"><a href="#L-1439"><span class="linenos">1439</span></a>            <span class="s2">&quot;spot_hydroxides&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">,</span>
+</span><span id="L-1440"><a href="#L-1440"><span class="linenos">1440</span></a>            <span class="s2">&quot;bjerrum_L_edges&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span><span class="p">,</span>
+</span><span id="L-1441"><a href="#L-1441"><span class="linenos">1441</span></a>            <span class="s2">&quot;bjerrum_D_edges&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span><span class="p">,</span>
+</span><span id="L-1442"><a href="#L-1442"><span class="linenos">1442</span></a>        <span class="p">}</span>
+</span><span id="L-1443"><a href="#L-1443"><span class="linenos">1443</span></a>
+</span><span id="L-1444"><a href="#L-1444"><span class="linenos">1444</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="L-1445"><a href="#L-1445"><span class="linenos">1445</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;リアクティブプロパティへのアクセスを自動解決する。</span>
+</span><span id="L-1446"><a href="#L-1446"><span class="linenos">1446</span></a>
+</span><span id="L-1447"><a href="#L-1447"><span class="linenos">1447</span></a><span class="sd">        このメソッドにより、DependencyEngineに登録されたタスク関数が</span>
+</span><span id="L-1448"><a href="#L-1448"><span class="linenos">1448</span></a><span class="sd">        プロパティとしてアクセス可能になります。プロパティにアクセスすると、</span>
+</span><span id="L-1449"><a href="#L-1449"><span class="linenos">1449</span></a><span class="sd">        依存関係が自動的に解決され、必要な計算が実行されます。</span>
+</span><span id="L-1450"><a href="#L-1450"><span class="linenos">1450</span></a>
+</span><span id="L-1451"><a href="#L-1451"><span class="linenos">1451</span></a><span class="sd">        例:</span>
+</span><span id="L-1452"><a href="#L-1452"><span class="linenos">1452</span></a><span class="sd">            &gt;&gt;&gt; genice = GenIce3(unitcell=my_unitcell)</span>
+</span><span id="L-1453"><a href="#L-1453"><span class="linenos">1453</span></a><span class="sd">            &gt;&gt;&gt; digraph = genice.digraph  # この時点でdigraphとその依存関係が計算される</span>
+</span><span id="L-1454"><a href="#L-1454"><span class="linenos">1454</span></a>
+</span><span id="L-1455"><a href="#L-1455"><span class="linenos">1455</span></a><span class="sd">        Args:</span>
+</span><span id="L-1456"><a href="#L-1456"><span class="linenos">1456</span></a><span class="sd">            name: アクセスするプロパティ名（タスク関数名）</span>
+</span><span id="L-1457"><a href="#L-1457"><span class="linenos">1457</span></a>
+</span><span id="L-1458"><a href="#L-1458"><span class="linenos">1458</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1459"><a href="#L-1459"><span class="linenos">1459</span></a><span class="sd">            計算されたプロパティの値</span>
+</span><span id="L-1460"><a href="#L-1460"><span class="linenos">1460</span></a>
+</span><span id="L-1461"><a href="#L-1461"><span class="linenos">1461</span></a><span class="sd">        Raises:</span>
+</span><span id="L-1462"><a href="#L-1462"><span class="linenos">1462</span></a><span class="sd">            AttributeError: 指定された名前のプロパティが存在しない場合</span>
+</span><span id="L-1463"><a href="#L-1463"><span class="linenos">1463</span></a><span class="sd">            ConfigurationError: 必要な入力が設定されていない場合</span>
+</span><span id="L-1464"><a href="#L-1464"><span class="linenos">1464</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1465"><a href="#L-1465"><span class="linenos">1465</span></a>        <span class="c1"># DependencyEngineに登録されているタスクかチェック</span>
+</span><span id="L-1466"><a href="#L-1466"><span class="linenos">1466</span></a>        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
+</span><span id="L-1467"><a href="#L-1467"><span class="linenos">1467</span></a>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_inputs</span><span class="p">())</span>
+</span><span id="L-1468"><a href="#L-1468"><span class="linenos">1468</span></a>
+</span><span id="L-1469"><a href="#L-1469"><span class="linenos">1469</span></a>        <span class="c1"># それ以外は通常のAttributeErrorを発生</span>
+</span><span id="L-1470"><a href="#L-1470"><span class="linenos">1470</span></a>        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+</span><span id="L-1471"><a href="#L-1471"><span class="linenos">1471</span></a>            <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; object has no attribute &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+</span><span id="L-1472"><a href="#L-1472"><span class="linenos">1472</span></a>        <span class="p">)</span>
+</span><span id="L-1473"><a href="#L-1473"><span class="linenos">1473</span></a>
+</span><span id="L-1474"><a href="#L-1474"><span class="linenos">1474</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">water_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">water_model</span><span class="p">:</span> <span class="n">Molecule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="L-1475"><a href="#L-1475"><span class="linenos">1475</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;格子サイトが水のサイトについて、配向・位置を適用した水分子の辞書を返す。</span>
+</span><span id="L-1476"><a href="#L-1476"><span class="linenos">1476</span></a>
+</span><span id="L-1477"><a href="#L-1477"><span class="linenos">1477</span></a><span class="sd">        Args:</span>
+</span><span id="L-1478"><a href="#L-1478"><span class="linenos">1478</span></a><span class="sd">            water_model: 水分子のテンプレート（sites, labels など）。</span>
+</span><span id="L-1479"><a href="#L-1479"><span class="linenos">1479</span></a>
+</span><span id="L-1480"><a href="#L-1480"><span class="linenos">1480</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1481"><a href="#L-1481"><span class="linenos">1481</span></a><span class="sd">            サイト番号（ノード番号）→ Molecule の辞書。イオンサイトは含まない。</span>
+</span><span id="L-1482"><a href="#L-1482"><span class="linenos">1482</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1483"><a href="#L-1483"><span class="linenos">1483</span></a>        <span class="n">mols</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-1484"><a href="#L-1484"><span class="linenos">1484</span></a>        <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)):</span>
+</span><span id="L-1485"><a href="#L-1485"><span class="linenos">1485</span></a>            <span class="n">occ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">site_occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="L-1486"><a href="#L-1486"><span class="linenos">1486</span></a>            <span class="c1"># hydroniumやhydroxideはwater-likeではない。</span>
+</span><span id="L-1487"><a href="#L-1487"><span class="linenos">1487</span></a>            <span class="n">is_water_like</span> <span class="o">=</span> <span class="n">occ</span> <span class="o">==</span> <span class="s2">&quot;water&quot;</span>
+</span><span id="L-1488"><a href="#L-1488"><span class="linenos">1488</span></a>            <span class="k">if</span> <span class="n">is_water_like</span><span class="p">:</span>
+</span><span id="L-1489"><a href="#L-1489"><span class="linenos">1489</span></a>                <span class="n">rel_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="L-1490"><a href="#L-1490"><span class="linenos">1490</span></a>                <span class="n">orientation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientations</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="L-1491"><a href="#L-1491"><span class="linenos">1491</span></a>
+</span><span id="L-1492"><a href="#L-1492"><span class="linenos">1492</span></a>                <span class="n">sites</span> <span class="o">=</span> <span class="n">water_model</span><span class="o">.</span><span class="n">sites</span> <span class="o">@</span> <span class="n">orientation</span> <span class="o">+</span> <span class="n">rel_position</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="L-1493"><a href="#L-1493"><span class="linenos">1493</span></a>                <span class="n">mols</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="L-1494"><a href="#L-1494"><span class="linenos">1494</span></a>                    <span class="n">name</span><span class="o">=</span><span class="n">water_model</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="L-1495"><a href="#L-1495"><span class="linenos">1495</span></a>                    <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="L-1496"><a href="#L-1496"><span class="linenos">1496</span></a>                    <span class="n">labels</span><span class="o">=</span><span class="n">water_model</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="L-1497"><a href="#L-1497"><span class="linenos">1497</span></a>                    <span class="n">is_water</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="L-1498"><a href="#L-1498"><span class="linenos">1498</span></a>                <span class="p">)</span>
+</span><span id="L-1499"><a href="#L-1499"><span class="linenos">1499</span></a>        <span class="k">return</span> <span class="n">mols</span>
+</span><span id="L-1500"><a href="#L-1500"><span class="linenos">1500</span></a>
+</span><span id="L-1501"><a href="#L-1501"><span class="linenos">1501</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">guest_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="L-1502"><a href="#L-1502"><span class="linenos">1502</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;GenIce3に設定されたguestsとspot_guestsからゲスト分子リストを生成する。&quot;&quot;&quot;</span>
+</span><span id="L-1503"><a href="#L-1503"><span class="linenos">1503</span></a>        <span class="c1"># 通常の氷（ゲストなし）ではケージ不要 → assess_cages を呼ばない</span>
+</span><span id="L-1504"><a href="#L-1504"><span class="linenos">1504</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span><span class="p">:</span>
+</span><span id="L-1505"><a href="#L-1505"><span class="linenos">1505</span></a>            <span class="k">return</span> <span class="p">[]</span>
+</span><span id="L-1506"><a href="#L-1506"><span class="linenos">1506</span></a>
+</span><span id="L-1507"><a href="#L-1507"><span class="linenos">1507</span></a>        <span class="n">all_cage_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">]</span>
+</span><span id="L-1508"><a href="#L-1508"><span class="linenos">1508</span></a>        <span class="n">available</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">all_cage_types</span><span class="p">))</span>
+</span><span id="L-1509"><a href="#L-1509"><span class="linenos">1509</span></a>        <span class="c1"># guest_specで指定されているのに存在しない種類のケージはエラーにする。</span>
+</span><span id="L-1510"><a href="#L-1510"><span class="linenos">1510</span></a>        <span class="k">for</span> <span class="n">cage_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">:</span>
+</span><span id="L-1511"><a href="#L-1511"><span class="linenos">1511</span></a>            <span class="k">if</span> <span class="n">cage_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">all_cage_types</span><span class="p">:</span>
+</span><span id="L-1512"><a href="#L-1512"><span class="linenos">1512</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="L-1513"><a href="#L-1513"><span class="linenos">1513</span></a>                    <span class="sa">f</span><span class="s2">&quot;Cage type </span><span class="si">{</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> is not defined. &quot;</span>
+</span><span id="L-1514"><a href="#L-1514"><span class="linenos">1514</span></a>                    <span class="sa">f</span><span class="s2">&quot;Available cage types in this structure: </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="L-1515"><a href="#L-1515"><span class="linenos">1515</span></a>                <span class="p">)</span>
+</span><span id="L-1516"><a href="#L-1516"><span class="linenos">1516</span></a>
+</span><span id="L-1517"><a href="#L-1517"><span class="linenos">1517</span></a>        <span class="n">randoms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">))</span>
+</span><span id="L-1518"><a href="#L-1518"><span class="linenos">1518</span></a>
+</span><span id="L-1519"><a href="#L-1519"><span class="linenos">1519</span></a>        <span class="n">mols</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1520"><a href="#L-1520"><span class="linenos">1520</span></a>        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">probability</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="L-1521"><a href="#L-1521"><span class="linenos">1521</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">,</span> <span class="n">randoms</span>
+</span><span id="L-1522"><a href="#L-1522"><span class="linenos">1522</span></a>        <span class="p">):</span>
+</span><span id="L-1523"><a href="#L-1523"><span class="linenos">1523</span></a>            <span class="n">accum</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span id="L-1524"><a href="#L-1524"><span class="linenos">1524</span></a>            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">:</span>
+</span><span id="L-1525"><a href="#L-1525"><span class="linenos">1525</span></a>                <span class="k">for</span> <span class="n">guest_spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="p">]:</span>
+</span><span id="L-1526"><a href="#L-1526"><span class="linenos">1526</span></a>                    <span class="n">molecule</span> <span class="o">=</span> <span class="n">guest_spec</span><span class="o">.</span><span class="n">molecule</span>
+</span><span id="L-1527"><a href="#L-1527"><span class="linenos">1527</span></a>                    <span class="n">occupancy</span> <span class="o">=</span> <span class="n">guest_spec</span><span class="o">.</span><span class="n">occupancy</span>
+</span><span id="L-1528"><a href="#L-1528"><span class="linenos">1528</span></a>                    <span class="n">accum</span> <span class="o">+=</span> <span class="n">occupancy</span>
+</span><span id="L-1529"><a href="#L-1529"><span class="linenos">1529</span></a>                    <span class="k">if</span> <span class="n">accum</span> <span class="o">&gt;</span> <span class="n">probability</span><span class="p">:</span>
+</span><span id="L-1530"><a href="#L-1530"><span class="linenos">1530</span></a>                        <span class="n">mols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="L-1531"><a href="#L-1531"><span class="linenos">1531</span></a>                            <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="L-1532"><a href="#L-1532"><span class="linenos">1532</span></a>                                <span class="n">name</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="L-1533"><a href="#L-1533"><span class="linenos">1533</span></a>                                <span class="n">sites</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">pos</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="L-1534"><a href="#L-1534"><span class="linenos">1534</span></a>                                <span class="n">labels</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="L-1535"><a href="#L-1535"><span class="linenos">1535</span></a>                                <span class="n">is_water</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">is_water</span><span class="p">,</span>
+</span><span id="L-1536"><a href="#L-1536"><span class="linenos">1536</span></a>                            <span class="p">)</span>
+</span><span id="L-1537"><a href="#L-1537"><span class="linenos">1537</span></a>                        <span class="p">)</span>
+</span><span id="L-1538"><a href="#L-1538"><span class="linenos">1538</span></a>                        <span class="k">break</span>
+</span><span id="L-1539"><a href="#L-1539"><span class="linenos">1539</span></a>
+</span><span id="L-1540"><a href="#L-1540"><span class="linenos">1540</span></a>        <span class="c1"># spot guestの配置</span>
+</span><span id="L-1541"><a href="#L-1541"><span class="linenos">1541</span></a>        <span class="k">for</span> <span class="n">cage_index</span><span class="p">,</span> <span class="n">guest</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1542"><a href="#L-1542"><span class="linenos">1542</span></a>            <span class="n">mols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="L-1543"><a href="#L-1543"><span class="linenos">1543</span></a>                <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="L-1544"><a href="#L-1544"><span class="linenos">1544</span></a>                    <span class="n">name</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="L-1545"><a href="#L-1545"><span class="linenos">1545</span></a>                    <span class="n">sites</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">cage_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="L-1546"><a href="#L-1546"><span class="linenos">1546</span></a>                    <span class="n">labels</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="L-1547"><a href="#L-1547"><span class="linenos">1547</span></a>                    <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="L-1548"><a href="#L-1548"><span class="linenos">1548</span></a>                <span class="p">)</span>
+</span><span id="L-1549"><a href="#L-1549"><span class="linenos">1549</span></a>            <span class="p">)</span>
+</span><span id="L-1550"><a href="#L-1550"><span class="linenos">1550</span></a>        <span class="k">return</span> <span class="n">mols</span>
+</span><span id="L-1551"><a href="#L-1551"><span class="linenos">1551</span></a>
+</span><span id="L-1552"><a href="#L-1552"><span class="linenos">1552</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_molecular_ion</span><span class="p">(</span>
+</span><span id="L-1553"><a href="#L-1553"><span class="linenos">1553</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="L-1554"><a href="#L-1554"><span class="linenos">1554</span></a>        <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="L-1555"><a href="#L-1555"><span class="linenos">1555</span></a>        <span class="n">molecule</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="L-1556"><a href="#L-1556"><span class="linenos">1556</span></a>        <span class="n">groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="L-1557"><a href="#L-1557"><span class="linenos">1557</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="L-1558"><a href="#L-1558"><span class="linenos">1558</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト site_index（格子サイトのノード番号）に分子イオン（および spot cation 用の修飾 group）を構築する。</span>
+</span><span id="L-1559"><a href="#L-1559"><span class="linenos">1559</span></a>
+</span><span id="L-1560"><a href="#L-1560"><span class="linenos">1560</span></a><span class="sd">        Args:</span>
+</span><span id="L-1561"><a href="#L-1561"><span class="linenos">1561</span></a><span class="sd">            site_index: 格子サイトのノード番号。</span>
+</span><span id="L-1562"><a href="#L-1562"><span class="linenos">1562</span></a><span class="sd">            molecule: 分子イオンのプラグイン名（例: &quot;ammonium&quot;）。</span>
+</span><span id="L-1563"><a href="#L-1563"><span class="linenos">1563</span></a><span class="sd">            groups: 当該サイトに隣接するケージID → group名。spot cation の修飾用。</span>
+</span><span id="L-1564"><a href="#L-1564"><span class="linenos">1564</span></a>
+</span><span id="L-1565"><a href="#L-1565"><span class="linenos">1565</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1566"><a href="#L-1566"><span class="linenos">1566</span></a><span class="sd">            直交座標で配置された Molecule（原子名は labels）。</span>
+</span><span id="L-1567"><a href="#L-1567"><span class="linenos">1567</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1568"><a href="#L-1568"><span class="linenos">1568</span></a>        <span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span> <span class="ow">or</span> <span class="p">{}</span>
+</span><span id="L-1569"><a href="#L-1569"><span class="linenos">1569</span></a>        <span class="n">ion_center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="L-1570"><a href="#L-1570"><span class="linenos">1570</span></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="L-1571"><a href="#L-1571"><span class="linenos">1571</span></a>            <span class="n">ion</span> <span class="o">=</span> <span class="n">safe_import</span><span class="p">(</span><span class="s2">&quot;molecule&quot;</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span><span class="o">.</span><span class="n">Molecule</span><span class="p">()</span>
+</span><span id="L-1572"><a href="#L-1572"><span class="linenos">1572</span></a>            <span class="n">name</span> <span class="o">=</span> <span class="n">ion</span><span class="o">.</span><span class="n">name</span>
+</span><span id="L-1573"><a href="#L-1573"><span class="linenos">1573</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">ion</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">ion_center</span>
+</span><span id="L-1574"><a href="#L-1574"><span class="linenos">1574</span></a>            <span class="n">atom_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ion</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+</span><span id="L-1575"><a href="#L-1575"><span class="linenos">1575</span></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="L-1576"><a href="#L-1576"><span class="linenos">1576</span></a>            <span class="n">name</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="L-1577"><a href="#L-1577"><span class="linenos">1577</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ion_center</span><span class="p">])</span>
+</span><span id="L-1578"><a href="#L-1578"><span class="linenos">1578</span></a>            <span class="n">atom_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">molecule</span><span class="p">]</span>
+</span><span id="L-1579"><a href="#L-1579"><span class="linenos">1579</span></a>        <span class="c1"># 修飾グループを置いていく（--group 指定があったサイトのみ）</span>
+</span><span id="L-1580"><a href="#L-1580"><span class="linenos">1580</span></a>        <span class="k">for</span> <span class="n">cage</span><span class="p">,</span> <span class="n">group_name</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1581"><a href="#L-1581"><span class="linenos">1581</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">cage</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="L-1582"><a href="#L-1582"><span class="linenos">1582</span></a>            <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-1583"><a href="#L-1583"><span class="linenos">1583</span></a>            <span class="n">group</span> <span class="o">=</span> <span class="n">place_group</span><span class="p">(</span>
+</span><span id="L-1584"><a href="#L-1584"><span class="linenos">1584</span></a>                <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="L-1585"><a href="#L-1585"><span class="linenos">1585</span></a>                <span class="mf">0.13</span><span class="p">,</span>  <span class="c1"># あとでなんとかする。N-H結合距離</span>
+</span><span id="L-1586"><a href="#L-1586"><span class="linenos">1586</span></a>                <span class="n">group_name</span><span class="p">,</span>
+</span><span id="L-1587"><a href="#L-1587"><span class="linenos">1587</span></a>            <span class="p">)</span>
+</span><span id="L-1588"><a href="#L-1588"><span class="linenos">1588</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">sites</span><span class="p">,</span> <span class="n">group</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">ion_center</span><span class="p">])</span>
+</span><span id="L-1589"><a href="#L-1589"><span class="linenos">1589</span></a>            <span class="n">atom_names</span> <span class="o">+=</span> <span class="n">group</span><span class="o">.</span><span class="n">labels</span>
+</span><span id="L-1590"><a href="#L-1590"><span class="linenos">1590</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">atom_names</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1591"><a href="#L-1591"><span class="linenos">1591</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="L-1592"><a href="#L-1592"><span class="linenos">1592</span></a>            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+</span><span id="L-1593"><a href="#L-1593"><span class="linenos">1593</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="L-1594"><a href="#L-1594"><span class="linenos">1594</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">atom_names</span><span class="p">,</span>
+</span><span id="L-1595"><a href="#L-1595"><span class="linenos">1595</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="L-1596"><a href="#L-1596"><span class="linenos">1596</span></a>        <span class="p">)</span>
+</span><span id="L-1597"><a href="#L-1597"><span class="linenos">1597</span></a>
+</span><span id="L-1598"><a href="#L-1598"><span class="linenos">1598</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_spot_cation_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+</span><span id="L-1599"><a href="#L-1599"><span class="linenos">1599</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;spot_cation_groups に単位胞由来の cation_groups を展開してマージした辞書を返す（on-demand）。&quot;&quot;&quot;</span>
+</span><span id="L-1600"><a href="#L-1600"><span class="linenos">1600</span></a>        <span class="c1"># ベースは CLI/API で指定された spot_cation_groups</span>
+</span><span id="L-1601"><a href="#L-1601"><span class="linenos">1601</span></a>        <span class="n">effective</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="L-1602"><a href="#L-1602"><span class="linenos">1602</span></a>            <span class="n">k</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_cation_groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="L-1603"><a href="#L-1603"><span class="linenos">1603</span></a>        <span class="p">}</span>
+</span><span id="L-1604"><a href="#L-1604"><span class="linenos">1604</span></a>        <span class="c1"># number of nodes in the unitcell</span>
+</span><span id="L-1605"><a href="#L-1605"><span class="linenos">1605</span></a>        <span class="n">nuc_nodes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="L-1606"><a href="#L-1606"><span class="linenos">1606</span></a>        <span class="c1"># number of cages in the unitcell</span>
+</span><span id="L-1607"><a href="#L-1607"><span class="linenos">1607</span></a>        <span class="n">nuc_cages</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span>
+</span><span id="L-1608"><a href="#L-1608"><span class="linenos">1608</span></a>        <span class="k">for</span> <span class="n">un_node</span><span class="p">,</span> <span class="n">uc_group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cation_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1609"><a href="#L-1609"><span class="linenos">1609</span></a>            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">_replicate_lattice_node</span><span class="p">(</span>
+</span><span id="L-1610"><a href="#L-1610"><span class="linenos">1610</span></a>                <span class="n">un_node</span><span class="p">,</span> <span class="n">nuc_nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span>
+</span><span id="L-1611"><a href="#L-1611"><span class="linenos">1611</span></a>            <span class="p">):</span>
+</span><span id="L-1612"><a href="#L-1612"><span class="linenos">1612</span></a>                <span class="c1"># 拡大胞のノードに隣接する4つのケージのインデックス</span>
+</span><span id="L-1613"><a href="#L-1613"><span class="linenos">1613</span></a>                <span class="n">cage_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">node_to_cage_indices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="L-1614"><a href="#L-1614"><span class="linenos">1614</span></a>                <span class="k">for</span> <span class="n">cage_index</span> <span class="ow">in</span> <span class="n">cage_indices</span><span class="p">:</span>
+</span><span id="L-1615"><a href="#L-1615"><span class="linenos">1615</span></a>                    <span class="c1"># ケージのインデックスを単位胞でのインデックスになおし、そこに入るグループを取得</span>
+</span><span id="L-1616"><a href="#L-1616"><span class="linenos">1616</span></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cage_index</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">nuc_cages</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">uc_group</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">node</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1617"><a href="#L-1617"><span class="linenos">1617</span></a>                    <span class="n">uc_cage_index</span> <span class="o">=</span> <span class="n">cage_index</span> <span class="o">%</span> <span class="n">nuc_cages</span>
+</span><span id="L-1618"><a href="#L-1618"><span class="linenos">1618</span></a>                    <span class="k">if</span> <span class="n">uc_cage_index</span> <span class="ow">in</span> <span class="n">uc_group</span><span class="p">:</span>
+</span><span id="L-1619"><a href="#L-1619"><span class="linenos">1619</span></a>                        <span class="n">group</span> <span class="o">=</span> <span class="n">uc_group</span><span class="p">[</span><span class="n">cage_index</span> <span class="o">%</span> <span class="n">nuc_cages</span><span class="p">]</span>
+</span><span id="L-1620"><a href="#L-1620"><span class="linenos">1620</span></a>                        <span class="c1"># 拡大胞のノードに隣接する4つのケージのインデックスに、グループをマッピング</span>
+</span><span id="L-1621"><a href="#L-1621"><span class="linenos">1621</span></a>                        <span class="n">effective</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cage_index</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+</span><span id="L-1622"><a href="#L-1622"><span class="linenos">1622</span></a>        <span class="k">return</span> <span class="n">effective</span>
+</span><span id="L-1623"><a href="#L-1623"><span class="linenos">1623</span></a>
+</span><span id="L-1624"><a href="#L-1624"><span class="linenos">1624</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_hydronium</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="L-1625"><a href="#L-1625"><span class="linenos">1625</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を構築する。&quot;&quot;&quot;</span>
+</span><span id="L-1626"><a href="#L-1626"><span class="linenos">1626</span></a>        <span class="n">sites</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1627"><a href="#L-1627"><span class="linenos">1627</span></a>        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Cn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">]</span>
+</span><span id="L-1628"><a href="#L-1628"><span class="linenos">1628</span></a>        <span class="n">OH</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="L-1629"><a href="#L-1629"><span class="linenos">1629</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span id="L-1630"><a href="#L-1630"><span class="linenos">1630</span></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="L-1631"><a href="#L-1631"><span class="linenos">1631</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+</span><span id="L-1632"><a href="#L-1632"><span class="linenos">1632</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;H3O+ must have 3 neighbors.&quot;</span><span class="p">)</span>
+</span><span id="L-1633"><a href="#L-1633"><span class="linenos">1633</span></a>        <span class="k">for</span> <span class="n">neighbor</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
+</span><span id="L-1634"><a href="#L-1634"><span class="linenos">1634</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">neighbor</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="L-1635"><a href="#L-1635"><span class="linenos">1635</span></a>            <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-1636"><a href="#L-1636"><span class="linenos">1636</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="L-1637"><a href="#L-1637"><span class="linenos">1637</span></a>            <span class="n">direction</span> <span class="o">*=</span> <span class="n">OH</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="L-1638"><a href="#L-1638"><span class="linenos">1638</span></a>            <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="L-1639"><a href="#L-1639"><span class="linenos">1639</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="L-1640"><a href="#L-1640"><span class="linenos">1640</span></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;H3O&quot;</span><span class="p">,</span>
+</span><span id="L-1641"><a href="#L-1641"><span class="linenos">1641</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="L-1642"><a href="#L-1642"><span class="linenos">1642</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="L-1643"><a href="#L-1643"><span class="linenos">1643</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="L-1644"><a href="#L-1644"><span class="linenos">1644</span></a>        <span class="p">)</span>
+</span><span id="L-1645"><a href="#L-1645"><span class="linenos">1645</span></a>
+</span><span id="L-1646"><a href="#L-1646"><span class="linenos">1646</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_hydroxide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="L-1647"><a href="#L-1647"><span class="linenos">1647</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を構築する。&quot;&quot;&quot;</span>
+</span><span id="L-1648"><a href="#L-1648"><span class="linenos">1648</span></a>        <span class="n">sites</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-1649"><a href="#L-1649"><span class="linenos">1649</span></a>        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Nx&quot;</span><span class="p">,</span> <span class="s2">&quot;Hx&quot;</span><span class="p">]</span>
+</span><span id="L-1650"><a href="#L-1650"><span class="linenos">1650</span></a>        <span class="n">OH</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="L-1651"><a href="#L-1651"><span class="linenos">1651</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span id="L-1652"><a href="#L-1652"><span class="linenos">1652</span></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="L-1653"><a href="#L-1653"><span class="linenos">1653</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="L-1654"><a href="#L-1654"><span class="linenos">1654</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OH- must have 1 neighbor. </span><span class="si">{</span><span class="n">site_index</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">neighbors</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1655"><a href="#L-1655"><span class="linenos">1655</span></a>        <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">neighbors</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="L-1656"><a href="#L-1656"><span class="linenos">1656</span></a>        <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="L-1657"><a href="#L-1657"><span class="linenos">1657</span></a>        <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="L-1658"><a href="#L-1658"><span class="linenos">1658</span></a>        <span class="n">direction</span> <span class="o">*=</span> <span class="n">OH</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="L-1659"><a href="#L-1659"><span class="linenos">1659</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="L-1660"><a href="#L-1660"><span class="linenos">1660</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="L-1661"><a href="#L-1661"><span class="linenos">1661</span></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;OH&quot;</span><span class="p">,</span>
+</span><span id="L-1662"><a href="#L-1662"><span class="linenos">1662</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="L-1663"><a href="#L-1663"><span class="linenos">1663</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="L-1664"><a href="#L-1664"><span class="linenos">1664</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="L-1665"><a href="#L-1665"><span class="linenos">1665</span></a>        <span class="p">)</span>
+</span><span id="L-1666"><a href="#L-1666"><span class="linenos">1666</span></a>
+</span><span id="L-1667"><a href="#L-1667"><span class="linenos">1667</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">substitutional_ions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="L-1668"><a href="#L-1668"><span class="linenos">1668</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。&quot;&quot;&quot;</span>
+</span><span id="L-1669"><a href="#L-1669"><span class="linenos">1669</span></a>        <span class="c1"># 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う</span>
+</span><span id="L-1670"><a href="#L-1670"><span class="linenos">1670</span></a>
+</span><span id="L-1671"><a href="#L-1671"><span class="linenos">1671</span></a>        <span class="c1"># 前提条件: anions, cations, hydroniums, hydroxidesのサイトに重複がないこと。</span>
+</span><span id="L-1672"><a href="#L-1672"><span class="linenos">1672</span></a>        <span class="c1"># そうでない場合は、エラーを返す。</span>
+</span><span id="L-1673"><a href="#L-1673"><span class="linenos">1673</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-1674"><a href="#L-1674"><span class="linenos">1674</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroniums and hydroxides must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="L-1675"><a href="#L-1675"><span class="linenos">1675</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-1676"><a href="#L-1676"><span class="linenos">1676</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;anions and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="L-1677"><a href="#L-1677"><span class="linenos">1677</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-1678"><a href="#L-1678"><span class="linenos">1678</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroniums and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="L-1679"><a href="#L-1679"><span class="linenos">1679</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="L-1680"><a href="#L-1680"><span class="linenos">1680</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroxides and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="L-1681"><a href="#L-1681"><span class="linenos">1681</span></a>
+</span><span id="L-1682"><a href="#L-1682"><span class="linenos">1682</span></a>        <span class="n">ions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-1683"><a href="#L-1683"><span class="linenos">1683</span></a>        <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="L-1684"><a href="#L-1684"><span class="linenos">1684</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_hydronium</span><span class="p">(</span><span class="n">site_index</span><span class="p">)</span>
+</span><span id="L-1685"><a href="#L-1685"><span class="linenos">1685</span></a>        <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="L-1686"><a href="#L-1686"><span class="linenos">1686</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_hydroxide</span><span class="p">(</span><span class="n">site_index</span><span class="p">)</span>
+</span><span id="L-1687"><a href="#L-1687"><span class="linenos">1687</span></a>        <span class="c1"># ならべかえはここではしない。formatterにまかせる。</span>
+</span><span id="L-1688"><a href="#L-1688"><span class="linenos">1688</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1689"><a href="#L-1689"><span class="linenos">1689</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_molecular_ion</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span>
+</span><span id="L-1690"><a href="#L-1690"><span class="linenos">1690</span></a>        <span class="n">effective_groups</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_spot_cation_groups</span><span class="p">()</span>
+</span><span id="L-1691"><a href="#L-1691"><span class="linenos">1691</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1692"><a href="#L-1692"><span class="linenos">1692</span></a>            <span class="c1"># cationには腕がつく可能性がある。</span>
+</span><span id="L-1693"><a href="#L-1693"><span class="linenos">1693</span></a>            <span class="n">groups</span> <span class="o">=</span> <span class="n">effective_groups</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="p">{})</span>
+</span><span id="L-1694"><a href="#L-1694"><span class="linenos">1694</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_molecular_ion</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+</span><span id="L-1695"><a href="#L-1695"><span class="linenos">1695</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ions</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="L-1696"><a href="#L-1696"><span class="linenos">1696</span></a>        <span class="k">return</span> <span class="n">ions</span>
+</span><span id="L-1697"><a href="#L-1697"><span class="linenos">1697</span></a>
+</span><span id="L-1698"><a href="#L-1698"><span class="linenos">1698</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dope_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1699"><a href="#L-1699"><span class="linenos">1699</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト番号→分子の辞書でアニオン配置を上書きする（主に API/テスト用）。&quot;&quot;&quot;</span>
+</span><span id="L-1700"><a href="#L-1700"><span class="linenos">1700</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1701"><a href="#L-1701"><span class="linenos">1701</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="L-1702"><a href="#L-1702"><span class="linenos">1702</span></a>
+</span><span id="L-1703"><a href="#L-1703"><span class="linenos">1703</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dope_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-1704"><a href="#L-1704"><span class="linenos">1704</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト番号→分子の辞書でカチオン配置を上書きする（主に API/テスト用）。&quot;&quot;&quot;</span>
+</span><span id="L-1705"><a href="#L-1705"><span class="linenos">1705</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="L-1706"><a href="#L-1706"><span class="linenos">1706</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="L-1707"><a href="#L-1707"><span class="linenos">1707</span></a>
+</span><span id="L-1708"><a href="#L-1708"><span class="linenos">1708</span></a>    <span class="c1"># def get_atomic_structure(</span>
+</span><span id="L-1709"><a href="#L-1709"><span class="linenos">1709</span></a>    <span class="c1">#     self,</span>
+</span><span id="L-1710"><a href="#L-1710"><span class="linenos">1710</span></a>    <span class="c1">#     water_model: Optional[Molecule] = None,</span>
+</span><span id="L-1711"><a href="#L-1711"><span class="linenos">1711</span></a>    <span class="c1">#     guests: Optional[Dict[str, List[GuestSpec]]] = None,</span>
+</span><span id="L-1712"><a href="#L-1712"><span class="linenos">1712</span></a>    <span class="c1">#     spot_guests: Optional[Dict[int, Molecule]] = None,</span>
+</span><span id="L-1713"><a href="#L-1713"><span class="linenos">1713</span></a>    <span class="c1"># ) -&gt; AtomicStructure:</span>
+</span><span id="L-1714"><a href="#L-1714"><span class="linenos">1714</span></a>    <span class="c1">#     &quot;&quot;&quot;</span>
+</span><span id="L-1715"><a href="#L-1715"><span class="linenos">1715</span></a>    <span class="c1">#     原子構造データを統合的に取得する。</span>
+</span><span id="L-1716"><a href="#L-1716"><span class="linenos">1716</span></a>    <span class="c1">#     exporterプラグインが使用するための統一インターフェース。</span>
+</span><span id="L-1717"><a href="#L-1717"><span class="linenos">1717</span></a>
+</span><span id="L-1718"><a href="#L-1718"><span class="linenos">1718</span></a>    <span class="c1">#     Args:</span>
+</span><span id="L-1719"><a href="#L-1719"><span class="linenos">1719</span></a>    <span class="c1">#         water_model: 水分子モデル（デフォルト: FourSiteWater()）</span>
+</span><span id="L-1720"><a href="#L-1720"><span class="linenos">1720</span></a>    <span class="c1">#         guests: ケージタイプごとのゲスト分子の指定（デフォルト: {}）</span>
+</span><span id="L-1721"><a href="#L-1721"><span class="linenos">1721</span></a>    <span class="c1">#         spot_guests: 特定ケージ位置へのゲスト分子の指定（デフォルト: {}）</span>
+</span><span id="L-1722"><a href="#L-1722"><span class="linenos">1722</span></a>
+</span><span id="L-1723"><a href="#L-1723"><span class="linenos">1723</span></a>    <span class="c1">#     Returns:</span>
+</span><span id="L-1724"><a href="#L-1724"><span class="linenos">1724</span></a>    <span class="c1">#         AtomicStructure: 水分子、ゲスト分子、イオン、セル行列を含む統合データ構造</span>
+</span><span id="L-1725"><a href="#L-1725"><span class="linenos">1725</span></a>    <span class="c1">#     &quot;&quot;&quot;</span>
+</span><span id="L-1726"><a href="#L-1726"><span class="linenos">1726</span></a>
+</span><span id="L-1727"><a href="#L-1727"><span class="linenos">1727</span></a>    <span class="c1">#     return AtomicStructure(</span>
+</span><span id="L-1728"><a href="#L-1728"><span class="linenos">1728</span></a>    <span class="c1">#         waters=self.water_molecules(water_model=water_model),</span>
+</span><span id="L-1729"><a href="#L-1729"><span class="linenos">1729</span></a>    <span class="c1">#         guests=self.guest_molecules(</span>
+</span><span id="L-1730"><a href="#L-1730"><span class="linenos">1730</span></a>    <span class="c1">#             guests=guests or {}, spot_guests=spot_guests or {}</span>
+</span><span id="L-1731"><a href="#L-1731"><span class="linenos">1731</span></a>    <span class="c1">#         ),</span>
+</span><span id="L-1732"><a href="#L-1732"><span class="linenos">1732</span></a>    <span class="c1">#         ions=self.substitutional_ions(),</span>
+</span><span id="L-1733"><a href="#L-1733"><span class="linenos">1733</span></a>    <span class="c1">#         cell=self.cell,</span>
+</span><span id="L-1734"><a href="#L-1734"><span class="linenos">1734</span></a>    <span class="c1">#     )</span>
+</span><span id="L-1735"><a href="#L-1735"><span class="linenos">1735</span></a>
+</span><span id="L-1736"><a href="#L-1736"><span class="linenos">1736</span></a>    <span class="nd">@classmethod</span>
+</span><span id="L-1737"><a href="#L-1737"><span class="linenos">1737</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_public_api_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="L-1738"><a href="#L-1738"><span class="linenos">1738</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-1739"><a href="#L-1739"><span class="linenos">1739</span></a><span class="sd">        ユーザー向けAPIとして公開されているpropertyのリストを返す。</span>
+</span><span id="L-1740"><a href="#L-1740"><span class="linenos">1740</span></a>
+</span><span id="L-1741"><a href="#L-1741"><span class="linenos">1741</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1742"><a href="#L-1742"><span class="linenos">1742</span></a><span class="sd">            list: 公開API property名のリスト</span>
+</span><span id="L-1743"><a href="#L-1743"><span class="linenos">1743</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1744"><a href="#L-1744"><span class="linenos">1744</span></a>        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="L-1745"><a href="#L-1745"><span class="linenos">1745</span></a>
+</span><span id="L-1746"><a href="#L-1746"><span class="linenos">1746</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_all_reactive_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1747"><a href="#L-1747"><span class="linenos">1747</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-1748"><a href="#L-1748"><span class="linenos">1748</span></a><span class="sd">        すべてのリアクティブプロパティ（DependencyEngineに登録されたタスク）を列挙する。</span>
+</span><span id="L-1749"><a href="#L-1749"><span class="linenos">1749</span></a>
+</span><span id="L-1750"><a href="#L-1750"><span class="linenos">1750</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1751"><a href="#L-1751"><span class="linenos">1751</span></a><span class="sd">            dict: property名をキー、タスク関数を値とする辞書</span>
+</span><span id="L-1752"><a href="#L-1752"><span class="linenos">1752</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1753"><a href="#L-1753"><span class="linenos">1753</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">registry</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="L-1754"><a href="#L-1754"><span class="linenos">1754</span></a>
+</span><span id="L-1755"><a href="#L-1755"><span class="linenos">1755</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_public_reactive_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-1756"><a href="#L-1756"><span class="linenos">1756</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-1757"><a href="#L-1757"><span class="linenos">1757</span></a><span class="sd">        ユーザー向けAPIとして公開されているリアクティブプロパティのみを列挙する。</span>
+</span><span id="L-1758"><a href="#L-1758"><span class="linenos">1758</span></a>
+</span><span id="L-1759"><a href="#L-1759"><span class="linenos">1759</span></a><span class="sd">        Returns:</span>
+</span><span id="L-1760"><a href="#L-1760"><span class="linenos">1760</span></a><span class="sd">            dict: property名をキー、タスク関数を値とする辞書</span>
+</span><span id="L-1761"><a href="#L-1761"><span class="linenos">1761</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-1762"><a href="#L-1762"><span class="linenos">1762</span></a>        <span class="n">all_reactive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_all_reactive_properties</span><span class="p">()</span>
+</span><span id="L-1763"><a href="#L-1763"><span class="linenos">1763</span></a>        <span class="n">public_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span><span class="p">)</span>
+</span><span id="L-1764"><a href="#L-1764"><span class="linenos">1764</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="L-1765"><a href="#L-1765"><span class="linenos">1765</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">func</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">all_reactive</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">public_names</span>
+</span><span id="L-1766"><a href="#L-1766"><span class="linenos">1766</span></a>        <span class="p">}</span>
+</span><span id="L-1767"><a href="#L-1767"><span class="linenos">1767</span></a>
+</span><span id="L-1768"><a href="#L-1768"><span class="linenos">1768</span></a>    <span class="nd">@classmethod</span>
+</span><span id="L-1769"><a href="#L-1769"><span class="linenos">1769</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_settable_reactive_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="L-1770"><a href="#L-1770"><span class="linenos">1770</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;setterを持つリアクティブな変数を列挙する&quot;&quot;&quot;</span>
+</span><span id="L-1771"><a href="#L-1771"><span class="linenos">1771</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="L-1772"><a href="#L-1772"><span class="linenos">1772</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">prop</span>
+</span><span id="L-1773"><a href="#L-1773"><span class="linenos">1773</span></a>            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span>
+</span><span id="L-1774"><a href="#L-1774"><span class="linenos">1774</span></a>                <span class="bp">cls</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">property</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="o">.</span><span class="n">fset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="L-1775"><a href="#L-1775"><span class="linenos">1775</span></a>            <span class="p">)</span>
+</span><span id="L-1776"><a href="#L-1776"><span class="linenos">1776</span></a>        <span class="p">}</span>
+</span><span id="L-1777"><a href="#L-1777"><span class="linenos">1777</span></a>
+</span><span id="L-1778"><a href="#L-1778"><span class="linenos">1778</span></a>    <span class="nd">@classmethod</span>
+</span><span id="L-1779"><a href="#L-1779"><span class="linenos">1779</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_public_settable_reactive_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="L-1780"><a href="#L-1780"><span class="linenos">1780</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;公開APIのうち、setter を持つリアクティブプロパティのみを列挙する。&quot;&quot;&quot;</span>
+</span><span id="L-1781"><a href="#L-1781"><span class="linenos">1781</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="L-1782"><a href="#L-1782"><span class="linenos">1782</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">prop</span>
+</span><span id="L-1783"><a href="#L-1783"><span class="linenos">1783</span></a>            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">list_settable_reactive_properties</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="L-1784"><a href="#L-1784"><span class="linenos">1784</span></a>            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span>
+</span><span id="L-1785"><a href="#L-1785"><span class="linenos">1785</span></a>        <span class="p">}</span>
+</span></pre></div>
+
+
+            </section>
+                <section id="ShowUsageError">
+                            <input id="ShowUsageError-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+            
+    <span class="def">class</span>
+    <span class="name">ShowUsageError</span><wbr>(<span class="base">builtins.Exception</span>):
+
+                <label class="view-source-button" for="ShowUsageError-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#ShowUsageError"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="ShowUsageError-44"><a href="#ShowUsageError-44"><span class="linenos">44</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ShowUsageError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+</span><span id="ShowUsageError-45"><a href="#ShowUsageError-45"><span class="linenos">45</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Usage表示を要求する例外</span>
+</span><span id="ShowUsageError-46"><a href="#ShowUsageError-46"><span class="linenos">46</span></a>
+</span><span id="ShowUsageError-47"><a href="#ShowUsageError-47"><span class="linenos">47</span></a><span class="sd">    Args:</span>
+</span><span id="ShowUsageError-48"><a href="#ShowUsageError-48"><span class="linenos">48</span></a><span class="sd">        flag_name: フラグ名（例: &quot;?&quot;, &quot;help?&quot;, &quot;cage?&quot;）</span>
+</span><span id="ShowUsageError-49"><a href="#ShowUsageError-49"><span class="linenos">49</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="ShowUsageError-50"><a href="#ShowUsageError-50"><span class="linenos">50</span></a>
+</span><span id="ShowUsageError-51"><a href="#ShowUsageError-51"><span class="linenos">51</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+</span><span id="ShowUsageError-52"><a href="#ShowUsageError-52"><span class="linenos">52</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">flag_name</span> <span class="o">=</span> <span class="n">flag_name</span>
+</span><span id="ShowUsageError-53"><a href="#ShowUsageError-53"><span class="linenos">53</span></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;Show usage for flag: </span><span class="si">{</span><span class="n">flag_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Usage表示を要求する例外</p>
+
+<p>Args:
+    flag_name: フラグ名（例: "?", "help?", "cage?"）</p>
+</div>
+
+
+                            <div id="ShowUsageError.__init__" class="classattr">
+                                        <input id="ShowUsageError.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="name">ShowUsageError</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">flag_name</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span></span>)</span>
+
+                <label class="view-source-button" for="ShowUsageError.__init__-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#ShowUsageError.__init__"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="ShowUsageError.__init__-51"><a href="#ShowUsageError.__init__-51"><span class="linenos">51</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+</span><span id="ShowUsageError.__init__-52"><a href="#ShowUsageError.__init__-52"><span class="linenos">52</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">flag_name</span> <span class="o">=</span> <span class="n">flag_name</span>
+</span><span id="ShowUsageError.__init__-53"><a href="#ShowUsageError.__init__-53"><span class="linenos">53</span></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;Show usage for flag: </span><span class="si">{</span><span class="n">flag_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></pre></div>
+
+
+    
+
+                            </div>
+                            <div id="ShowUsageError.flag_name" class="classattr">
+                                <div class="attr variable">
+            <span class="name">flag_name</span>
+
+        
+    </div>
+    <a class="headerlink" href="#ShowUsageError.flag_name"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="MoleculeType">
+                            <input id="MoleculeType-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+            
+    <span class="def">class</span>
+    <span class="name">MoleculeType</span><wbr>(<span class="base">enum.Enum</span>):
+
+                <label class="view-source-button" for="MoleculeType-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#MoleculeType"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="MoleculeType-57"><a href="#MoleculeType-57"><span class="linenos">57</span></a><span class="k">class</span><span class="w"> </span><span class="nc">MoleculeType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+</span><span id="MoleculeType-58"><a href="#MoleculeType-58"><span class="linenos">58</span></a>    <span class="n">WATER</span> <span class="o">=</span> <span class="s2">&quot;water&quot;</span>
+</span><span id="MoleculeType-59"><a href="#MoleculeType-59"><span class="linenos">59</span></a>    <span class="n">GUEST</span> <span class="o">=</span> <span class="s2">&quot;guest&quot;</span>
+</span><span id="MoleculeType-60"><a href="#MoleculeType-60"><span class="linenos">60</span></a>    <span class="n">DOPANT</span> <span class="o">=</span> <span class="s2">&quot;dopant&quot;</span>
+</span><span id="MoleculeType-61"><a href="#MoleculeType-61"><span class="linenos">61</span></a>    <span class="n">GROUP</span> <span class="o">=</span> <span class="s2">&quot;group&quot;</span>
+</span></pre></div>
+
+
+    
+
+                            <div id="MoleculeType.WATER" class="classattr">
+                                <div class="attr variable">
+            <span class="name">WATER</span>        =
+<span class="default_value">&lt;<a href="#MoleculeType.WATER">MoleculeType.WATER</a>: &#39;water&#39;&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#MoleculeType.WATER"></a>
+    
+    
+
+                            </div>
+                            <div id="MoleculeType.GUEST" class="classattr">
+                                <div class="attr variable">
+            <span class="name">GUEST</span>        =
+<span class="default_value">&lt;<a href="#MoleculeType.GUEST">MoleculeType.GUEST</a>: &#39;guest&#39;&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#MoleculeType.GUEST"></a>
+    
+    
+
+                            </div>
+                            <div id="MoleculeType.DOPANT" class="classattr">
+                                <div class="attr variable">
+            <span class="name">DOPANT</span>        =
+<span class="default_value">&lt;<a href="#MoleculeType.DOPANT">MoleculeType.DOPANT</a>: &#39;dopant&#39;&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#MoleculeType.DOPANT"></a>
+    
+    
+
+                            </div>
+                            <div id="MoleculeType.GROUP" class="classattr">
+                                <div class="attr variable">
+            <span class="name">GROUP</span>        =
+<span class="default_value">&lt;<a href="#MoleculeType.GROUP">MoleculeType.GROUP</a>: &#39;group&#39;&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#MoleculeType.GROUP"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="GuestSpec">
+                            <input id="GuestSpec-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass</div>
+
+    <span class="def">class</span>
+    <span class="name">GuestSpec</span>:
+
+                <label class="view-source-button" for="GuestSpec-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GuestSpec"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GuestSpec-64"><a href="#GuestSpec-64"><span class="linenos">64</span></a><span class="nd">@dataclass</span>
+</span><span id="GuestSpec-65"><a href="#GuestSpec-65"><span class="linenos">65</span></a><span class="k">class</span><span class="w"> </span><span class="nc">GuestSpec</span><span class="p">:</span>
+</span><span id="GuestSpec-66"><a href="#GuestSpec-66"><span class="linenos">66</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GuestSpec-67"><a href="#GuestSpec-67"><span class="linenos">67</span></a><span class="sd">    ゲストの情報を表すデータクラス。</span>
+</span><span id="GuestSpec-68"><a href="#GuestSpec-68"><span class="linenos">68</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="GuestSpec-69"><a href="#GuestSpec-69"><span class="linenos">69</span></a>
+</span><span id="GuestSpec-70"><a href="#GuestSpec-70"><span class="linenos">70</span></a>    <span class="n">molecule</span><span class="p">:</span> <span class="n">Molecule</span>
+</span><span id="GuestSpec-71"><a href="#GuestSpec-71"><span class="linenos">71</span></a>    <span class="n">occupancy</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="GuestSpec-72"><a href="#GuestSpec-72"><span class="linenos">72</span></a>
+</span><span id="GuestSpec-73"><a href="#GuestSpec-73"><span class="linenos">73</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="GuestSpec-74"><a href="#GuestSpec-74"><span class="linenos">74</span></a>        <span class="k">return</span> <span class="p">(</span>
+</span><span id="GuestSpec-75"><a href="#GuestSpec-75"><span class="linenos">75</span></a>            <span class="sa">f</span><span class="s2">&quot;GuestSpec(molecule=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+</span><span id="GuestSpec-76"><a href="#GuestSpec-76"><span class="linenos">76</span></a>            <span class="sa">f</span><span class="s2">&quot;occupancy=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">occupancy</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="GuestSpec-77"><a href="#GuestSpec-77"><span class="linenos">77</span></a>        <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>ゲストの情報を表すデータクラス。</p>
+</div>
+
+
+                            <div id="GuestSpec.__init__" class="classattr">
+                                <div class="attr function">
+            
+        <span class="name">GuestSpec</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">molecule</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span>, </span><span class="param"><span class="n">occupancy</span><span class="p">:</span> <span class="nb">float</span></span>)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GuestSpec.__init__"></a>
+    
+    
+
+                            </div>
+                            <div id="GuestSpec.molecule" class="classattr">
+                                <div class="attr variable">
+            <span class="name">molecule</span><span class="annotation">: genice3.molecule.Molecule</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GuestSpec.molecule"></a>
+    
+    
+
+                            </div>
+                            <div id="GuestSpec.occupancy" class="classattr">
+                                <div class="attr variable">
+            <span class="name">occupancy</span><span class="annotation">: float</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GuestSpec.occupancy"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="AtomicStructure">
+                            <input id="AtomicStructure-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass</div>
+
+    <span class="def">class</span>
+    <span class="name">AtomicStructure</span>:
+
+                <label class="view-source-button" for="AtomicStructure-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#AtomicStructure"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AtomicStructure-80"><a href="#AtomicStructure-80"><span class="linenos">80</span></a><span class="nd">@dataclass</span>
+</span><span id="AtomicStructure-81"><a href="#AtomicStructure-81"><span class="linenos">81</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AtomicStructure</span><span class="p">:</span>
+</span><span id="AtomicStructure-82"><a href="#AtomicStructure-82"><span class="linenos">82</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AtomicStructure-83"><a href="#AtomicStructure-83"><span class="linenos">83</span></a><span class="sd">    原子構造データを統合的に保持するデータクラス。</span>
+</span><span id="AtomicStructure-84"><a href="#AtomicStructure-84"><span class="linenos">84</span></a><span class="sd">    exporterプラグインが使用するための統一インターフェース。</span>
+</span><span id="AtomicStructure-85"><a href="#AtomicStructure-85"><span class="linenos">85</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="AtomicStructure-86"><a href="#AtomicStructure-86"><span class="linenos">86</span></a>
+</span><span id="AtomicStructure-87"><a href="#AtomicStructure-87"><span class="linenos">87</span></a>    <span class="n">waters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+</span><span id="AtomicStructure-88"><a href="#AtomicStructure-88"><span class="linenos">88</span></a>    <span class="n">guests</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Molecule</span><span class="p">]</span>
+</span><span id="AtomicStructure-89"><a href="#AtomicStructure-89"><span class="linenos">89</span></a>    <span class="n">ions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+</span><span id="AtomicStructure-90"><a href="#AtomicStructure-90"><span class="linenos">90</span></a>    <span class="n">cell</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span><span id="AtomicStructure-91"><a href="#AtomicStructure-91"><span class="linenos">91</span></a>
+</span><span id="AtomicStructure-92"><a href="#AtomicStructure-92"><span class="linenos">92</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="AtomicStructure-93"><a href="#AtomicStructure-93"><span class="linenos">93</span></a>        <span class="k">return</span> <span class="p">(</span>
+</span><span id="AtomicStructure-94"><a href="#AtomicStructure-94"><span class="linenos">94</span></a>            <span class="sa">f</span><span class="s2">&quot;AtomicStructure(n_waters=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waters</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="AtomicStructure-95"><a href="#AtomicStructure-95"><span class="linenos">95</span></a>            <span class="sa">f</span><span class="s2">&quot;n_guests=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="AtomicStructure-96"><a href="#AtomicStructure-96"><span class="linenos">96</span></a>            <span class="sa">f</span><span class="s2">&quot;n_ions=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ions</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="AtomicStructure-97"><a href="#AtomicStructure-97"><span class="linenos">97</span></a>            <span class="sa">f</span><span class="s2">&quot;cell_shape=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="AtomicStructure-98"><a href="#AtomicStructure-98"><span class="linenos">98</span></a>        <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>原子構造データを統合的に保持するデータクラス。
+exporterプラグインが使用するための統一インターフェース。</p>
+</div>
+
+
+                            <div id="AtomicStructure.__init__" class="classattr">
+                                <div class="attr function">
+            
+        <span class="name">AtomicStructure</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">waters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span>,</span><span class="param">	<span class="n">guests</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span>,</span><span class="param">	<span class="n">ions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span>,</span><span class="param">	<span class="n">cell</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span>)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#AtomicStructure.__init__"></a>
+    
+    
+
+                            </div>
+                            <div id="AtomicStructure.waters" class="classattr">
+                                <div class="attr variable">
+            <span class="name">waters</span><span class="annotation">: Dict[int, genice3.molecule.Molecule]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#AtomicStructure.waters"></a>
+    
+    
+
+                            </div>
+                            <div id="AtomicStructure.guests" class="classattr">
+                                <div class="attr variable">
+            <span class="name">guests</span><span class="annotation">: List[genice3.molecule.Molecule]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#AtomicStructure.guests"></a>
+    
+    
+
+                            </div>
+                            <div id="AtomicStructure.ions" class="classattr">
+                                <div class="attr variable">
+            <span class="name">ions</span><span class="annotation">: Dict[int, genice3.molecule.Molecule]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#AtomicStructure.ions"></a>
+    
+    
+
+                            </div>
+                            <div id="AtomicStructure.cell" class="classattr">
+                                <div class="attr variable">
+            <span class="name">cell</span><span class="annotation">: numpy.ndarray</span>
+
+        
+    </div>
+    <a class="headerlink" href="#AtomicStructure.cell"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="replicate_subgraph">
+                            <input id="replicate_subgraph-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">replicate_subgraph</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">repgraph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span>,</span><span class="param">	<span class="n">subgraph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span>,</span><span class="param">	<span class="n">nmol</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="n">Generator</span><span class="p">[</span><span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">NoneType</span><span class="p">,</span> <span class="n">NoneType</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="replicate_subgraph-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#replicate_subgraph"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="replicate_subgraph-297"><a href="#replicate_subgraph-297"><span class="linenos">297</span></a><span class="k">def</span><span class="w"> </span><span class="nf">replicate_subgraph</span><span class="p">(</span>
+</span><span id="replicate_subgraph-298"><a href="#replicate_subgraph-298"><span class="linenos">298</span></a>    <span class="n">repgraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">subgraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">nmol</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="replicate_subgraph-299"><a href="#replicate_subgraph-299"><span class="linenos">299</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="replicate_subgraph-300"><a href="#replicate_subgraph-300"><span class="linenos">300</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;単位胞内の subgraph の各レプリカを repgraph から取り出して yield する。</span>
+</span><span id="replicate_subgraph-301"><a href="#replicate_subgraph-301"><span class="linenos">301</span></a>
+</span><span id="replicate_subgraph-302"><a href="#replicate_subgraph-302"><span class="linenos">302</span></a><span class="sd">    Args:</span>
+</span><span id="replicate_subgraph-303"><a href="#replicate_subgraph-303"><span class="linenos">303</span></a><span class="sd">        repgraph: 拡大単位胞全体の無向グラフ。</span>
+</span><span id="replicate_subgraph-304"><a href="#replicate_subgraph-304"><span class="linenos">304</span></a><span class="sd">        subgraph: 単位胞内の部分グラフ（例: 1ケージを構成するノードと辺）。</span>
+</span><span id="replicate_subgraph-305"><a href="#replicate_subgraph-305"><span class="linenos">305</span></a><span class="sd">        nmol: 単位胞内のノード数。</span>
+</span><span id="replicate_subgraph-306"><a href="#replicate_subgraph-306"><span class="linenos">306</span></a>
+</span><span id="replicate_subgraph-307"><a href="#replicate_subgraph-307"><span class="linenos">307</span></a><span class="sd">    Yields:</span>
+</span><span id="replicate_subgraph-308"><a href="#replicate_subgraph-308"><span class="linenos">308</span></a><span class="sd">        拡大単位胞内の各レプリカに対応する部分グラフ（nx.Graph）。</span>
+</span><span id="replicate_subgraph-309"><a href="#replicate_subgraph-309"><span class="linenos">309</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="replicate_subgraph-310"><a href="#replicate_subgraph-310"><span class="linenos">310</span></a>    <span class="n">origin</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">subgraph</span><span class="o">.</span><span class="n">nodes</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="replicate_subgraph-311"><a href="#replicate_subgraph-311"><span class="linenos">311</span></a>    <span class="n">nrep</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">repgraph</span><span class="p">)</span> <span class="o">//</span> <span class="n">nmol</span>  <span class="c1"># number of replicas</span>
+</span><span id="replicate_subgraph-312"><a href="#replicate_subgraph-312"><span class="linenos">312</span></a>
+</span><span id="replicate_subgraph-313"><a href="#replicate_subgraph-313"><span class="linenos">313</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_next</span><span class="p">(</span><span class="n">_reporigin</span><span class="p">):</span>
+</span><span id="replicate_subgraph-314"><a href="#replicate_subgraph-314"><span class="linenos">314</span></a>        <span class="k">for</span> <span class="n">_repnei</span> <span class="ow">in</span> <span class="n">nx</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">repgraph</span><span class="p">,</span> <span class="n">_reporigin</span><span class="p">):</span>
+</span><span id="replicate_subgraph-315"><a href="#replicate_subgraph-315"><span class="linenos">315</span></a>            <span class="n">_origin</span> <span class="o">=</span> <span class="n">_reporigin</span> <span class="o">%</span> <span class="n">nmol</span>
+</span><span id="replicate_subgraph-316"><a href="#replicate_subgraph-316"><span class="linenos">316</span></a>            <span class="n">_nei</span> <span class="o">=</span> <span class="n">_repnei</span> <span class="o">%</span> <span class="n">nmol</span>
+</span><span id="replicate_subgraph-317"><a href="#replicate_subgraph-317"><span class="linenos">317</span></a>            <span class="k">if</span> <span class="n">_nei</span> <span class="ow">in</span> <span class="n">nx</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">subgraph</span><span class="p">,</span> <span class="n">_origin</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">replica</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span>
+</span><span id="replicate_subgraph-318"><a href="#replicate_subgraph-318"><span class="linenos">318</span></a>                <span class="n">_reporigin</span><span class="p">,</span> <span class="n">_repnei</span>
+</span><span id="replicate_subgraph-319"><a href="#replicate_subgraph-319"><span class="linenos">319</span></a>            <span class="p">):</span>
+</span><span id="replicate_subgraph-320"><a href="#replicate_subgraph-320"><span class="linenos">320</span></a>                <span class="n">replica</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">_reporigin</span><span class="p">,</span> <span class="n">_repnei</span><span class="p">)</span>
+</span><span id="replicate_subgraph-321"><a href="#replicate_subgraph-321"><span class="linenos">321</span></a>                <span class="n">_next</span><span class="p">(</span><span class="n">_repnei</span><span class="p">)</span>
+</span><span id="replicate_subgraph-322"><a href="#replicate_subgraph-322"><span class="linenos">322</span></a>
+</span><span id="replicate_subgraph-323"><a href="#replicate_subgraph-323"><span class="linenos">323</span></a>    <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nrep</span><span class="p">):</span>
+</span><span id="replicate_subgraph-324"><a href="#replicate_subgraph-324"><span class="linenos">324</span></a>        <span class="n">reporigin</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">nmol</span> <span class="o">*</span> <span class="n">rep</span>
+</span><span id="replicate_subgraph-325"><a href="#replicate_subgraph-325"><span class="linenos">325</span></a>        <span class="n">replica</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+</span><span id="replicate_subgraph-326"><a href="#replicate_subgraph-326"><span class="linenos">326</span></a>        <span class="n">_next</span><span class="p">(</span><span class="n">reporigin</span><span class="p">)</span>
+</span><span id="replicate_subgraph-327"><a href="#replicate_subgraph-327"><span class="linenos">327</span></a>        <span class="k">yield</span> <span class="n">replica</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>単位胞内の subgraph の各レプリカを repgraph から取り出して yield する。</p>
+
+<p>Args:
+    repgraph: 拡大単位胞全体の無向グラフ。
+    subgraph: 単位胞内の部分グラフ（例: 1ケージを構成するノードと辺）。
+    nmol: 単位胞内のノード数。</p>
+
+<p>Yields:
+    拡大単位胞内の各レプリカに対応する部分グラフ（nx.Graph）。</p>
+</div>
+
+
+                </section>
+                <section id="cell">
+                            <input id="cell-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">cell</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">replication_matrix</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="cell-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#cell"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="cell-338"><a href="#cell-338"><span class="linenos">338</span></a><span class="nd">@reactive</span>
+</span><span id="cell-339"><a href="#cell-339"><span class="linenos">339</span></a><span class="k">def</span><span class="w"> </span><span class="nf">cell</span><span class="p">(</span><span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="cell-340"><a href="#cell-340"><span class="linenos">340</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;拡大単位胞のセル行列&quot;&quot;&quot;</span>
+</span><span id="cell-341"><a href="#cell-341"><span class="linenos">341</span></a>    <span class="k">return</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">cell</span> <span class="o">@</span> <span class="n">replication_matrix</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>拡大単位胞のセル行列</p>
+</div>
+
+
+                </section>
+                <section id="replica_vectors">
+                            <input id="replica_vectors-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">replica_vectors</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">replication_matrix</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="replica_vectors-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#replica_vectors"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="replica_vectors-344"><a href="#replica_vectors-344"><span class="linenos">344</span></a><span class="nd">@reactive</span>
+</span><span id="replica_vectors-345"><a href="#replica_vectors-345"><span class="linenos">345</span></a><span class="k">def</span><span class="w"> </span><span class="nf">replica_vectors</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="replica_vectors-346"><a href="#replica_vectors-346"><span class="linenos">346</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;レプリカベクトルを計算する。</span>
+</span><span id="replica_vectors-347"><a href="#replica_vectors-347"><span class="linenos">347</span></a>
+</span><span id="replica_vectors-348"><a href="#replica_vectors-348"><span class="linenos">348</span></a><span class="sd">    拡大単位胞を構成するために必要な、元の単位胞のグリッド位置を表す</span>
+</span><span id="replica_vectors-349"><a href="#replica_vectors-349"><span class="linenos">349</span></a><span class="sd">    整数ベクトルのリストを生成します。各ベクトルは、拡大単位胞内での</span>
+</span><span id="replica_vectors-350"><a href="#replica_vectors-350"><span class="linenos">350</span></a><span class="sd">    単位胞の相対位置を表します。</span>
+</span><span id="replica_vectors-351"><a href="#replica_vectors-351"><span class="linenos">351</span></a>
+</span><span id="replica_vectors-352"><a href="#replica_vectors-352"><span class="linenos">352</span></a><span class="sd">    Args:</span>
+</span><span id="replica_vectors-353"><a href="#replica_vectors-353"><span class="linenos">353</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列</span>
+</span><span id="replica_vectors-354"><a href="#replica_vectors-354"><span class="linenos">354</span></a>
+</span><span id="replica_vectors-355"><a href="#replica_vectors-355"><span class="linenos">355</span></a><span class="sd">    Returns:</span>
+</span><span id="replica_vectors-356"><a href="#replica_vectors-356"><span class="linenos">356</span></a><span class="sd">        np.ndarray: レプリカベクトルの配列（Nx3配列、Nは拡大単位胞内の単位胞数）</span>
+</span><span id="replica_vectors-357"><a href="#replica_vectors-357"><span class="linenos">357</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="replica_vectors-358"><a href="#replica_vectors-358"><span class="linenos">358</span></a>    <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span>
+</span><span id="replica_vectors-359"><a href="#replica_vectors-359"><span class="linenos">359</span></a>    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="replica_vectors-360"><a href="#replica_vectors-360"><span class="linenos">360</span></a>        <span class="p">[</span><span class="n">a</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">k</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+</span><span id="replica_vectors-361"><a href="#replica_vectors-361"><span class="linenos">361</span></a>    <span class="p">)</span>
+</span><span id="replica_vectors-362"><a href="#replica_vectors-362"><span class="linenos">362</span></a>
+</span><span id="replica_vectors-363"><a href="#replica_vectors-363"><span class="linenos">363</span></a>    <span class="n">mins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="replica_vectors-364"><a href="#replica_vectors-364"><span class="linenos">364</span></a>    <span class="n">maxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="replica_vectors-365"><a href="#replica_vectors-365"><span class="linenos">365</span></a>    <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">mins</span><span class="si">=}</span><span class="s2">, </span><span class="si">{</span><span class="n">maxs</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="replica_vectors-366"><a href="#replica_vectors-366"><span class="linenos">366</span></a>
+</span><span id="replica_vectors-367"><a href="#replica_vectors-367"><span class="linenos">367</span></a>    <span class="n">det</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">))</span>
+</span><span id="replica_vectors-368"><a href="#replica_vectors-368"><span class="linenos">368</span></a>    <span class="n">det</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">det</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="replica_vectors-369"><a href="#replica_vectors-369"><span class="linenos">369</span></a>    <span class="n">invdet</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span> <span class="o">*</span> <span class="n">det</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="replica_vectors-370"><a href="#replica_vectors-370"><span class="linenos">370</span></a>
+</span><span id="replica_vectors-371"><a href="#replica_vectors-371"><span class="linenos">371</span></a>    <span class="n">vecs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="replica_vectors-372"><a href="#replica_vectors-372"><span class="linenos">372</span></a>    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="replica_vectors-373"><a href="#replica_vectors-373"><span class="linenos">373</span></a>        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="replica_vectors-374"><a href="#replica_vectors-374"><span class="linenos">374</span></a>            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="replica_vectors-375"><a href="#replica_vectors-375"><span class="linenos">375</span></a>                <span class="n">abc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+</span><span id="replica_vectors-376"><a href="#replica_vectors-376"><span class="linenos">376</span></a>                <span class="n">rep</span> <span class="o">=</span> <span class="n">grandcell_wrap</span><span class="p">(</span><span class="n">abc</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">,</span> <span class="n">invdet</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="replica_vectors-377"><a href="#replica_vectors-377"><span class="linenos">377</span></a>                <span class="k">if</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">rep</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">vecs</span><span class="p">:</span>
+</span><span id="replica_vectors-378"><a href="#replica_vectors-378"><span class="linenos">378</span></a>                    <span class="n">vecs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">rep</span><span class="p">))</span>
+</span><span id="replica_vectors-379"><a href="#replica_vectors-379"><span class="linenos">379</span></a>
+</span><span id="replica_vectors-380"><a href="#replica_vectors-380"><span class="linenos">380</span></a>    <span class="n">vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">vecs</span><span class="p">))</span>
+</span><span id="replica_vectors-381"><a href="#replica_vectors-381"><span class="linenos">381</span></a>    <span class="n">vol</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">))</span>
+</span><span id="replica_vectors-382"><a href="#replica_vectors-382"><span class="linenos">382</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">vol</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)):</span>
+</span><span id="replica_vectors-383"><a href="#replica_vectors-383"><span class="linenos">383</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="replica_vectors-384"><a href="#replica_vectors-384"><span class="linenos">384</span></a>            <span class="sa">f</span><span class="s2">&quot;replication_matrix determinant (</span><span class="si">{</span><span class="n">vol</span><span class="si">}</span><span class="s2">) must equal number of &quot;</span>
+</span><span id="replica_vectors-385"><a href="#replica_vectors-385"><span class="linenos">385</span></a>            <span class="sa">f</span><span class="s2">&quot;replica vectors (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="replica_vectors-386"><a href="#replica_vectors-386"><span class="linenos">386</span></a>        <span class="p">)</span>
+</span><span id="replica_vectors-387"><a href="#replica_vectors-387"><span class="linenos">387</span></a>    <span class="k">return</span> <span class="n">vecs</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>レプリカベクトルを計算する。</p>
+
+<p>拡大単位胞を構成するために必要な、元の単位胞のグリッド位置を表す
+整数ベクトルのリストを生成します。各ベクトルは、拡大単位胞内での
+単位胞の相対位置を表します。</p>
+
+<p>Args:
+    replication_matrix: 単位胞を複製するための3x3整数行列</p>
+
+<p>Returns:
+    np.ndarray: レプリカベクトルの配列（Nx3配列、Nは拡大単位胞内の単位胞数）</p>
+</div>
+
+
+                </section>
+                <section id="replica_vector_labels">
+                            <input id="replica_vector_labels-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">replica_vector_labels</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">replica_vectors</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="replica_vector_labels-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#replica_vector_labels"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="replica_vector_labels-390"><a href="#replica_vector_labels-390"><span class="linenos">390</span></a><span class="nd">@reactive</span>
+</span><span id="replica_vector_labels-391"><a href="#replica_vector_labels-391"><span class="linenos">391</span></a><span class="k">def</span><span class="w"> </span><span class="nf">replica_vector_labels</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">]:</span>
+</span><span id="replica_vector_labels-392"><a href="#replica_vector_labels-392"><span class="linenos">392</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;レプリカベクトル座標タプル → 一意のインデックス の辞書を返す。</span>
+</span><span id="replica_vector_labels-393"><a href="#replica_vector_labels-393"><span class="linenos">393</span></a>
+</span><span id="replica_vector_labels-394"><a href="#replica_vector_labels-394"><span class="linenos">394</span></a><span class="sd">    拡大単位胞内での単位胞の位置を、グラフ複製などで参照するために使う。</span>
+</span><span id="replica_vector_labels-395"><a href="#replica_vector_labels-395"><span class="linenos">395</span></a>
+</span><span id="replica_vector_labels-396"><a href="#replica_vector_labels-396"><span class="linenos">396</span></a><span class="sd">    Args:</span>
+</span><span id="replica_vector_labels-397"><a href="#replica_vector_labels-397"><span class="linenos">397</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列（Nx3）。</span>
+</span><span id="replica_vector_labels-398"><a href="#replica_vector_labels-398"><span class="linenos">398</span></a>
+</span><span id="replica_vector_labels-399"><a href="#replica_vector_labels-399"><span class="linenos">399</span></a><span class="sd">    Returns:</span>
+</span><span id="replica_vector_labels-400"><a href="#replica_vector_labels-400"><span class="linenos">400</span></a><span class="sd">        座標タプル (a, b, c) を 0..N-1 のインデックスにマッピングする辞書。</span>
+</span><span id="replica_vector_labels-401"><a href="#replica_vector_labels-401"><span class="linenos">401</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="replica_vector_labels-402"><a href="#replica_vector_labels-402"><span class="linenos">402</span></a>    <span class="k">return</span> <span class="p">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">xyz</span><span class="p">):</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">xyz</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">)}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>レプリカベクトル座標タプル → 一意のインデックス の辞書を返す。</p>
+
+<p>拡大単位胞内での単位胞の位置を、グラフ複製などで参照するために使う。</p>
+
+<p>Args:
+    replica_vectors: レプリカベクトルの配列（Nx3）。</p>
+
+<p>Returns:
+    座標タプル (a, b, c) を 0..N-1 のインデックスにマッピングする辞書。</p>
+</div>
+
+
+                </section>
+                <section id="graph">
+                            <input id="graph-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">graph</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">replica_vectors</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">replica_vector_labels</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">replication_matrix</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span>:</span></span>
+
+                <label class="view-source-button" for="graph-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#graph"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="graph-405"><a href="#graph-405"><span class="linenos">405</span></a><span class="nd">@reactive</span>
+</span><span id="graph-406"><a href="#graph-406"><span class="linenos">406</span></a><span class="k">def</span><span class="w"> </span><span class="nf">graph</span><span class="p">(</span>
+</span><span id="graph-407"><a href="#graph-407"><span class="linenos">407</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="graph-408"><a href="#graph-408"><span class="linenos">408</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="graph-409"><a href="#graph-409"><span class="linenos">409</span></a>    <span class="n">replica_vector_labels</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">int</span><span class="p">],</span>
+</span><span id="graph-410"><a href="#graph-410"><span class="linenos">410</span></a>    <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="graph-411"><a href="#graph-411"><span class="linenos">411</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">:</span>
+</span><span id="graph-412"><a href="#graph-412"><span class="linenos">412</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;拡大単位胞に対応するグラフを生成する。</span>
+</span><span id="graph-413"><a href="#graph-413"><span class="linenos">413</span></a>
+</span><span id="graph-414"><a href="#graph-414"><span class="linenos">414</span></a><span class="sd">    基本単位胞のグラフ（水分子間の水素結合ネットワーク）を、</span>
+</span><span id="graph-415"><a href="#graph-415"><span class="linenos">415</span></a><span class="sd">    拡大単位胞全体に複製して統合したグラフを生成します。</span>
+</span><span id="graph-416"><a href="#graph-416"><span class="linenos">416</span></a><span class="sd">    このグラフは、拡大単位胞内のすべての水分子間の接続関係を表します。</span>
+</span><span id="graph-417"><a href="#graph-417"><span class="linenos">417</span></a>
+</span><span id="graph-418"><a href="#graph-418"><span class="linenos">418</span></a><span class="sd">    Args:</span>
+</span><span id="graph-419"><a href="#graph-419"><span class="linenos">419</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="graph-420"><a href="#graph-420"><span class="linenos">420</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="graph-421"><a href="#graph-421"><span class="linenos">421</span></a><span class="sd">        replica_vector_labels: レプリカベクトル座標タプル→インデックスの辞書（replica_vector_labels タスクの戻り値）</span>
+</span><span id="graph-422"><a href="#graph-422"><span class="linenos">422</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列</span>
+</span><span id="graph-423"><a href="#graph-423"><span class="linenos">423</span></a>
+</span><span id="graph-424"><a href="#graph-424"><span class="linenos">424</span></a><span class="sd">    Returns:</span>
+</span><span id="graph-425"><a href="#graph-425"><span class="linenos">425</span></a><span class="sd">        nx.Graph: 拡大単位胞全体の水素結合ネットワークを表す無向グラフ</span>
+</span><span id="graph-426"><a href="#graph-426"><span class="linenos">426</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="graph-427"><a href="#graph-427"><span class="linenos">427</span></a>    <span class="n">g</span> <span class="o">=</span> <span class="n">_replicate_graph</span><span class="p">(</span>
+</span><span id="graph-428"><a href="#graph-428"><span class="linenos">428</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span>
+</span><span id="graph-429"><a href="#graph-429"><span class="linenos">429</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">,</span>
+</span><span id="graph-430"><a href="#graph-430"><span class="linenos">430</span></a>        <span class="n">replica_vectors</span><span class="p">,</span>
+</span><span id="graph-431"><a href="#graph-431"><span class="linenos">431</span></a>        <span class="n">replica_vector_index</span><span class="o">=</span><span class="n">replica_vector_labels</span><span class="p">,</span>
+</span><span id="graph-432"><a href="#graph-432"><span class="linenos">432</span></a>        <span class="n">reshape</span><span class="o">=</span><span class="n">replication_matrix</span><span class="p">,</span>
+</span><span id="graph-433"><a href="#graph-433"><span class="linenos">433</span></a>    <span class="p">)</span>
+</span><span id="graph-434"><a href="#graph-434"><span class="linenos">434</span></a>    <span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;graph: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">_graph_degree_stats</span><span class="p">(</span><span class="n">g</span><span class="p">))</span>
+</span><span id="graph-435"><a href="#graph-435"><span class="linenos">435</span></a>    <span class="k">return</span> <span class="n">g</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>拡大単位胞に対応するグラフを生成する。</p>
+
+<p>基本単位胞のグラフ（水分子間の水素結合ネットワーク）を、
+拡大単位胞全体に複製して統合したグラフを生成します。
+このグラフは、拡大単位胞内のすべての水分子間の接続関係を表します。</p>
+
+<p>Args:
+    unitcell: 基本単位胞オブジェクト
+    replica_vectors: レプリカベクトルの配列
+    replica_vector_labels: レプリカベクトル座標タプル→インデックスの辞書（replica_vector_labels タスクの戻り値）
+    replication_matrix: 単位胞を複製するための3x3整数行列</p>
+
+<p>Returns:
+    nx.Graph: 拡大単位胞全体の水素結合ネットワークを表す無向グラフ</p>
+</div>
+
+
+                </section>
+                <section id="lattice_sites">
+                            <input id="lattice_sites-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">lattice_sites</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">replica_vectors</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">replication_matrix</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="lattice_sites-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#lattice_sites"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="lattice_sites-438"><a href="#lattice_sites-438"><span class="linenos">438</span></a><span class="nd">@reactive</span>
+</span><span id="lattice_sites-439"><a href="#lattice_sites-439"><span class="linenos">439</span></a><span class="k">def</span><span class="w"> </span><span class="nf">lattice_sites</span><span class="p">(</span>
+</span><span id="lattice_sites-440"><a href="#lattice_sites-440"><span class="linenos">440</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="lattice_sites-441"><a href="#lattice_sites-441"><span class="linenos">441</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="lattice_sites-442"><a href="#lattice_sites-442"><span class="linenos">442</span></a>    <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="lattice_sites-443"><a href="#lattice_sites-443"><span class="linenos">443</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="lattice_sites-444"><a href="#lattice_sites-444"><span class="linenos">444</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;格子サイト位置を拡大単位胞全体に複製する。</span>
+</span><span id="lattice_sites-445"><a href="#lattice_sites-445"><span class="linenos">445</span></a>
+</span><span id="lattice_sites-446"><a href="#lattice_sites-446"><span class="linenos">446</span></a><span class="sd">    基本単位胞内の水分子の座標を、拡大単位胞全体に複製します。</span>
+</span><span id="lattice_sites-447"><a href="#lattice_sites-447"><span class="linenos">447</span></a><span class="sd">    各水分子の位置は、単位胞の周期境界条件に従って配置されます。</span>
+</span><span id="lattice_sites-448"><a href="#lattice_sites-448"><span class="linenos">448</span></a>
+</span><span id="lattice_sites-449"><a href="#lattice_sites-449"><span class="linenos">449</span></a><span class="sd">    Args:</span>
+</span><span id="lattice_sites-450"><a href="#lattice_sites-450"><span class="linenos">450</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="lattice_sites-451"><a href="#lattice_sites-451"><span class="linenos">451</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="lattice_sites-452"><a href="#lattice_sites-452"><span class="linenos">452</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列</span>
+</span><span id="lattice_sites-453"><a href="#lattice_sites-453"><span class="linenos">453</span></a>
+</span><span id="lattice_sites-454"><a href="#lattice_sites-454"><span class="linenos">454</span></a><span class="sd">    Returns:</span>
+</span><span id="lattice_sites-455"><a href="#lattice_sites-455"><span class="linenos">455</span></a><span class="sd">        np.ndarray: 拡大単位胞内のすべての水分子の座標（Nx3配列、Nは水分子数）</span>
+</span><span id="lattice_sites-456"><a href="#lattice_sites-456"><span class="linenos">456</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="lattice_sites-457"><a href="#lattice_sites-457"><span class="linenos">457</span></a>    <span class="k">return</span> <span class="n">replicate_positions</span><span class="p">(</span>
+</span><span id="lattice_sites-458"><a href="#lattice_sites-458"><span class="linenos">458</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">,</span> <span class="n">replication_matrix</span>
+</span><span id="lattice_sites-459"><a href="#lattice_sites-459"><span class="linenos">459</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>格子サイト位置を拡大単位胞全体に複製する。</p>
+
+<p>基本単位胞内の水分子の座標を、拡大単位胞全体に複製します。
+各水分子の位置は、単位胞の周期境界条件に従って配置されます。</p>
+
+<p>Args:
+    unitcell: 基本単位胞オブジェクト
+    replica_vectors: レプリカベクトルの配列
+    replication_matrix: 単位胞を複製するための3x3整数行列</p>
+
+<p>Returns:
+    np.ndarray: 拡大単位胞内のすべての水分子の座標（Nx3配列、Nは水分子数）</p>
+</div>
+
+
+                </section>
+                <section id="anions">
+                            <input id="anions-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">anions</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">replica_vectors</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="anions-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#anions"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="anions-462"><a href="#anions-462"><span class="linenos">462</span></a><span class="nd">@reactive</span>
+</span><span id="anions-463"><a href="#anions-463"><span class="linenos">463</span></a><span class="k">def</span><span class="w"> </span><span class="nf">anions</span><span class="p">(</span>
+</span><span id="anions-464"><a href="#anions-464"><span class="linenos">464</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</span><span id="anions-465"><a href="#anions-465"><span class="linenos">465</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="anions-466"><a href="#anions-466"><span class="linenos">466</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;アニオンイオンの配置情報を拡大単位胞全体に複製する。</span>
+</span><span id="anions-467"><a href="#anions-467"><span class="linenos">467</span></a>
+</span><span id="anions-468"><a href="#anions-468"><span class="linenos">468</span></a><span class="sd">    基本単位胞内で定義されたアニオンイオンと、spot_anionsで指定された</span>
+</span><span id="anions-469"><a href="#anions-469"><span class="linenos">469</span></a><span class="sd">    特定位置のアニオンを統合し、拡大単位胞全体でのアニオン配置を返します。</span>
+</span><span id="anions-470"><a href="#anions-470"><span class="linenos">470</span></a>
+</span><span id="anions-471"><a href="#anions-471"><span class="linenos">471</span></a><span class="sd">    Args:</span>
+</span><span id="anions-472"><a href="#anions-472"><span class="linenos">472</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="anions-473"><a href="#anions-473"><span class="linenos">473</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="anions-474"><a href="#anions-474"><span class="linenos">474</span></a><span class="sd">        spot_anions: 特定の格子サイト位置に配置するアニオンの辞書（サイトインデックス -&gt; イオン名）</span>
+</span><span id="anions-475"><a href="#anions-475"><span class="linenos">475</span></a>
+</span><span id="anions-476"><a href="#anions-476"><span class="linenos">476</span></a><span class="sd">    Returns:</span>
+</span><span id="anions-477"><a href="#anions-477"><span class="linenos">477</span></a><span class="sd">        Dict[int, str]: 拡大単位胞全体でのアニオン配置（サイトインデックス -&gt; イオン名）</span>
+</span><span id="anions-478"><a href="#anions-478"><span class="linenos">478</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="anions-479"><a href="#anions-479"><span class="linenos">479</span></a>    <span class="n">anion_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="anions-480"><a href="#anions-480"><span class="linenos">480</span></a>    <span class="n">Z</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="anions-481"><a href="#anions-481"><span class="linenos">481</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="anions-482"><a href="#anions-482"><span class="linenos">482</span></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">)):</span>
+</span><span id="anions-483"><a href="#anions-483"><span class="linenos">483</span></a>            <span class="n">site</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">Z</span> <span class="o">+</span> <span class="n">site_index</span>
+</span><span id="anions-484"><a href="#anions-484"><span class="linenos">484</span></a>            <span class="n">anion_dict</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="anions-485"><a href="#anions-485"><span class="linenos">485</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">spot_anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="anions-486"><a href="#anions-486"><span class="linenos">486</span></a>        <span class="n">anion_dict</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="anions-487"><a href="#anions-487"><span class="linenos">487</span></a>    <span class="k">return</span> <span class="n">anion_dict</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>アニオンイオンの配置情報を拡大単位胞全体に複製する。</p>
+
+<p>基本単位胞内で定義されたアニオンイオンと、spot_anionsで指定された
+特定位置のアニオンを統合し、拡大単位胞全体でのアニオン配置を返します。</p>
+
+<p>Args:
+    unitcell: 基本単位胞オブジェクト
+    replica_vectors: レプリカベクトルの配列
+    spot_anions: 特定の格子サイト位置に配置するアニオンの辞書（サイトインデックス -> イオン名）</p>
+
+<p>Returns:
+    Dict[int, str]: 拡大単位胞全体でのアニオン配置（サイトインデックス -> イオン名）</p>
+</div>
+
+
+                </section>
+                <section id="cations">
+                            <input id="cations-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">cations</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">replica_vectors</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="cations-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#cations"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="cations-490"><a href="#cations-490"><span class="linenos">490</span></a><span class="nd">@reactive</span>
+</span><span id="cations-491"><a href="#cations-491"><span class="linenos">491</span></a><span class="k">def</span><span class="w"> </span><span class="nf">cations</span><span class="p">(</span>
+</span><span id="cations-492"><a href="#cations-492"><span class="linenos">492</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</span><span id="cations-493"><a href="#cations-493"><span class="linenos">493</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="cations-494"><a href="#cations-494"><span class="linenos">494</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;カチオンイオンの配置情報を拡大単位胞全体に複製する。</span>
+</span><span id="cations-495"><a href="#cations-495"><span class="linenos">495</span></a>
+</span><span id="cations-496"><a href="#cations-496"><span class="linenos">496</span></a><span class="sd">    基本単位胞内で定義されたカチオンイオンと、spot_cationsで指定された</span>
+</span><span id="cations-497"><a href="#cations-497"><span class="linenos">497</span></a><span class="sd">    特定位置のカチオンを統合し、拡大単位胞全体でのカチオン配置を返します。</span>
+</span><span id="cations-498"><a href="#cations-498"><span class="linenos">498</span></a>
+</span><span id="cations-499"><a href="#cations-499"><span class="linenos">499</span></a><span class="sd">    Args:</span>
+</span><span id="cations-500"><a href="#cations-500"><span class="linenos">500</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="cations-501"><a href="#cations-501"><span class="linenos">501</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列</span>
+</span><span id="cations-502"><a href="#cations-502"><span class="linenos">502</span></a><span class="sd">        spot_cations: 特定の格子サイト位置に配置するカチオンの辞書（サイトインデックス -&gt; イオン名）</span>
+</span><span id="cations-503"><a href="#cations-503"><span class="linenos">503</span></a>
+</span><span id="cations-504"><a href="#cations-504"><span class="linenos">504</span></a><span class="sd">    Returns:</span>
+</span><span id="cations-505"><a href="#cations-505"><span class="linenos">505</span></a><span class="sd">        Dict[int, str]: 拡大単位胞全体でのカチオン配置（サイトインデックス -&gt; イオン名）</span>
+</span><span id="cations-506"><a href="#cations-506"><span class="linenos">506</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="cations-507"><a href="#cations-507"><span class="linenos">507</span></a>    <span class="n">cation_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="cations-508"><a href="#cations-508"><span class="linenos">508</span></a>    <span class="n">Z</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="cations-509"><a href="#cations-509"><span class="linenos">509</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="cations-510"><a href="#cations-510"><span class="linenos">510</span></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">replica_vectors</span><span class="p">)):</span>
+</span><span id="cations-511"><a href="#cations-511"><span class="linenos">511</span></a>            <span class="n">site</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">Z</span> <span class="o">+</span> <span class="n">site_index</span>
+</span><span id="cations-512"><a href="#cations-512"><span class="linenos">512</span></a>            <span class="n">cation_dict</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="cations-513"><a href="#cations-513"><span class="linenos">513</span></a>    <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">spot_cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="cations-514"><a href="#cations-514"><span class="linenos">514</span></a>        <span class="n">cation_dict</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="cations-515"><a href="#cations-515"><span class="linenos">515</span></a>    <span class="k">return</span> <span class="n">cation_dict</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>カチオンイオンの配置情報を拡大単位胞全体に複製する。</p>
+
+<p>基本単位胞内で定義されたカチオンイオンと、spot_cationsで指定された
+特定位置のカチオンを統合し、拡大単位胞全体でのカチオン配置を返します。</p>
+
+<p>Args:
+    unitcell: 基本単位胞オブジェクト
+    replica_vectors: レプリカベクトルの配列
+    spot_cations: 特定の格子サイト位置に配置するカチオンの辞書（サイトインデックス -> イオン名）</p>
+
+<p>Returns:
+    Dict[int, str]: 拡大単位胞全体でのカチオン配置（サイトインデックス -> イオン名）</p>
+</div>
+
+
+                </section>
+                <section id="site_occupants">
+                            <input id="site_occupants-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">site_occupants</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">lattice_sites</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="site_occupants-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#site_occupants"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="site_occupants-518"><a href="#site_occupants-518"><span class="linenos">518</span></a><span class="nd">@reactive</span>
+</span><span id="site_occupants-519"><a href="#site_occupants-519"><span class="linenos">519</span></a><span class="k">def</span><span class="w"> </span><span class="nf">site_occupants</span><span class="p">(</span>
+</span><span id="site_occupants-520"><a href="#site_occupants-520"><span class="linenos">520</span></a>    <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="site_occupants-521"><a href="#site_occupants-521"><span class="linenos">521</span></a>    <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="site_occupants-522"><a href="#site_occupants-522"><span class="linenos">522</span></a>    <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="site_occupants-523"><a href="#site_occupants-523"><span class="linenos">523</span></a>    <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="site_occupants-524"><a href="#site_occupants-524"><span class="linenos">524</span></a>    <span class="n">lattice_sites</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="site_occupants-525"><a href="#site_occupants-525"><span class="linenos">525</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="site_occupants-526"><a href="#site_occupants-526"><span class="linenos">526</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;各格子サイトの占有種（水分子・イオン・H3O+・OH-）のリストを生成する。</span>
+</span><span id="site_occupants-527"><a href="#site_occupants-527"><span class="linenos">527</span></a>
+</span><span id="site_occupants-528"><a href="#site_occupants-528"><span class="linenos">528</span></a><span class="sd">    各格子サイトが水分子、アニオン、カチオン、H3O+、OH- のいずれで占有されているかを</span>
+</span><span id="site_occupants-529"><a href="#site_occupants-529"><span class="linenos">529</span></a><span class="sd">    判定し、サイトインデックス順にリストとして返します。</span>
+</span><span id="site_occupants-530"><a href="#site_occupants-530"><span class="linenos">530</span></a>
+</span><span id="site_occupants-531"><a href="#site_occupants-531"><span class="linenos">531</span></a><span class="sd">    Args:</span>
+</span><span id="site_occupants-532"><a href="#site_occupants-532"><span class="linenos">532</span></a><span class="sd">        anions: アニオン配置の辞書</span>
+</span><span id="site_occupants-533"><a href="#site_occupants-533"><span class="linenos">533</span></a><span class="sd">        cations: カチオン配置の辞書</span>
+</span><span id="site_occupants-534"><a href="#site_occupants-534"><span class="linenos">534</span></a><span class="sd">        spot_hydroniums: H3O+ を置くサイトのリスト</span>
+</span><span id="site_occupants-535"><a href="#site_occupants-535"><span class="linenos">535</span></a><span class="sd">        spot_hydroxides: OH- を置くサイトのリスト</span>
+</span><span id="site_occupants-536"><a href="#site_occupants-536"><span class="linenos">536</span></a><span class="sd">        lattice_sites: 格子サイト位置の配列</span>
+</span><span id="site_occupants-537"><a href="#site_occupants-537"><span class="linenos">537</span></a>
+</span><span id="site_occupants-538"><a href="#site_occupants-538"><span class="linenos">538</span></a><span class="sd">    Returns:</span>
+</span><span id="site_occupants-539"><a href="#site_occupants-539"><span class="linenos">539</span></a><span class="sd">        List[str]: 各サイトの占有種のリスト（&quot;water&quot; またはイオン名）</span>
+</span><span id="site_occupants-540"><a href="#site_occupants-540"><span class="linenos">540</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="site_occupants-541"><a href="#site_occupants-541"><span class="linenos">541</span></a>    <span class="n">occupants</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="site_occupants-542"><a href="#site_occupants-542"><span class="linenos">542</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="site_occupants-543"><a href="#site_occupants-543"><span class="linenos">543</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="site_occupants-544"><a href="#site_occupants-544"><span class="linenos">544</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="site_occupants-545"><a href="#site_occupants-545"><span class="linenos">545</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">ion_name</span>
+</span><span id="site_occupants-546"><a href="#site_occupants-546"><span class="linenos">546</span></a>    <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="site_occupants-547"><a href="#site_occupants-547"><span class="linenos">547</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;H3O+&quot;</span>
+</span><span id="site_occupants-548"><a href="#site_occupants-548"><span class="linenos">548</span></a>    <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="site_occupants-549"><a href="#site_occupants-549"><span class="linenos">549</span></a>        <span class="n">occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;OH-&quot;</span>
+</span><span id="site_occupants-550"><a href="#site_occupants-550"><span class="linenos">550</span></a>    <span class="k">return</span> <span class="n">occupants</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>各格子サイトの占有種（水分子・イオン・H3O+・OH-）のリストを生成する。</p>
+
+<p>各格子サイトが水分子、アニオン、カチオン、H3O+、OH- のいずれで占有されているかを
+判定し、サイトインデックス順にリストとして返します。</p>
+
+<p>Args:
+    anions: アニオン配置の辞書
+    cations: カチオン配置の辞書
+    spot_hydroniums: H3O+ を置くサイトのリスト
+    spot_hydroxides: OH- を置くサイトのリスト
+    lattice_sites: 格子サイト位置の配列</p>
+
+<p>Returns:
+    List[str]: 各サイトの占有種のリスト（"water" またはイオン名）</p>
+</div>
+
+
+                </section>
+                <section id="fixed_edges">
+                            <input id="fixed_edges-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">fixed_edges</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">graph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span>,</span><span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>,</span><span class="param">	<span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">DiGraph</span>:</span></span>
+
+                <label class="view-source-button" for="fixed_edges-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#fixed_edges"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="fixed_edges-553"><a href="#fixed_edges-553"><span class="linenos">553</span></a><span class="nd">@reactive</span>
+</span><span id="fixed_edges-554"><a href="#fixed_edges-554"><span class="linenos">554</span></a><span class="k">def</span><span class="w"> </span><span class="nf">fixed_edges</span><span class="p">(</span>
+</span><span id="fixed_edges-555"><a href="#fixed_edges-555"><span class="linenos">555</span></a>    <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="fixed_edges-556"><a href="#fixed_edges-556"><span class="linenos">556</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="fixed_edges-557"><a href="#fixed_edges-557"><span class="linenos">557</span></a>    <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="fixed_edges-558"><a href="#fixed_edges-558"><span class="linenos">558</span></a>    <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="fixed_edges-559"><a href="#fixed_edges-559"><span class="linenos">559</span></a>    <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="fixed_edges-560"><a href="#fixed_edges-560"><span class="linenos">560</span></a>    <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="fixed_edges-561"><a href="#fixed_edges-561"><span class="linenos">561</span></a>    <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="fixed_edges-562"><a href="#fixed_edges-562"><span class="linenos">562</span></a>    <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="fixed_edges-563"><a href="#fixed_edges-563"><span class="linenos">563</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">:</span>
+</span><span id="fixed_edges-564"><a href="#fixed_edges-564"><span class="linenos">564</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;固定エッジ（水素結合の方向が固定されたエッジ）を拡大単位胞全体に複製する。</span>
+</span><span id="fixed_edges-565"><a href="#fixed_edges-565"><span class="linenos">565</span></a>
+</span><span id="fixed_edges-566"><a href="#fixed_edges-566"><span class="linenos">566</span></a><span class="sd">    基本単位胞で定義された固定エッジと、spot_anions/spot_cations/spot_hydroniums/</span>
+</span><span id="fixed_edges-567"><a href="#fixed_edges-567"><span class="linenos">567</span></a><span class="sd">    spot_hydroxides で指定されたイオン・置換種に基づく固定エッジを統合し、</span>
+</span><span id="fixed_edges-568"><a href="#fixed_edges-568"><span class="linenos">568</span></a><span class="sd">    拡大単位胞全体での固定エッジを返します。</span>
+</span><span id="fixed_edges-569"><a href="#fixed_edges-569"><span class="linenos">569</span></a><span class="sd">    - アニオン: 4本受け入れ。カチオン: 4本供与。</span>
+</span><span id="fixed_edges-570"><a href="#fixed_edges-570"><span class="linenos">570</span></a><span class="sd">    - H3O+ (spot_hydroniums): 1本受け入れ・3本供与。</span>
+</span><span id="fixed_edges-571"><a href="#fixed_edges-571"><span class="linenos">571</span></a><span class="sd">    - OH- (spot_hydroxides): 3本受け入れ・1本供与。</span>
+</span><span id="fixed_edges-572"><a href="#fixed_edges-572"><span class="linenos">572</span></a>
+</span><span id="fixed_edges-573"><a href="#fixed_edges-573"><span class="linenos">573</span></a><span class="sd">    Args:</span>
+</span><span id="fixed_edges-574"><a href="#fixed_edges-574"><span class="linenos">574</span></a><span class="sd">        graph: 拡大単位胞全体のグラフ</span>
+</span><span id="fixed_edges-575"><a href="#fixed_edges-575"><span class="linenos">575</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト</span>
+</span><span id="fixed_edges-576"><a href="#fixed_edges-576"><span class="linenos">576</span></a><span class="sd">        spot_anions: 特定位置のアニオン配置</span>
+</span><span id="fixed_edges-577"><a href="#fixed_edges-577"><span class="linenos">577</span></a><span class="sd">        spot_cations: 特定位置のカチオン配置</span>
+</span><span id="fixed_edges-578"><a href="#fixed_edges-578"><span class="linenos">578</span></a><span class="sd">        spot_hydroniums: H3O+ を置くサイトのリスト（1受容・3供与）</span>
+</span><span id="fixed_edges-579"><a href="#fixed_edges-579"><span class="linenos">579</span></a><span class="sd">        spot_hydroxides: OH- を置くサイトのリスト（3受容・1供与）</span>
+</span><span id="fixed_edges-580"><a href="#fixed_edges-580"><span class="linenos">580</span></a>
+</span><span id="fixed_edges-581"><a href="#fixed_edges-581"><span class="linenos">581</span></a><span class="sd">    Returns:</span>
+</span><span id="fixed_edges-582"><a href="#fixed_edges-582"><span class="linenos">582</span></a><span class="sd">        nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ</span>
+</span><span id="fixed_edges-583"><a href="#fixed_edges-583"><span class="linenos">583</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="fixed_edges-584"><a href="#fixed_edges-584"><span class="linenos">584</span></a>    <span class="k">if</span> <span class="p">(</span>
+</span><span id="fixed_edges-585"><a href="#fixed_edges-585"><span class="linenos">585</span></a>        <span class="n">spot_anions</span>
+</span><span id="fixed_edges-586"><a href="#fixed_edges-586"><span class="linenos">586</span></a>        <span class="ow">or</span> <span class="n">spot_cations</span>
+</span><span id="fixed_edges-587"><a href="#fixed_edges-587"><span class="linenos">587</span></a>        <span class="ow">or</span> <span class="n">spot_hydroniums</span>
+</span><span id="fixed_edges-588"><a href="#fixed_edges-588"><span class="linenos">588</span></a>        <span class="ow">or</span> <span class="n">spot_hydroxides</span>
+</span><span id="fixed_edges-589"><a href="#fixed_edges-589"><span class="linenos">589</span></a>        <span class="ow">or</span> <span class="n">bjerrum_L_edges</span>
+</span><span id="fixed_edges-590"><a href="#fixed_edges-590"><span class="linenos">590</span></a>        <span class="ow">or</span> <span class="n">bjerrum_D_edges</span>
+</span><span id="fixed_edges-591"><a href="#fixed_edges-591"><span class="linenos">591</span></a>    <span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">SUPPORTS_ION_DOPING</span><span class="p">:</span>
+</span><span id="fixed_edges-592"><a href="#fixed_edges-592"><span class="linenos">592</span></a>        <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-593"><a href="#fixed_edges-593"><span class="linenos">593</span></a>            <span class="s2">&quot;Ion doping (spot_anion/spot_cation/spot_hydronium/spot_hydroxide) &quot;</span>
+</span><span id="fixed_edges-594"><a href="#fixed_edges-594"><span class="linenos">594</span></a>            <span class="s2">&quot;is not supported for hydrogen-ordered ices.&quot;</span>
+</span><span id="fixed_edges-595"><a href="#fixed_edges-595"><span class="linenos">595</span></a>        <span class="p">)</span>
+</span><span id="fixed_edges-596"><a href="#fixed_edges-596"><span class="linenos">596</span></a>    <span class="n">dg</span> <span class="o">=</span> <span class="n">_replicate_fixed_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">fixed</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">))</span>
+</span><span id="fixed_edges-597"><a href="#fixed_edges-597"><span class="linenos">597</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_anions</span><span class="p">:</span>
+</span><span id="fixed_edges-598"><a href="#fixed_edges-598"><span class="linenos">598</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">):</span>
+</span><span id="fixed_edges-599"><a href="#fixed_edges-599"><span class="linenos">599</span></a>            <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">nei</span><span class="p">):</span>
+</span><span id="fixed_edges-600"><a href="#fixed_edges-600"><span class="linenos">600</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-601"><a href="#fixed_edges-601"><span class="linenos">601</span></a>                    <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="fixed_edges-602"><a href="#fixed_edges-602"><span class="linenos">602</span></a>                <span class="p">)</span>
+</span><span id="fixed_edges-603"><a href="#fixed_edges-603"><span class="linenos">603</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="fixed_edges-604"><a href="#fixed_edges-604"><span class="linenos">604</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">site_index</span><span class="p">)</span>
+</span><span id="fixed_edges-605"><a href="#fixed_edges-605"><span class="linenos">605</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_cations</span><span class="p">:</span>
+</span><span id="fixed_edges-606"><a href="#fixed_edges-606"><span class="linenos">606</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">):</span>
+</span><span id="fixed_edges-607"><a href="#fixed_edges-607"><span class="linenos">607</span></a>            <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">site_index</span><span class="p">):</span>
+</span><span id="fixed_edges-608"><a href="#fixed_edges-608"><span class="linenos">608</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-609"><a href="#fixed_edges-609"><span class="linenos">609</span></a>                    <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="fixed_edges-610"><a href="#fixed_edges-610"><span class="linenos">610</span></a>                <span class="p">)</span>
+</span><span id="fixed_edges-611"><a href="#fixed_edges-611"><span class="linenos">611</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="fixed_edges-612"><a href="#fixed_edges-612"><span class="linenos">612</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="fixed_edges-613"><a href="#fixed_edges-613"><span class="linenos">613</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="fixed_edges-614"><a href="#fixed_edges-614"><span class="linenos">614</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="fixed_edges-615"><a href="#fixed_edges-615"><span class="linenos">615</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="fixed_edges-616"><a href="#fixed_edges-616"><span class="linenos">616</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-617"><a href="#fixed_edges-617"><span class="linenos">617</span></a>                <span class="sa">f</span><span class="s2">&quot;spot_hydronium at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="fixed_edges-618"><a href="#fixed_edges-618"><span class="linenos">618</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-619"><a href="#fixed_edges-619"><span class="linenos">619</span></a>        <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">neis</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">site_index</span><span class="p">)</span>
+</span><span id="fixed_edges-620"><a href="#fixed_edges-620"><span class="linenos">620</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+</span><span id="fixed_edges-621"><a href="#fixed_edges-621"><span class="linenos">621</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="fixed_edges-622"><a href="#fixed_edges-622"><span class="linenos">622</span></a>    <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="fixed_edges-623"><a href="#fixed_edges-623"><span class="linenos">623</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="fixed_edges-624"><a href="#fixed_edges-624"><span class="linenos">624</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="fixed_edges-625"><a href="#fixed_edges-625"><span class="linenos">625</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-626"><a href="#fixed_edges-626"><span class="linenos">626</span></a>                <span class="sa">f</span><span class="s2">&quot;spot_hydroxide at </span><span class="si">{</span><span class="n">site_index</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="fixed_edges-627"><a href="#fixed_edges-627"><span class="linenos">627</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-628"><a href="#fixed_edges-628"><span class="linenos">628</span></a>        <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">neis</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="fixed_edges-629"><a href="#fixed_edges-629"><span class="linenos">629</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+</span><span id="fixed_edges-630"><a href="#fixed_edges-630"><span class="linenos">630</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">site_index</span><span class="p">)</span>
+</span><span id="fixed_edges-631"><a href="#fixed_edges-631"><span class="linenos">631</span></a>    <span class="c1"># Bjerrum L 欠陥: i ノードを hydronium と同様に扱う。</span>
+</span><span id="fixed_edges-632"><a href="#fixed_edges-632"><span class="linenos">632</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">bjerrum_L_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="fixed_edges-633"><a href="#fixed_edges-633"><span class="linenos">633</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+</span><span id="fixed_edges-634"><a href="#fixed_edges-634"><span class="linenos">634</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="fixed_edges-635"><a href="#fixed_edges-635"><span class="linenos">635</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-636"><a href="#fixed_edges-636"><span class="linenos">636</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_L at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="fixed_edges-637"><a href="#fixed_edges-637"><span class="linenos">637</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-638"><a href="#fixed_edges-638"><span class="linenos">638</span></a>        <span class="k">if</span> <span class="n">j</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="fixed_edges-639"><a href="#fixed_edges-639"><span class="linenos">639</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-640"><a href="#fixed_edges-640"><span class="linenos">640</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_L edge (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) is not an edge in the graph.&quot;</span>
+</span><span id="fixed_edges-641"><a href="#fixed_edges-641"><span class="linenos">641</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-642"><a href="#fixed_edges-642"><span class="linenos">642</span></a>        <span class="c1"># 受容側となる隣接ノードを j 以外から 1 つ選ぶ</span>
+</span><span id="fixed_edges-643"><a href="#fixed_edges-643"><span class="linenos">643</span></a>        <span class="n">acceptor</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">nei</span> <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span> <span class="k">if</span> <span class="n">nei</span> <span class="o">!=</span> <span class="n">j</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="fixed_edges-644"><a href="#fixed_edges-644"><span class="linenos">644</span></a>        <span class="k">if</span> <span class="n">acceptor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="fixed_edges-645"><a href="#fixed_edges-645"><span class="linenos">645</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-646"><a href="#fixed_edges-646"><span class="linenos">646</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_L at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> cannot choose acceptor neighbor distinct from </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="fixed_edges-647"><a href="#fixed_edges-647"><span class="linenos">647</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-648"><a href="#fixed_edges-648"><span class="linenos">648</span></a>        <span class="c1"># hydronium と同様のチェック・追加ロジック</span>
+</span><span id="fixed_edges-649"><a href="#fixed_edges-649"><span class="linenos">649</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="fixed_edges-650"><a href="#fixed_edges-650"><span class="linenos">650</span></a>            <span class="k">if</span> <span class="n">nei</span> <span class="o">==</span> <span class="n">acceptor</span><span class="p">:</span>
+</span><span id="fixed_edges-651"><a href="#fixed_edges-651"><span class="linenos">651</span></a>                <span class="c1"># nei -&gt; i （受容）</span>
+</span><span id="fixed_edges-652"><a href="#fixed_edges-652"><span class="linenos">652</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">):</span>
+</span><span id="fixed_edges-653"><a href="#fixed_edges-653"><span class="linenos">653</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-654"><a href="#fixed_edges-654"><span class="linenos">654</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="fixed_edges-655"><a href="#fixed_edges-655"><span class="linenos">655</span></a>                    <span class="p">)</span>
+</span><span id="fixed_edges-656"><a href="#fixed_edges-656"><span class="linenos">656</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="fixed_edges-657"><a href="#fixed_edges-657"><span class="linenos">657</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="fixed_edges-658"><a href="#fixed_edges-658"><span class="linenos">658</span></a>                <span class="c1"># i -&gt; nei （供与）</span>
+</span><span id="fixed_edges-659"><a href="#fixed_edges-659"><span class="linenos">659</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="fixed_edges-660"><a href="#fixed_edges-660"><span class="linenos">660</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-661"><a href="#fixed_edges-661"><span class="linenos">661</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="fixed_edges-662"><a href="#fixed_edges-662"><span class="linenos">662</span></a>                    <span class="p">)</span>
+</span><span id="fixed_edges-663"><a href="#fixed_edges-663"><span class="linenos">663</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="fixed_edges-664"><a href="#fixed_edges-664"><span class="linenos">664</span></a>    <span class="c1"># Bjerrum D 欠陥: i ノードを hydroxide と同様に扱う（ただし j は供与側にしない）。</span>
+</span><span id="fixed_edges-665"><a href="#fixed_edges-665"><span class="linenos">665</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">bjerrum_D_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="fixed_edges-666"><a href="#fixed_edges-666"><span class="linenos">666</span></a>        <span class="n">neis</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+</span><span id="fixed_edges-667"><a href="#fixed_edges-667"><span class="linenos">667</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="fixed_edges-668"><a href="#fixed_edges-668"><span class="linenos">668</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-669"><a href="#fixed_edges-669"><span class="linenos">669</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_D at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> must have 4 neighbors, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">neis</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="fixed_edges-670"><a href="#fixed_edges-670"><span class="linenos">670</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-671"><a href="#fixed_edges-671"><span class="linenos">671</span></a>        <span class="k">if</span> <span class="n">j</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="fixed_edges-672"><a href="#fixed_edges-672"><span class="linenos">672</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-673"><a href="#fixed_edges-673"><span class="linenos">673</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_D edge (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) is not an edge in the graph.&quot;</span>
+</span><span id="fixed_edges-674"><a href="#fixed_edges-674"><span class="linenos">674</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-675"><a href="#fixed_edges-675"><span class="linenos">675</span></a>        <span class="c1"># 供与側となる隣接ノードを j 以外から 1 つ選ぶ</span>
+</span><span id="fixed_edges-676"><a href="#fixed_edges-676"><span class="linenos">676</span></a>        <span class="n">donor</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">nei</span> <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span> <span class="k">if</span> <span class="n">nei</span> <span class="o">!=</span> <span class="n">j</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="fixed_edges-677"><a href="#fixed_edges-677"><span class="linenos">677</span></a>        <span class="k">if</span> <span class="n">donor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="fixed_edges-678"><a href="#fixed_edges-678"><span class="linenos">678</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-679"><a href="#fixed_edges-679"><span class="linenos">679</span></a>                <span class="sa">f</span><span class="s2">&quot;bjerrum_D at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> cannot choose donor neighbor distinct from </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="fixed_edges-680"><a href="#fixed_edges-680"><span class="linenos">680</span></a>            <span class="p">)</span>
+</span><span id="fixed_edges-681"><a href="#fixed_edges-681"><span class="linenos">681</span></a>        <span class="k">for</span> <span class="n">nei</span> <span class="ow">in</span> <span class="n">neis</span><span class="p">:</span>
+</span><span id="fixed_edges-682"><a href="#fixed_edges-682"><span class="linenos">682</span></a>            <span class="k">if</span> <span class="n">nei</span> <span class="o">==</span> <span class="n">donor</span><span class="p">:</span>
+</span><span id="fixed_edges-683"><a href="#fixed_edges-683"><span class="linenos">683</span></a>                <span class="c1"># i -&gt; nei （供与）</span>
+</span><span id="fixed_edges-684"><a href="#fixed_edges-684"><span class="linenos">684</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="fixed_edges-685"><a href="#fixed_edges-685"><span class="linenos">685</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-686"><a href="#fixed_edges-686"><span class="linenos">686</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="fixed_edges-687"><a href="#fixed_edges-687"><span class="linenos">687</span></a>                    <span class="p">)</span>
+</span><span id="fixed_edges-688"><a href="#fixed_edges-688"><span class="linenos">688</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">)</span>
+</span><span id="fixed_edges-689"><a href="#fixed_edges-689"><span class="linenos">689</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="fixed_edges-690"><a href="#fixed_edges-690"><span class="linenos">690</span></a>                <span class="c1"># nei -&gt; i （受容）</span>
+</span><span id="fixed_edges-691"><a href="#fixed_edges-691"><span class="linenos">691</span></a>                <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">nei</span><span class="p">):</span>
+</span><span id="fixed_edges-692"><a href="#fixed_edges-692"><span class="linenos">692</span></a>                    <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="fixed_edges-693"><a href="#fixed_edges-693"><span class="linenos">693</span></a>                        <span class="sa">f</span><span class="s2">&quot;矛盾する辺の固定 at </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">; すでに(</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">nei</span><span class="si">}</span><span class="s2">)が固定されています。&quot;</span>
+</span><span id="fixed_edges-694"><a href="#fixed_edges-694"><span class="linenos">694</span></a>                    <span class="p">)</span>
+</span><span id="fixed_edges-695"><a href="#fixed_edges-695"><span class="linenos">695</span></a>                <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">nei</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="fixed_edges-696"><a href="#fixed_edges-696"><span class="linenos">696</span></a>    <span class="k">return</span> <span class="n">dg</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>固定エッジ（水素結合の方向が固定されたエッジ）を拡大単位胞全体に複製する。</p>
+
+<p>基本単位胞で定義された固定エッジと、spot_anions/spot_cations/spot_hydroniums/
+spot_hydroxides で指定されたイオン・置換種に基づく固定エッジを統合し、
+拡大単位胞全体での固定エッジを返します。</p>
+
+<ul>
+<li>アニオン: 4本受け入れ。カチオン: 4本供与。</li>
+<li>H3O+ (spot_hydroniums): 1本受け入れ・3本供与。</li>
+<li>OH- (spot_hydroxides): 3本受け入れ・1本供与。</li>
+</ul>
+
+<p>Args:
+    graph: 拡大単位胞全体のグラフ
+    unitcell: 基本単位胞オブジェクト
+    spot_anions: 特定位置のアニオン配置
+    spot_cations: 特定位置のカチオン配置
+    spot_hydroniums: H3O+ を置くサイトのリスト（1受容・3供与）
+    spot_hydroxides: OH- を置くサイトのリスト（3受容・1供与）</p>
+
+<p>Returns:
+    nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ</p>
+</div>
+
+
+                </section>
+                <section id="digraph">
+                            <input id="digraph-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">digraph</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">graph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span>,</span><span class="param">	<span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">lattice_sites</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">fixed_edges</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">DiGraph</span>,</span><span class="param">	<span class="n">target_pol</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>,</span><span class="param">	<span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">DiGraph</span>:</span></span>
+
+                <label class="view-source-button" for="digraph-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#digraph"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="digraph-699"><a href="#digraph-699"><span class="linenos">699</span></a><span class="nd">@reactive</span>
+</span><span id="digraph-700"><a href="#digraph-700"><span class="linenos">700</span></a><span class="k">def</span><span class="w"> </span><span class="nf">digraph</span><span class="p">(</span>
+</span><span id="digraph-701"><a href="#digraph-701"><span class="linenos">701</span></a>    <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="digraph-702"><a href="#digraph-702"><span class="linenos">702</span></a>    <span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="digraph-703"><a href="#digraph-703"><span class="linenos">703</span></a>    <span class="n">lattice_sites</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="digraph-704"><a href="#digraph-704"><span class="linenos">704</span></a>    <span class="n">fixed_edges</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span>
+</span><span id="digraph-705"><a href="#digraph-705"><span class="linenos">705</span></a>    <span class="n">target_pol</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="digraph-706"><a href="#digraph-706"><span class="linenos">706</span></a>    <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="digraph-707"><a href="#digraph-707"><span class="linenos">707</span></a>    <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+</span><span id="digraph-708"><a href="#digraph-708"><span class="linenos">708</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">:</span>
+</span><span id="digraph-709"><a href="#digraph-709"><span class="linenos">709</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;水素結合ネットワークの有向グラフを生成する。</span>
+</span><span id="digraph-710"><a href="#digraph-710"><span class="linenos">710</span></a>
+</span><span id="digraph-711"><a href="#digraph-711"><span class="linenos">711</span></a><span class="sd">    無向グラフ（水素結合ネットワーク）から、各水素結合の方向（プロトンの向き）</span>
+</span><span id="digraph-712"><a href="#digraph-712"><span class="linenos">712</span></a><span class="sd">    を決定して有向グラフを生成します。固定エッジで指定された方向は維持され、</span>
+</span><span id="digraph-713"><a href="#digraph-713"><span class="linenos">713</span></a><span class="sd">    それ以外のエッジは双極子最適化アルゴリズムにより方向が決定されます。</span>
+</span><span id="digraph-714"><a href="#digraph-714"><span class="linenos">714</span></a>
+</span><span id="digraph-715"><a href="#digraph-715"><span class="linenos">715</span></a><span class="sd">    Args:</span>
+</span><span id="digraph-716"><a href="#digraph-716"><span class="linenos">716</span></a><span class="sd">        graph: 拡大単位胞全体の無向グラフ</span>
+</span><span id="digraph-717"><a href="#digraph-717"><span class="linenos">717</span></a><span class="sd">        depol_loop: 双極子最適化の反復回数</span>
+</span><span id="digraph-718"><a href="#digraph-718"><span class="linenos">718</span></a><span class="sd">        lattice_sites: 格子サイト位置の配列</span>
+</span><span id="digraph-719"><a href="#digraph-719"><span class="linenos">719</span></a><span class="sd">        fixed_edges: 拡大単位胞全体での固定エッジの有向グラフ</span>
+</span><span id="digraph-720"><a href="#digraph-720"><span class="linenos">720</span></a><span class="sd">        target_pol: 分極の目標値</span>
+</span><span id="digraph-721"><a href="#digraph-721"><span class="linenos">721</span></a>
+</span><span id="digraph-722"><a href="#digraph-722"><span class="linenos">722</span></a><span class="sd">    Returns:</span>
+</span><span id="digraph-723"><a href="#digraph-723"><span class="linenos">723</span></a><span class="sd">        nx.DiGraph: 水素結合の方向が決定された有向グラフ</span>
+</span><span id="digraph-724"><a href="#digraph-724"><span class="linenos">724</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="digraph-725"><a href="#digraph-725"><span class="linenos">725</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">fixed_edges</span><span class="o">.</span><span class="n">edges</span><span class="p">():</span>
+</span><span id="digraph-726"><a href="#digraph-726"><span class="linenos">726</span></a>        <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;+ </span><span class="si">{</span><span class="n">edge</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="digraph-727"><a href="#digraph-727"><span class="linenos">727</span></a>    <span class="n">dg</span> <span class="o">=</span> <span class="n">genice_core</span><span class="o">.</span><span class="n">ice_graph</span><span class="p">(</span>
+</span><span id="digraph-728"><a href="#digraph-728"><span class="linenos">728</span></a>        <span class="n">graph</span><span class="p">,</span>
+</span><span id="digraph-729"><a href="#digraph-729"><span class="linenos">729</span></a>        <span class="n">vertex_positions</span><span class="o">=</span><span class="n">lattice_sites</span><span class="p">,</span>
+</span><span id="digraph-730"><a href="#digraph-730"><span class="linenos">730</span></a>        <span class="n">is_periodic_boundary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="digraph-731"><a href="#digraph-731"><span class="linenos">731</span></a>        <span class="n">dipole_optimization_cycles</span><span class="o">=</span><span class="n">depol_loop</span><span class="p">,</span>
+</span><span id="digraph-732"><a href="#digraph-732"><span class="linenos">732</span></a>        <span class="n">fixed_edges</span><span class="o">=</span><span class="n">fixed_edges</span><span class="p">,</span>
+</span><span id="digraph-733"><a href="#digraph-733"><span class="linenos">733</span></a>        <span class="n">pairing_attempts</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+</span><span id="digraph-734"><a href="#digraph-734"><span class="linenos">734</span></a>        <span class="n">target_pol</span><span class="o">=</span><span class="n">target_pol</span><span class="p">,</span>
+</span><span id="digraph-735"><a href="#digraph-735"><span class="linenos">735</span></a>    <span class="p">)</span>
+</span><span id="digraph-736"><a href="#digraph-736"><span class="linenos">736</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">dg</span><span class="p">:</span>
+</span><span id="digraph-737"><a href="#digraph-737"><span class="linenos">737</span></a>        <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="s2">&quot;Failed to generate a directed graph.&quot;</span><span class="p">)</span>
+</span><span id="digraph-738"><a href="#digraph-738"><span class="linenos">738</span></a>    <span class="c1"># Bjerrum L 欠陥: 対応するエッジを削除する（両方向とも取り除く）</span>
+</span><span id="digraph-739"><a href="#digraph-739"><span class="linenos">739</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">bjerrum_L_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="digraph-740"><a href="#digraph-740"><span class="linenos">740</span></a>        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">edge</span>
+</span><span id="digraph-741"><a href="#digraph-741"><span class="linenos">741</span></a>        <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+</span><span id="digraph-742"><a href="#digraph-742"><span class="linenos">742</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">remove_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+</span><span id="digraph-743"><a href="#digraph-743"><span class="linenos">743</span></a>        <span class="k">if</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="digraph-744"><a href="#digraph-744"><span class="linenos">744</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">remove_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="digraph-745"><a href="#digraph-745"><span class="linenos">745</span></a>    <span class="c1"># Bjerrum D 欠陥: 対応するエッジを両方向とも存在させる</span>
+</span><span id="digraph-746"><a href="#digraph-746"><span class="linenos">746</span></a>    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">bjerrum_D_edges</span> <span class="ow">or</span> <span class="p">[]:</span>
+</span><span id="digraph-747"><a href="#digraph-747"><span class="linenos">747</span></a>        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">edge</span>
+</span><span id="digraph-748"><a href="#digraph-748"><span class="linenos">748</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+</span><span id="digraph-749"><a href="#digraph-749"><span class="linenos">749</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+</span><span id="digraph-750"><a href="#digraph-750"><span class="linenos">750</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">dg</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="digraph-751"><a href="#digraph-751"><span class="linenos">751</span></a>            <span class="n">dg</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span id="digraph-752"><a href="#digraph-752"><span class="linenos">752</span></a>    <span class="k">return</span> <span class="n">dg</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>水素結合ネットワークの有向グラフを生成する。</p>
+
+<p>無向グラフ（水素結合ネットワーク）から、各水素結合の方向（プロトンの向き）
+を決定して有向グラフを生成します。固定エッジで指定された方向は維持され、
+それ以外のエッジは双極子最適化アルゴリズムにより方向が決定されます。</p>
+
+<p>Args:
+    graph: 拡大単位胞全体の無向グラフ
+    depol_loop: 双極子最適化の反復回数
+    lattice_sites: 格子サイト位置の配列
+    fixed_edges: 拡大単位胞全体での固定エッジの有向グラフ
+    target_pol: 分極の目標値</p>
+
+<p>Returns:
+    nx.DiGraph: 水素結合の方向が決定された有向グラフ</p>
+</div>
+
+
+                </section>
+                <section id="orientations">
+                            <input id="orientations-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">orientations</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">lattice_sites</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">digraph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">DiGraph</span>,</span><span class="param">	<span class="n">cell</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="orientations-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#orientations"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="orientations-755"><a href="#orientations-755"><span class="linenos">755</span></a><span class="nd">@reactive</span>
+</span><span id="orientations-756"><a href="#orientations-756"><span class="linenos">756</span></a><span class="k">def</span><span class="w"> </span><span class="nf">orientations</span><span class="p">(</span>
+</span><span id="orientations-757"><a href="#orientations-757"><span class="linenos">757</span></a>    <span class="n">lattice_sites</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="orientations-758"><a href="#orientations-758"><span class="linenos">758</span></a>    <span class="n">digraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span>
+</span><span id="orientations-759"><a href="#orientations-759"><span class="linenos">759</span></a>    <span class="n">cell</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="orientations-760"><a href="#orientations-760"><span class="linenos">760</span></a>    <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="orientations-761"><a href="#orientations-761"><span class="linenos">761</span></a>    <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="orientations-762"><a href="#orientations-762"><span class="linenos">762</span></a>    <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="orientations-763"><a href="#orientations-763"><span class="linenos">763</span></a>    <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+</span><span id="orientations-764"><a href="#orientations-764"><span class="linenos">764</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="orientations-765"><a href="#orientations-765"><span class="linenos">765</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;各水分子の配向行列を計算する。</span>
+</span><span id="orientations-766"><a href="#orientations-766"><span class="linenos">766</span></a>
+</span><span id="orientations-767"><a href="#orientations-767"><span class="linenos">767</span></a><span class="sd">    有向グラフで決定された水素結合の方向に基づいて、各水分子の</span>
+</span><span id="orientations-768"><a href="#orientations-768"><span class="linenos">768</span></a><span class="sd">    配向（回転行列）を計算します。水分子のOHベクトルの方向から</span>
+</span><span id="orientations-769"><a href="#orientations-769"><span class="linenos">769</span></a><span class="sd">    分子全体の配向を決定します。</span>
+</span><span id="orientations-770"><a href="#orientations-770"><span class="linenos">770</span></a>
+</span><span id="orientations-771"><a href="#orientations-771"><span class="linenos">771</span></a><span class="sd">    Args:</span>
+</span><span id="orientations-772"><a href="#orientations-772"><span class="linenos">772</span></a><span class="sd">        lattice_sites: 格子サイト位置の配列</span>
+</span><span id="orientations-773"><a href="#orientations-773"><span class="linenos">773</span></a><span class="sd">        digraph: 水素結合の方向が決定された有向グラフ</span>
+</span><span id="orientations-774"><a href="#orientations-774"><span class="linenos">774</span></a><span class="sd">        cell: 拡大単位胞のセル行列</span>
+</span><span id="orientations-775"><a href="#orientations-775"><span class="linenos">775</span></a><span class="sd">        anions: アニオン配置の辞書</span>
+</span><span id="orientations-776"><a href="#orientations-776"><span class="linenos">776</span></a><span class="sd">        cations: カチオン配置の辞書</span>
+</span><span id="orientations-777"><a href="#orientations-777"><span class="linenos">777</span></a><span class="sd">        spot_hydroniums: H3O+ を置くサイトのリスト</span>
+</span><span id="orientations-778"><a href="#orientations-778"><span class="linenos">778</span></a><span class="sd">        spot_hydroxides: OH- を置くサイトのリスト</span>
+</span><span id="orientations-779"><a href="#orientations-779"><span class="linenos">779</span></a>
+</span><span id="orientations-780"><a href="#orientations-780"><span class="linenos">780</span></a><span class="sd">    Returns:</span>
+</span><span id="orientations-781"><a href="#orientations-781"><span class="linenos">781</span></a><span class="sd">        np.ndarray: 各水分子の配向行列（Nx3x3配列、Nは水分子数）</span>
+</span><span id="orientations-782"><a href="#orientations-782"><span class="linenos">782</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="orientations-783"><a href="#orientations-783"><span class="linenos">783</span></a>    <span class="k">return</span> <span class="n">_assume_water_orientations</span><span class="p">(</span>
+</span><span id="orientations-784"><a href="#orientations-784"><span class="linenos">784</span></a>        <span class="n">lattice_sites</span><span class="p">,</span>
+</span><span id="orientations-785"><a href="#orientations-785"><span class="linenos">785</span></a>        <span class="n">digraph</span><span class="p">,</span>
+</span><span id="orientations-786"><a href="#orientations-786"><span class="linenos">786</span></a>        <span class="n">cell</span><span class="p">,</span>
+</span><span id="orientations-787"><a href="#orientations-787"><span class="linenos">787</span></a>        <span class="nb">set</span><span class="p">(</span><span class="n">anions</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">cations</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">spot_hydroxides</span><span class="p">),</span>
+</span><span id="orientations-788"><a href="#orientations-788"><span class="linenos">788</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>各水分子の配向行列を計算する。</p>
+
+<p>有向グラフで決定された水素結合の方向に基づいて、各水分子の
+配向（回転行列）を計算します。水分子のOHベクトルの方向から
+分子全体の配向を決定します。</p>
+
+<p>Args:
+    lattice_sites: 格子サイト位置の配列
+    digraph: 水素結合の方向が決定された有向グラフ
+    cell: 拡大単位胞のセル行列
+    anions: アニオン配置の辞書
+    cations: カチオン配置の辞書
+    spot_hydroniums: H3O+ を置くサイトのリスト
+    spot_hydroxides: OH- を置くサイトのリスト</p>
+
+<p>Returns:
+    np.ndarray: 各水分子の配向行列（Nx3x3配列、Nは水分子数）</p>
+</div>
+
+
+                </section>
+                <section id="cages">
+                            <input id="cages-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-reactive">@reactive</div>
+
+        <span class="def">def</span>
+        <span class="name">cages</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">unitcell</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">UnitCell</span>,</span><span class="param">	<span class="n">replica_vectors</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">replication_matrix</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">graph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Graph</span></span><span class="return-annotation">) -> <span class="n">genice3</span><span class="o">.</span><span class="n">cage</span><span class="o">.</span><span class="n">CageSpecs</span> <span class="o">|</span> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="cages-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#cages"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="cages-791"><a href="#cages-791"><span class="linenos">791</span></a><span class="nd">@reactive</span>
+</span><span id="cages-792"><a href="#cages-792"><span class="linenos">792</span></a><span class="k">def</span><span class="w"> </span><span class="nf">cages</span><span class="p">(</span>
+</span><span id="cages-793"><a href="#cages-793"><span class="linenos">793</span></a>    <span class="n">unitcell</span><span class="p">:</span> <span class="n">UnitCell</span><span class="p">,</span>
+</span><span id="cages-794"><a href="#cages-794"><span class="linenos">794</span></a>    <span class="n">replica_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="cages-795"><a href="#cages-795"><span class="linenos">795</span></a>    <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="cages-796"><a href="#cages-796"><span class="linenos">796</span></a>    <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span>
+</span><span id="cages-797"><a href="#cages-797"><span class="linenos">797</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CageSpecs</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="cages-798"><a href="#cages-798"><span class="linenos">798</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;ケージ位置とタイプを拡大単位胞全体に複製する。</span>
+</span><span id="cages-799"><a href="#cages-799"><span class="linenos">799</span></a>
+</span><span id="cages-800"><a href="#cages-800"><span class="linenos">800</span></a><span class="sd">    基本単位胞内で定義されたゲスト分子を配置するためのケージ（空隙）の</span>
+</span><span id="cages-801"><a href="#cages-801"><span class="linenos">801</span></a><span class="sd">    位置とタイプを、拡大単位胞全体に複製する。</span>
+</span><span id="cages-802"><a href="#cages-802"><span class="linenos">802</span></a>
+</span><span id="cages-803"><a href="#cages-803"><span class="linenos">803</span></a><span class="sd">    Args:</span>
+</span><span id="cages-804"><a href="#cages-804"><span class="linenos">804</span></a><span class="sd">        unitcell: 基本単位胞オブジェクト。</span>
+</span><span id="cages-805"><a href="#cages-805"><span class="linenos">805</span></a><span class="sd">        replica_vectors: レプリカベクトルの配列。</span>
+</span><span id="cages-806"><a href="#cages-806"><span class="linenos">806</span></a><span class="sd">        replication_matrix: 単位胞を複製するための3x3整数行列。</span>
+</span><span id="cages-807"><a href="#cages-807"><span class="linenos">807</span></a><span class="sd">        graph: 拡大単位胞全体の無向グラフ（サブグラフ複製に使用）。</span>
+</span><span id="cages-808"><a href="#cages-808"><span class="linenos">808</span></a>
+</span><span id="cages-809"><a href="#cages-809"><span class="linenos">809</span></a><span class="sd">    Returns:</span>
+</span><span id="cages-810"><a href="#cages-810"><span class="linenos">810</span></a><span class="sd">        CageSpecs: 拡大単位胞全体でのケージ位置とタイプ。</span>
+</span><span id="cages-811"><a href="#cages-811"><span class="linenos">811</span></a><span class="sd">        unitcell.cages が None の場合は None。</span>
+</span><span id="cages-812"><a href="#cages-812"><span class="linenos">812</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="cages-813"><a href="#cages-813"><span class="linenos">813</span></a>    <span class="k">if</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="cages-814"><a href="#cages-814"><span class="linenos">814</span></a>        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="cages-815"><a href="#cages-815"><span class="linenos">815</span></a>    <span class="c1"># ケージが存在しない場合（空の配列）の処理</span>
+</span><span id="cages-816"><a href="#cages-816"><span class="linenos">816</span></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="cages-817"><a href="#cages-817"><span class="linenos">817</span></a>        <span class="k">return</span> <span class="n">CageSpecs</span><span class="p">(</span><span class="n">positions</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">specs</span><span class="o">=</span><span class="p">[])</span>
+</span><span id="cages-818"><a href="#cages-818"><span class="linenos">818</span></a>    <span class="n">repcagepos</span> <span class="o">=</span> <span class="n">replicate_positions</span><span class="p">(</span>
+</span><span id="cages-819"><a href="#cages-819"><span class="linenos">819</span></a>        <span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="n">replica_vectors</span><span class="p">,</span> <span class="n">replication_matrix</span>
+</span><span id="cages-820"><a href="#cages-820"><span class="linenos">820</span></a>    <span class="p">)</span>
+</span><span id="cages-821"><a href="#cages-821"><span class="linenos">821</span></a>    <span class="n">num_cages_in_unitcell</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span>
+</span><span id="cages-822"><a href="#cages-822"><span class="linenos">822</span></a>
+</span><span id="cages-823"><a href="#cages-823"><span class="linenos">823</span></a>    <span class="c1"># replicate_subgraphはケージ一個ずつをreplicateするが、repcagespecsの並び順は単位胞単位。</span>
+</span><span id="cages-824"><a href="#cages-824"><span class="linenos">824</span></a>    <span class="n">repcagespecs</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">repcagepos</span><span class="p">)</span>
+</span><span id="cages-825"><a href="#cages-825"><span class="linenos">825</span></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cage</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">):</span>
+</span><span id="cages-826"><a href="#cages-826"><span class="linenos">826</span></a>        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">repgraph</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+</span><span id="cages-827"><a href="#cages-827"><span class="linenos">827</span></a>            <span class="n">replicate_subgraph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">cage</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="cages-828"><a href="#cages-828"><span class="linenos">828</span></a>        <span class="p">):</span>
+</span><span id="cages-829"><a href="#cages-829"><span class="linenos">829</span></a>            <span class="n">repcagespecs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">num_cages_in_unitcell</span><span class="p">]</span> <span class="o">=</span> <span class="n">CageSpec</span><span class="p">(</span>
+</span><span id="cages-830"><a href="#cages-830"><span class="linenos">830</span></a>                <span class="n">cage_type</span><span class="o">=</span><span class="n">cage</span><span class="o">.</span><span class="n">cage_type</span><span class="p">,</span> <span class="n">faces</span><span class="o">=</span><span class="n">cage</span><span class="o">.</span><span class="n">faces</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">repgraph</span>
+</span><span id="cages-831"><a href="#cages-831"><span class="linenos">831</span></a>            <span class="p">)</span>
+</span><span id="cages-832"><a href="#cages-832"><span class="linenos">832</span></a>    <span class="c1"># unit cellのcagesと同じ構造。</span>
+</span><span id="cages-833"><a href="#cages-833"><span class="linenos">833</span></a>    <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">repcagepos</span><span class="si">=}</span><span class="s2">, </span><span class="si">{</span><span class="n">repcagespecs</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="cages-834"><a href="#cages-834"><span class="linenos">834</span></a>    <span class="k">return</span> <span class="n">CageSpecs</span><span class="p">(</span><span class="n">positions</span><span class="o">=</span><span class="n">repcagepos</span><span class="p">,</span> <span class="n">specs</span><span class="o">=</span><span class="n">repcagespecs</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>ケージ位置とタイプを拡大単位胞全体に複製する。</p>
+
+<p>基本単位胞内で定義されたゲスト分子を配置するためのケージ（空隙）の
+位置とタイプを、拡大単位胞全体に複製する。</p>
+
+<p>Args:
+    unitcell: 基本単位胞オブジェクト。
+    replica_vectors: レプリカベクトルの配列。
+    replication_matrix: 単位胞を複製するための3x3整数行列。
+    graph: 拡大単位胞全体の無向グラフ（サブグラフ複製に使用）。</p>
+
+<p>Returns:
+    CageSpecs: 拡大単位胞全体でのケージ位置とタイプ。
+    unitcell.cages が None の場合は None。</p>
+</div>
+
+
+                </section>
+                <section id="place_groups_on_lattice">
+                            <input id="place_groups_on_lattice-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">place_groups_on_lattice</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">genice</span><span class="p">:</span> <span class="n"><a href="#GenIce3">GenIce3</a></span>,</span><span class="param">	<span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="place_groups_on_lattice-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#place_groups_on_lattice"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="place_groups_on_lattice-837"><a href="#place_groups_on_lattice-837"><span class="linenos">837</span></a><span class="k">def</span><span class="w"> </span><span class="nf">place_groups_on_lattice</span><span class="p">(</span>
+</span><span id="place_groups_on_lattice-838"><a href="#place_groups_on_lattice-838"><span class="linenos">838</span></a>    <span class="n">genice</span><span class="p">:</span> <span class="s2">&quot;GenIce3&quot;</span><span class="p">,</span>
+</span><span id="place_groups_on_lattice-839"><a href="#place_groups_on_lattice-839"><span class="linenos">839</span></a>    <span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span>
+</span><span id="place_groups_on_lattice-840"><a href="#place_groups_on_lattice-840"><span class="linenos">840</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="place_groups_on_lattice-841"><a href="#place_groups_on_lattice-841"><span class="linenos">841</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="place_groups_on_lattice-842"><a href="#place_groups_on_lattice-842"><span class="linenos">842</span></a><span class="sd">    格子点に group を配置する。</span>
+</span><span id="place_groups_on_lattice-843"><a href="#place_groups_on_lattice-843"><span class="linenos">843</span></a>
+</span><span id="place_groups_on_lattice-844"><a href="#place_groups_on_lattice-844"><span class="linenos">844</span></a><span class="sd">    Args:</span>
+</span><span id="place_groups_on_lattice-845"><a href="#place_groups_on_lattice-845"><span class="linenos">845</span></a><span class="sd">        genice: GenIce3 インスタンス</span>
+</span><span id="place_groups_on_lattice-846"><a href="#place_groups_on_lattice-846"><span class="linenos">846</span></a><span class="sd">        spot_cation_groups: サイト -&gt; {ケージID -&gt; group名} の辞書</span>
+</span><span id="place_groups_on_lattice-847"><a href="#place_groups_on_lattice-847"><span class="linenos">847</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="place_groups_on_lattice-848"><a href="#place_groups_on_lattice-848"><span class="linenos">848</span></a>    <span class="n">_genice3_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="place_groups_on_lattice-849"><a href="#place_groups_on_lattice-849"><span class="linenos">849</span></a>        <span class="sa">f</span><span class="s2">&quot;place_groups_on_lattice: dummy implementation (group assignment not yet applied) </span><span class="si">{</span><span class="n">spot_cation_groups</span><span class="si">=}</span><span class="s2">&quot;</span>
+</span><span id="place_groups_on_lattice-850"><a href="#place_groups_on_lattice-850"><span class="linenos">850</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>格子点に group を配置する。</p>
+
+<p>Args:
+    genice: GenIce3 インスタンス
+    spot_cation_groups: サイト -> {ケージID -> group名} の辞書</p>
+</div>
+
+
+                </section>
+                <section id="log_spot_cation_cages">
+                            <input id="log_spot_cation_cages-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">log_spot_cation_cages</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">genice</span><span class="p">:</span> <span class="n"><a href="#GenIce3">GenIce3</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="log_spot_cation_cages-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#log_spot_cation_cages"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="log_spot_cation_cages-853"><a href="#log_spot_cation_cages-853"><span class="linenos">853</span></a><span class="k">def</span><span class="w"> </span><span class="nf">log_spot_cation_cages</span><span class="p">(</span><span class="n">genice</span><span class="p">:</span> <span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="log_spot_cation_cages-854"><a href="#log_spot_cation_cages-854"><span class="linenos">854</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;spot_cation ごとに属するケージのID・cage_type・facesをログ表示する。&quot;&quot;&quot;</span>
+</span><span id="log_spot_cation_cages-855"><a href="#log_spot_cation_cages-855"><span class="linenos">855</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">genice</span><span class="o">.</span><span class="n">spot_cations</span> <span class="ow">or</span> <span class="n">genice</span><span class="o">.</span><span class="n">cages</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="log_spot_cation_cages-856"><a href="#log_spot_cation_cages-856"><span class="linenos">856</span></a>        <span class="k">return</span>
+</span><span id="log_spot_cation_cages-857"><a href="#log_spot_cation_cages-857"><span class="linenos">857</span></a>    <span class="n">num_replicas</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">replication_matrix</span><span class="p">)))</span>
+</span><span id="log_spot_cation_cages-858"><a href="#log_spot_cation_cages-858"><span class="linenos">858</span></a>    <span class="n">num_cages_in_unitcell</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span> <span class="o">//</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_replicas</span><span class="p">)</span>
+</span><span id="log_spot_cation_cages-859"><a href="#log_spot_cation_cages-859"><span class="linenos">859</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">genice</span><span class="o">.</span><span class="n">spot_cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="log_spot_cation_cages-860"><a href="#log_spot_cation_cages-860"><span class="linenos">860</span></a>        <span class="n">cage_indices</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">node_to_cage_indices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="log_spot_cation_cages-861"><a href="#log_spot_cation_cages-861"><span class="linenos">861</span></a>        <span class="k">for</span> <span class="n">cage_id</span> <span class="ow">in</span> <span class="n">cage_indices</span><span class="p">:</span>
+</span><span id="log_spot_cation_cages-862"><a href="#log_spot_cation_cages-862"><span class="linenos">862</span></a>            <span class="n">spec</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">[</span><span class="n">cage_id</span><span class="p">]</span>
+</span><span id="log_spot_cation_cages-863"><a href="#log_spot_cation_cages-863"><span class="linenos">863</span></a>            <span class="n">genice</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="log_spot_cation_cages-864"><a href="#log_spot_cation_cages-864"><span class="linenos">864</span></a>                <span class="sa">f</span><span class="s2">&quot;spot_cation </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2"> belongs to cage </span><span class="si">{</span><span class="n">cage_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">faces</span><span class="si">}</span><span class="s2">) in the supercell.&quot;</span>
+</span><span id="log_spot_cation_cages-865"><a href="#log_spot_cation_cages-865"><span class="linenos">865</span></a>            <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>spot_cation ごとに属するケージのID・cage_type・facesをログ表示する。</p>
+</div>
+
+
+                </section>
+                <section id="log_cation_cages">
+                            <input id="log_cation_cages-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">log_cation_cages</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">genice</span><span class="p">:</span> <span class="n"><a href="#GenIce3">GenIce3</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="log_cation_cages-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#log_cation_cages"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="log_cation_cages-868"><a href="#log_cation_cages-868"><span class="linenos">868</span></a><span class="k">def</span><span class="w"> </span><span class="nf">log_cation_cages</span><span class="p">(</span><span class="n">genice</span><span class="p">:</span> <span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="log_cation_cages-869"><a href="#log_cation_cages-869"><span class="linenos">869</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;単位胞内のカチオンごとに、属するケージのID・cage_type・faces をログ表示する。&quot;&quot;&quot;</span>
+</span><span id="log_cation_cages-870"><a href="#log_cation_cages-870"><span class="linenos">870</span></a>    <span class="k">if</span> <span class="p">(</span>
+</span><span id="log_cation_cages-871"><a href="#log_cation_cages-871"><span class="linenos">871</span></a>        <span class="ow">not</span> <span class="n">genice</span><span class="o">.</span><span class="n">cations</span>
+</span><span id="log_cation_cages-872"><a href="#log_cation_cages-872"><span class="linenos">872</span></a>        <span class="ow">or</span> <span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="log_cation_cages-873"><a href="#log_cation_cages-873"><span class="linenos">873</span></a>        <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="log_cation_cages-874"><a href="#log_cation_cages-874"><span class="linenos">874</span></a>    <span class="p">):</span>
+</span><span id="log_cation_cages-875"><a href="#log_cation_cages-875"><span class="linenos">875</span></a>        <span class="k">return</span>
+</span><span id="log_cation_cages-876"><a href="#log_cation_cages-876"><span class="linenos">876</span></a>    <span class="k">for</span> <span class="n">site</span><span class="p">,</span> <span class="n">ion_name</span> <span class="ow">in</span> <span class="n">genice</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="log_cation_cages-877"><a href="#log_cation_cages-877"><span class="linenos">877</span></a>        <span class="n">cage_indices</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">node_to_cage_indices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="log_cation_cages-878"><a href="#log_cation_cages-878"><span class="linenos">878</span></a>        <span class="k">for</span> <span class="n">cage_id</span> <span class="ow">in</span> <span class="n">cage_indices</span><span class="p">:</span>
+</span><span id="log_cation_cages-879"><a href="#log_cation_cages-879"><span class="linenos">879</span></a>            <span class="n">spec</span> <span class="o">=</span> <span class="n">genice</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">[</span><span class="n">cage_id</span><span class="p">]</span>
+</span><span id="log_cation_cages-880"><a href="#log_cation_cages-880"><span class="linenos">880</span></a>            <span class="n">genice</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="log_cation_cages-881"><a href="#log_cation_cages-881"><span class="linenos">881</span></a>                <span class="sa">f</span><span class="s2">&quot;cation </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">ion_name</span><span class="si">}</span><span class="s2"> belongs to cage </span><span class="si">{</span><span class="n">cage_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">faces</span><span class="si">}</span><span class="s2">) in the unit cell.&quot;</span>
+</span><span id="log_cation_cages-882"><a href="#log_cation_cages-882"><span class="linenos">882</span></a>            <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>単位胞内のカチオンごとに、属するケージのID・cage_type・faces をログ表示する。</p>
+</div>
+
+
+                </section>
+                <section id="place_group">
+                            <input id="place_group-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">place_group</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">direction</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">bondlen</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="n">genice3</span><span class="o">.</span><span class="n">group</span><span class="o">.</span><span class="n">Group</span>:</span></span>
+
+                <label class="view-source-button" for="place_group-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#place_group"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="place_group-885"><a href="#place_group-885"><span class="linenos">885</span></a><span class="k">def</span><span class="w"> </span><span class="nf">place_group</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">bondlen</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Group</span><span class="p">:</span>
+</span><span id="place_group-886"><a href="#place_group-886"><span class="linenos">886</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;指定方向・結合長で group プラグインを読み込み、配置した Group を返す。</span>
+</span><span id="place_group-887"><a href="#place_group-887"><span class="linenos">887</span></a>
+</span><span id="place_group-888"><a href="#place_group-888"><span class="linenos">888</span></a><span class="sd">    置換イオンから group のアンカー原子までが direction 方向に bondlen の長さで並ぶ。</span>
+</span><span id="place_group-889"><a href="#place_group-889"><span class="linenos">889</span></a><span class="sd">    TODO: 将来は2個以上のアンカーを持つ group を扱う可能性がある。</span>
+</span><span id="place_group-890"><a href="#place_group-890"><span class="linenos">890</span></a>
+</span><span id="place_group-891"><a href="#place_group-891"><span class="linenos">891</span></a><span class="sd">    Args:</span>
+</span><span id="place_group-892"><a href="#place_group-892"><span class="linenos">892</span></a><span class="sd">        direction: 配置方向（直交座標、正規化される）。</span>
+</span><span id="place_group-893"><a href="#place_group-893"><span class="linenos">893</span></a><span class="sd">        bondlen: アンカーまでの結合長。</span>
+</span><span id="place_group-894"><a href="#place_group-894"><span class="linenos">894</span></a><span class="sd">        group_name: group プラグイン名（例: &quot;ammonia&quot;）。</span>
+</span><span id="place_group-895"><a href="#place_group-895"><span class="linenos">895</span></a>
+</span><span id="place_group-896"><a href="#place_group-896"><span class="linenos">896</span></a><span class="sd">    Returns:</span>
+</span><span id="place_group-897"><a href="#place_group-897"><span class="linenos">897</span></a><span class="sd">        回転・並進を適用した Group インスタンス。</span>
+</span><span id="place_group-898"><a href="#place_group-898"><span class="linenos">898</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="place_group-899"><a href="#place_group-899"><span class="linenos">899</span></a>    <span class="c1"># logger = getLogger(&quot;GenIce3&quot;)</span>
+</span><span id="place_group-900"><a href="#place_group-900"><span class="linenos">900</span></a>    <span class="n">group</span> <span class="o">=</span> <span class="n">safe_import</span><span class="p">(</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="n">group_name</span><span class="p">)</span><span class="o">.</span><span class="n">Group</span><span class="p">()</span>
+</span><span id="place_group-901"><a href="#place_group-901"><span class="linenos">901</span></a>    <span class="c1"># logger.info(f&quot;{group_name=} {group=}&quot;)</span>
+</span><span id="place_group-902"><a href="#place_group-902"><span class="linenos">902</span></a>    <span class="n">direction</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="place_group-903"><a href="#place_group-903"><span class="linenos">903</span></a>    <span class="n">offset</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">bondlen</span>
+</span><span id="place_group-904"><a href="#place_group-904"><span class="linenos">904</span></a>    <span class="c1"># Z軸をdirection方向に傾ける行列</span>
+</span><span id="place_group-905"><a href="#place_group-905"><span class="linenos">905</span></a>    <span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span> <span class="o">=</span> <span class="n">direction</span>
+</span><span id="place_group-906"><a href="#place_group-906"><span class="linenos">906</span></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">ex</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ey</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+</span><span id="place_group-907"><a href="#place_group-907"><span class="linenos">907</span></a>    <span class="n">Ry</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">ez</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">r</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ez</span><span class="p">]])</span>
+</span><span id="place_group-908"><a href="#place_group-908"><span class="linenos">908</span></a>    <span class="n">Rz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">ex</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="n">ey</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">ey</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="n">ex</span> <span class="o">/</span> <span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+</span><span id="place_group-909"><a href="#place_group-909"><span class="linenos">909</span></a>    <span class="n">rotmat</span> <span class="o">=</span> <span class="n">Ry</span> <span class="o">@</span> <span class="n">Rz</span>
+</span><span id="place_group-910"><a href="#place_group-910"><span class="linenos">910</span></a>    <span class="n">sites</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">sites</span> <span class="o">@</span> <span class="n">rotmat</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="place_group-911"><a href="#place_group-911"><span class="linenos">911</span></a>    <span class="k">return</span> <span class="n">Group</span><span class="p">(</span>
+</span><span id="place_group-912"><a href="#place_group-912"><span class="linenos">912</span></a>        <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="place_group-913"><a href="#place_group-913"><span class="linenos">913</span></a>        <span class="n">labels</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="place_group-914"><a href="#place_group-914"><span class="linenos">914</span></a>        <span class="n">bonds</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">bonds</span><span class="p">,</span>
+</span><span id="place_group-915"><a href="#place_group-915"><span class="linenos">915</span></a>        <span class="n">name</span><span class="o">=</span><span class="n">group</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="place_group-916"><a href="#place_group-916"><span class="linenos">916</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>指定方向・結合長で group プラグインを読み込み、配置した Group を返す。</p>
+
+<p>置換イオンから group のアンカー原子までが direction 方向に bondlen の長さで並ぶ。
+TODO: 将来は2個以上のアンカーを持つ group を扱う可能性がある。</p>
+
+<p>Args:
+    direction: 配置方向（直交座標、正規化される）。
+    bondlen: アンカーまでの結合長。
+    group_name: group プラグイン名（例: "ammonia"）。</p>
+
+<p>Returns:
+    回転・並進を適用した Group インスタンス。</p>
+</div>
+
+
+                </section>
+                <section id="GenIce3">
+                            <input id="GenIce3-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+            
+    <span class="def">class</span>
+    <span class="name">GenIce3</span>:
+
+                <label class="view-source-button" for="GenIce3-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3-924"><a href="#GenIce3-924"><span class="linenos"> 924</span></a><span class="k">class</span><span class="w"> </span><span class="nc">GenIce3</span><span class="p">:</span>
+</span><span id="GenIce3-925"><a href="#GenIce3-925"><span class="linenos"> 925</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;GenIce3のメインクラス：リアクティブプロパティによる氷構造生成システム</span>
+</span><span id="GenIce3-926"><a href="#GenIce3-926"><span class="linenos"> 926</span></a>
+</span><span id="GenIce3-927"><a href="#GenIce3-927"><span class="linenos"> 927</span></a><span class="sd">    GenIce3は、依存関係エンジン（DependencyEngine）を使用して、必要な時に</span>
+</span><span id="GenIce3-928"><a href="#GenIce3-928"><span class="linenos"> 928</span></a><span class="sd">    自動的に計算されるリアクティブプロパティを提供します。これにより、ユーザーは</span>
+</span><span id="GenIce3-929"><a href="#GenIce3-929"><span class="linenos"> 929</span></a><span class="sd">    必要なプロパティにアクセスするだけで、そのプロパティに依存するすべての</span>
+</span><span id="GenIce3-930"><a href="#GenIce3-930"><span class="linenos"> 930</span></a><span class="sd">    計算が自動的に実行されます。</span>
+</span><span id="GenIce3-931"><a href="#GenIce3-931"><span class="linenos"> 931</span></a>
+</span><span id="GenIce3-932"><a href="#GenIce3-932"><span class="linenos"> 932</span></a><span class="sd">    リアクティブプロパティの仕組み:</span>
+</span><span id="GenIce3-933"><a href="#GenIce3-933"><span class="linenos"> 933</span></a><span class="sd">        - 各プロパティ（digraph, graph, lattice_sitesなど）は、アクセス時に</span>
+</span><span id="GenIce3-934"><a href="#GenIce3-934"><span class="linenos"> 934</span></a><span class="sd">          必要に応じて自動的に計算されます</span>
+</span><span id="GenIce3-935"><a href="#GenIce3-935"><span class="linenos"> 935</span></a><span class="sd">        - 依存関係は関数の引数名から自動的に推論されます</span>
+</span><span id="GenIce3-936"><a href="#GenIce3-936"><span class="linenos"> 936</span></a><span class="sd">        - 一度計算されたプロパティはキャッシュされ、依存する入力が変更されるまで</span>
+</span><span id="GenIce3-937"><a href="#GenIce3-937"><span class="linenos"> 937</span></a><span class="sd">          再利用されます</span>
+</span><span id="GenIce3-938"><a href="#GenIce3-938"><span class="linenos"> 938</span></a><span class="sd">        - 入力プロパティ（unitcell, replication_matrix, depol_loopなど）が</span>
+</span><span id="GenIce3-939"><a href="#GenIce3-939"><span class="linenos"> 939</span></a><span class="sd">          変更されると、それに依存するすべてのプロパティのキャッシュが自動的に</span>
+</span><span id="GenIce3-940"><a href="#GenIce3-940"><span class="linenos"> 940</span></a><span class="sd">          クリアされます</span>
+</span><span id="GenIce3-941"><a href="#GenIce3-941"><span class="linenos"> 941</span></a>
+</span><span id="GenIce3-942"><a href="#GenIce3-942"><span class="linenos"> 942</span></a><span class="sd">    使用例:</span>
+</span><span id="GenIce3-943"><a href="#GenIce3-943"><span class="linenos"> 943</span></a><span class="sd">        &gt;&gt;&gt; genice = GenIce3(unitcell=my_unitcell)</span>
+</span><span id="GenIce3-944"><a href="#GenIce3-944"><span class="linenos"> 944</span></a><span class="sd">        &gt;&gt;&gt; digraph = genice.digraph  # 自動的に必要な計算が実行される</span>
+</span><span id="GenIce3-945"><a href="#GenIce3-945"><span class="linenos"> 945</span></a><span class="sd">        &gt;&gt;&gt; orientations = genice.orientations  # digraphに依存するため、digraphが先に計算される</span>
+</span><span id="GenIce3-946"><a href="#GenIce3-946"><span class="linenos"> 946</span></a>
+</span><span id="GenIce3-947"><a href="#GenIce3-947"><span class="linenos"> 947</span></a><span class="sd">    Attributes:</span>
+</span><span id="GenIce3-948"><a href="#GenIce3-948"><span class="linenos"> 948</span></a><span class="sd">        digraph (nx.DiGraph): 水素結合の方向が決定された有向グラフ。</span>
+</span><span id="GenIce3-949"><a href="#GenIce3-949"><span class="linenos"> 949</span></a><span class="sd">            無向グラフから双極子最適化アルゴリズムにより各水素結合の方向を決定した</span>
+</span><span id="GenIce3-950"><a href="#GenIce3-950"><span class="linenos"> 950</span></a><span class="sd">            有向グラフです。固定エッジで指定された方向は維持され、それ以外のエッジは</span>
+</span><span id="GenIce3-951"><a href="#GenIce3-951"><span class="linenos"> 951</span></a><span class="sd">            最適化により決定されます。このプロパティにアクセスすると、必要な依存関係</span>
+</span><span id="GenIce3-952"><a href="#GenIce3-952"><span class="linenos"> 952</span></a><span class="sd">            （graph, lattice_sites, fixed_edges など）が自動的に計算されます。</span>
+</span><span id="GenIce3-953"><a href="#GenIce3-953"><span class="linenos"> 953</span></a>
+</span><span id="GenIce3-954"><a href="#GenIce3-954"><span class="linenos"> 954</span></a><span class="sd">        graph (nx.Graph): 水素結合ネットワークの無向グラフ。</span>
+</span><span id="GenIce3-955"><a href="#GenIce3-955"><span class="linenos"> 955</span></a><span class="sd">            拡大単位胞全体の水分子間の水素結合ネットワークを表す無向グラフです。</span>
+</span><span id="GenIce3-956"><a href="#GenIce3-956"><span class="linenos"> 956</span></a><span class="sd">            基本単位胞のグラフを拡大単位胞全体に複製して統合したものです。</span>
+</span><span id="GenIce3-957"><a href="#GenIce3-957"><span class="linenos"> 957</span></a>
+</span><span id="GenIce3-958"><a href="#GenIce3-958"><span class="linenos"> 958</span></a><span class="sd">        lattice_sites (np.ndarray): 格子サイト位置の配列。</span>
+</span><span id="GenIce3-959"><a href="#GenIce3-959"><span class="linenos"> 959</span></a><span class="sd">            拡大単位胞内のすべての水分子の座標を表すNx3配列です（Nは水分子数）。</span>
+</span><span id="GenIce3-960"><a href="#GenIce3-960"><span class="linenos"> 960</span></a><span class="sd">            基本単位胞内の水分子の座標を、単位胞の周期境界条件に従って拡大単位胞全体に</span>
+</span><span id="GenIce3-961"><a href="#GenIce3-961"><span class="linenos"> 961</span></a><span class="sd">            複製したものです。</span>
+</span><span id="GenIce3-962"><a href="#GenIce3-962"><span class="linenos"> 962</span></a>
+</span><span id="GenIce3-963"><a href="#GenIce3-963"><span class="linenos"> 963</span></a><span class="sd">        orientations (np.ndarray): 各水分子の配向行列。</span>
+</span><span id="GenIce3-964"><a href="#GenIce3-964"><span class="linenos"> 964</span></a><span class="sd">            各水分子の配向（回転行列）を表すNx3x3配列です（Nは水分子数）。</span>
+</span><span id="GenIce3-965"><a href="#GenIce3-965"><span class="linenos"> 965</span></a><span class="sd">            有向グラフで決定された水素結合の方向に基づいて、各水分子のOHベクトルの</span>
+</span><span id="GenIce3-966"><a href="#GenIce3-966"><span class="linenos"> 966</span></a><span class="sd">            方向から分子全体の配向を決定します。</span>
+</span><span id="GenIce3-967"><a href="#GenIce3-967"><span class="linenos"> 967</span></a>
+</span><span id="GenIce3-968"><a href="#GenIce3-968"><span class="linenos"> 968</span></a><span class="sd">        unitcell (UnitCell): 基本単位胞オブジェクト。</span>
+</span><span id="GenIce3-969"><a href="#GenIce3-969"><span class="linenos"> 969</span></a><span class="sd">            氷構造の基本単位胞を表すオブジェクトです。格子構造、水分子の配置、</span>
+</span><span id="GenIce3-970"><a href="#GenIce3-970"><span class="linenos"> 970</span></a><span class="sd">            水素結合ネットワーク、固定エッジなどの情報を含みます。</span>
+</span><span id="GenIce3-971"><a href="#GenIce3-971"><span class="linenos"> 971</span></a>
+</span><span id="GenIce3-972"><a href="#GenIce3-972"><span class="linenos"> 972</span></a><span class="sd">        replication_matrix (np.ndarray): 単位胞複製行列。</span>
+</span><span id="GenIce3-973"><a href="#GenIce3-973"><span class="linenos"> 973</span></a><span class="sd">            基本単位胞をどのように積み重ねて拡大単位胞を作成するかを指定する3x3整数行列です。</span>
+</span><span id="GenIce3-974"><a href="#GenIce3-974"><span class="linenos"> 974</span></a><span class="sd">            単位行列の場合は基本単位胞のみを使用します。</span>
+</span><span id="GenIce3-975"><a href="#GenIce3-975"><span class="linenos"> 975</span></a>
+</span><span id="GenIce3-976"><a href="#GenIce3-976"><span class="linenos"> 976</span></a><span class="sd">        depol_loop (int): 双極子最適化の反復回数。</span>
+</span><span id="GenIce3-977"><a href="#GenIce3-977"><span class="linenos"> 977</span></a><span class="sd">            有向グラフを生成する際の双極子最適化アルゴリズムの反復回数です。</span>
+</span><span id="GenIce3-978"><a href="#GenIce3-978"><span class="linenos"> 978</span></a><span class="sd">            値が大きいほどより最適化された構造が得られますが、計算時間も増加します。</span>
+</span><span id="GenIce3-979"><a href="#GenIce3-979"><span class="linenos"> 979</span></a>
+</span><span id="GenIce3-980"><a href="#GenIce3-980"><span class="linenos"> 980</span></a><span class="sd">        seed (int): 乱数シード。</span>
+</span><span id="GenIce3-981"><a href="#GenIce3-981"><span class="linenos"> 981</span></a><span class="sd">            乱数生成器のシード値です。digraphの生成などで使用される乱数の初期化に使用されます。</span>
+</span><span id="GenIce3-982"><a href="#GenIce3-982"><span class="linenos"> 982</span></a><span class="sd">            このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-983"><a href="#GenIce3-983"><span class="linenos"> 983</span></a><span class="sd">            キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-984"><a href="#GenIce3-984"><span class="linenos"> 984</span></a>
+</span><span id="GenIce3-985"><a href="#GenIce3-985"><span class="linenos"> 985</span></a><span class="sd">        spot_anions (Dict[int, str]): 特定の格子サイト位置に配置するアニオンイオンの辞書。</span>
+</span><span id="GenIce3-986"><a href="#GenIce3-986"><span class="linenos"> 986</span></a><span class="sd">            サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、</span>
+</span><span id="GenIce3-987"><a href="#GenIce3-987"><span class="linenos"> 987</span></a><span class="sd">            それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-988"><a href="#GenIce3-988"><span class="linenos"> 988</span></a>
+</span><span id="GenIce3-989"><a href="#GenIce3-989"><span class="linenos"> 989</span></a><span class="sd">        spot_cations (Dict[int, str]): 特定の格子サイト位置に配置するカチオンイオンの辞書。</span>
+</span><span id="GenIce3-990"><a href="#GenIce3-990"><span class="linenos"> 990</span></a><span class="sd">            サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、</span>
+</span><span id="GenIce3-991"><a href="#GenIce3-991"><span class="linenos"> 991</span></a><span class="sd">            それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-992"><a href="#GenIce3-992"><span class="linenos"> 992</span></a>
+</span><span id="GenIce3-993"><a href="#GenIce3-993"><span class="linenos"> 993</span></a><span class="sd">        spot_hydroniums (List[int]): H3O+ を置くサイトのリスト（1受容・3供与）。</span>
+</span><span id="GenIce3-994"><a href="#GenIce3-994"><span class="linenos"> 994</span></a>
+</span><span id="GenIce3-995"><a href="#GenIce3-995"><span class="linenos"> 995</span></a><span class="sd">        spot_hydroxides (List[int]): OH- を置くサイトのリスト（3受容・1供与）。</span>
+</span><span id="GenIce3-996"><a href="#GenIce3-996"><span class="linenos"> 996</span></a>
+</span><span id="GenIce3-997"><a href="#GenIce3-997"><span class="linenos"> 997</span></a><span class="sd">        cages (CageSpecs): 拡大単位胞全体でのケージ位置・タイプ。</span>
+</span><span id="GenIce3-998"><a href="#GenIce3-998"><span class="linenos"> 998</span></a><span class="sd">            単位胞のケージを replica_vectors に従って複製したもので、ゲスト配置や cage_survey 出力に利用します。</span>
+</span><span id="GenIce3-999"><a href="#GenIce3-999"><span class="linenos"> 999</span></a>
+</span><span id="GenIce3-1000"><a href="#GenIce3-1000"><span class="linenos">1000</span></a><span class="sd">        fixed_edges (nx.DiGraph): 拡大単位胞全体での固定エッジの有向グラフ。</span>
+</span><span id="GenIce3-1001"><a href="#GenIce3-1001"><span class="linenos">1001</span></a><span class="sd">            単位胞の固定エッジと spot_anion/spot_cation/spot_hydronium/spot_hydroxide に基づく固定を統合したもので、digraph の生成に利用します。</span>
+</span><span id="GenIce3-1002"><a href="#GenIce3-1002"><span class="linenos">1002</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1003"><a href="#GenIce3-1003"><span class="linenos">1003</span></a>
+</span><span id="GenIce3-1004"><a href="#GenIce3-1004"><span class="linenos">1004</span></a>    <span class="c1"># Class名でlog表示したい。</span>
+</span><span id="GenIce3-1005"><a href="#GenIce3-1005"><span class="linenos">1005</span></a>    <span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;GenIce3&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1006"><a href="#GenIce3-1006"><span class="linenos">1006</span></a>
+</span><span id="GenIce3-1007"><a href="#GenIce3-1007"><span class="linenos">1007</span></a>    <span class="c1"># ユーザー向けAPIとして公開するpropertyのリスト</span>
+</span><span id="GenIce3-1008"><a href="#GenIce3-1008"><span class="linenos">1008</span></a>    <span class="c1"># このリストに含まれるpropertyのみAPIドキュメントを作成する</span>
+</span><span id="GenIce3-1009"><a href="#GenIce3-1009"><span class="linenos">1009</span></a>    <span class="n">PUBLIC_API_PROPERTIES</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="GenIce3-1010"><a href="#GenIce3-1010"><span class="linenos">1010</span></a>        <span class="s2">&quot;digraph&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1011"><a href="#GenIce3-1011"><span class="linenos">1011</span></a>        <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1012"><a href="#GenIce3-1012"><span class="linenos">1012</span></a>        <span class="s2">&quot;lattice_sites&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1013"><a href="#GenIce3-1013"><span class="linenos">1013</span></a>        <span class="s2">&quot;orientations&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1014"><a href="#GenIce3-1014"><span class="linenos">1014</span></a>        <span class="s2">&quot;unitcell&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1015"><a href="#GenIce3-1015"><span class="linenos">1015</span></a>        <span class="s2">&quot;replication_matrix&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1016"><a href="#GenIce3-1016"><span class="linenos">1016</span></a>        <span class="s2">&quot;depol_loop&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1017"><a href="#GenIce3-1017"><span class="linenos">1017</span></a>        <span class="s2">&quot;target_pol&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1018"><a href="#GenIce3-1018"><span class="linenos">1018</span></a>        <span class="s2">&quot;seed&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1019"><a href="#GenIce3-1019"><span class="linenos">1019</span></a>        <span class="s2">&quot;spot_anions&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1020"><a href="#GenIce3-1020"><span class="linenos">1020</span></a>        <span class="s2">&quot;spot_cations&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1021"><a href="#GenIce3-1021"><span class="linenos">1021</span></a>        <span class="s2">&quot;spot_hydroniums&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1022"><a href="#GenIce3-1022"><span class="linenos">1022</span></a>        <span class="s2">&quot;spot_hydroxides&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1023"><a href="#GenIce3-1023"><span class="linenos">1023</span></a>    <span class="p">]</span>
+</span><span id="GenIce3-1024"><a href="#GenIce3-1024"><span class="linenos">1024</span></a>
+</span><span id="GenIce3-1025"><a href="#GenIce3-1025"><span class="linenos">1025</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="GenIce3-1026"><a href="#GenIce3-1026"><span class="linenos">1026</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="GenIce3-1027"><a href="#GenIce3-1027"><span class="linenos">1027</span></a>        <span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+</span><span id="GenIce3-1028"><a href="#GenIce3-1028"><span class="linenos">1028</span></a>        <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+</span><span id="GenIce3-1029"><a href="#GenIce3-1029"><span class="linenos">1029</span></a>        <span class="n">target_pol</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+</span><span id="GenIce3-1030"><a href="#GenIce3-1030"><span class="linenos">1030</span></a>        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="GenIce3-1031"><a href="#GenIce3-1031"><span class="linenos">1031</span></a>        <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+</span><span id="GenIce3-1032"><a href="#GenIce3-1032"><span class="linenos">1032</span></a>        <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+</span><span id="GenIce3-1033"><a href="#GenIce3-1033"><span class="linenos">1033</span></a>        <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1034"><a href="#GenIce3-1034"><span class="linenos">1034</span></a>        <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1035"><a href="#GenIce3-1035"><span class="linenos">1035</span></a>        <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1036"><a href="#GenIce3-1036"><span class="linenos">1036</span></a>        <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1037"><a href="#GenIce3-1037"><span class="linenos">1037</span></a>        <span class="n">guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;GuestSpec&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1038"><a href="#GenIce3-1038"><span class="linenos">1038</span></a>        <span class="n">spot_guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1039"><a href="#GenIce3-1039"><span class="linenos">1039</span></a>        <span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1040"><a href="#GenIce3-1040"><span class="linenos">1040</span></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+</span><span id="GenIce3-1041"><a href="#GenIce3-1041"><span class="linenos">1041</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1042"><a href="#GenIce3-1042"><span class="linenos">1042</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;GenIce3インスタンスを初期化する。</span>
+</span><span id="GenIce3-1043"><a href="#GenIce3-1043"><span class="linenos">1043</span></a>
+</span><span id="GenIce3-1044"><a href="#GenIce3-1044"><span class="linenos">1044</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1045"><a href="#GenIce3-1045"><span class="linenos">1045</span></a><span class="sd">            depol_loop: 双極子最適化の反復回数（デフォルト: 1000）</span>
+</span><span id="GenIce3-1046"><a href="#GenIce3-1046"><span class="linenos">1046</span></a><span class="sd">            replication_matrix: 単位胞複製行列（デフォルト: 単位行列）</span>
+</span><span id="GenIce3-1047"><a href="#GenIce3-1047"><span class="linenos">1047</span></a><span class="sd">            target_pol: 分極の目標値（デフォルト: [0, 0, 0]）</span>
+</span><span id="GenIce3-1048"><a href="#GenIce3-1048"><span class="linenos">1048</span></a><span class="sd">            seed: 乱数シード（デフォルト: 1）</span>
+</span><span id="GenIce3-1049"><a href="#GenIce3-1049"><span class="linenos">1049</span></a><span class="sd">            spot_anions: 特定位置のアニオン配置（デフォルト: {}）</span>
+</span><span id="GenIce3-1050"><a href="#GenIce3-1050"><span class="linenos">1050</span></a><span class="sd">            spot_cations: 特定位置のカチオン配置（デフォルト: {}）</span>
+</span><span id="GenIce3-1051"><a href="#GenIce3-1051"><span class="linenos">1051</span></a><span class="sd">            spot_hydroniums: H3O+ を置くサイトのリスト（デフォルト: []）</span>
+</span><span id="GenIce3-1052"><a href="#GenIce3-1052"><span class="linenos">1052</span></a><span class="sd">            spot_hydroxides: OH- を置くサイトのリスト（デフォルト: []）</span>
+</span><span id="GenIce3-1053"><a href="#GenIce3-1053"><span class="linenos">1053</span></a><span class="sd">            guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）</span>
+</span><span id="GenIce3-1054"><a href="#GenIce3-1054"><span class="linenos">1054</span></a><span class="sd">            spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）</span>
+</span><span id="GenIce3-1055"><a href="#GenIce3-1055"><span class="linenos">1055</span></a><span class="sd">            spot_cation_groups: spot_cation の --group 指定（サイト -&gt; {ケージID -&gt; group名}）（デフォルト: {}）</span>
+</span><span id="GenIce3-1056"><a href="#GenIce3-1056"><span class="linenos">1056</span></a><span class="sd">            **kwargs: その他のリアクティブプロパティ（unitcellなど）</span>
+</span><span id="GenIce3-1057"><a href="#GenIce3-1057"><span class="linenos">1057</span></a>
+</span><span id="GenIce3-1058"><a href="#GenIce3-1058"><span class="linenos">1058</span></a><span class="sd">        Raises:</span>
+</span><span id="GenIce3-1059"><a href="#GenIce3-1059"><span class="linenos">1059</span></a><span class="sd">            ConfigurationError: 無効なキーワード引数が指定された場合</span>
+</span><span id="GenIce3-1060"><a href="#GenIce3-1060"><span class="linenos">1060</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1061"><a href="#GenIce3-1061"><span class="linenos">1061</span></a>        <span class="c1"># DependencyEngineインスタンスを作成</span>
+</span><span id="GenIce3-1062"><a href="#GenIce3-1062"><span class="linenos">1062</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">DependencyEngine</span><span class="p">()</span>
+</span><span id="GenIce3-1063"><a href="#GenIce3-1063"><span class="linenos">1063</span></a>
+</span><span id="GenIce3-1064"><a href="#GenIce3-1064"><span class="linenos">1064</span></a>        <span class="c1"># Default値が必要なもの</span>
+</span><span id="GenIce3-1065"><a href="#GenIce3-1065"><span class="linenos">1065</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="GenIce3-1066"><a href="#GenIce3-1066"><span class="linenos">1066</span></a>            <span class="n">seed</span>  <span class="c1"># reactive propertyとして設定（setterでnp.random.seed()も実行される）</span>
+</span><span id="GenIce3-1067"><a href="#GenIce3-1067"><span class="linenos">1067</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1068"><a href="#GenIce3-1068"><span class="linenos">1068</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">depol_loop</span> <span class="o">=</span> <span class="n">depol_loop</span>
+</span><span id="GenIce3-1069"><a href="#GenIce3-1069"><span class="linenos">1069</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">=</span> <span class="n">replication_matrix</span>
+</span><span id="GenIce3-1070"><a href="#GenIce3-1070"><span class="linenos">1070</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">target_pol</span> <span class="o">=</span> <span class="n">target_pol</span>
+</span><span id="GenIce3-1071"><a href="#GenIce3-1071"><span class="linenos">1071</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_anions</span> <span class="o">=</span> <span class="n">spot_anions</span>
+</span><span id="GenIce3-1072"><a href="#GenIce3-1072"><span class="linenos">1072</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_cations</span> <span class="o">=</span> <span class="n">spot_cations</span>
+</span><span id="GenIce3-1073"><a href="#GenIce3-1073"><span class="linenos">1073</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span> <span class="o">=</span> <span class="n">spot_hydroniums</span> <span class="k">if</span> <span class="n">spot_hydroniums</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1074"><a href="#GenIce3-1074"><span class="linenos">1074</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span> <span class="o">=</span> <span class="n">spot_hydroxides</span> <span class="k">if</span> <span class="n">spot_hydroxides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1075"><a href="#GenIce3-1075"><span class="linenos">1075</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span> <span class="o">=</span> <span class="n">bjerrum_L_edges</span> <span class="k">if</span> <span class="n">bjerrum_L_edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1076"><a href="#GenIce3-1076"><span class="linenos">1076</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span> <span class="o">=</span> <span class="n">bjerrum_D_edges</span> <span class="k">if</span> <span class="n">bjerrum_D_edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1077"><a href="#GenIce3-1077"><span class="linenos">1077</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">guests</span> <span class="o">=</span> <span class="n">guests</span> <span class="k">if</span> <span class="n">guests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="GenIce3-1078"><a href="#GenIce3-1078"><span class="linenos">1078</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span> <span class="o">=</span> <span class="n">spot_guests</span> <span class="k">if</span> <span class="n">spot_guests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="GenIce3-1079"><a href="#GenIce3-1079"><span class="linenos">1079</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_cation_groups</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="GenIce3-1080"><a href="#GenIce3-1080"><span class="linenos">1080</span></a>            <span class="n">spot_cation_groups</span> <span class="k">if</span> <span class="n">spot_cation_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="GenIce3-1081"><a href="#GenIce3-1081"><span class="linenos">1081</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1082"><a href="#GenIce3-1082"><span class="linenos">1082</span></a>
+</span><span id="GenIce3-1083"><a href="#GenIce3-1083"><span class="linenos">1083</span></a>        <span class="c1"># タスクを登録（モジュールレベルの関数を登録）</span>
+</span><span id="GenIce3-1084"><a href="#GenIce3-1084"><span class="linenos">1084</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_register_tasks</span><span class="p">()</span>
+</span><span id="GenIce3-1085"><a href="#GenIce3-1085"><span class="linenos">1085</span></a>
+</span><span id="GenIce3-1086"><a href="#GenIce3-1086"><span class="linenos">1086</span></a>        <span class="c1"># Default値が不要なもの</span>
+</span><span id="GenIce3-1087"><a href="#GenIce3-1087"><span class="linenos">1087</span></a>        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_settable_reactive_properties</span><span class="p">():</span>
+</span><span id="GenIce3-1088"><a href="#GenIce3-1088"><span class="linenos">1088</span></a>            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+</span><span id="GenIce3-1089"><a href="#GenIce3-1089"><span class="linenos">1089</span></a>                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+</span><span id="GenIce3-1090"><a href="#GenIce3-1090"><span class="linenos">1090</span></a>        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+</span><span id="GenIce3-1091"><a href="#GenIce3-1091"><span class="linenos">1091</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid keyword arguments: </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1092"><a href="#GenIce3-1092"><span class="linenos">1092</span></a>
+</span><span id="GenIce3-1093"><a href="#GenIce3-1093"><span class="linenos">1093</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_register_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1094"><a href="#GenIce3-1094"><span class="linenos">1094</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;DependencyEngine に @reactive を付けたタスク関数を登録する&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1095"><a href="#GenIce3-1095"><span class="linenos">1095</span></a>        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">get_reactive_tasks</span><span class="p">(</span><span class="vm">__name__</span><span class="p">):</span>
+</span><span id="GenIce3-1096"><a href="#GenIce3-1096"><span class="linenos">1096</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+</span><span id="GenIce3-1097"><a href="#GenIce3-1097"><span class="linenos">1097</span></a>
+</span><span id="GenIce3-1098"><a href="#GenIce3-1098"><span class="linenos">1098</span></a>    <span class="c1"># spot_anions</span>
+</span><span id="GenIce3-1099"><a href="#GenIce3-1099"><span class="linenos">1099</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1100"><a href="#GenIce3-1100"><span class="linenos">1100</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1101"><a href="#GenIce3-1101"><span class="linenos">1101</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するアニオンイオンの辞書。</span>
+</span><span id="GenIce3-1102"><a href="#GenIce3-1102"><span class="linenos">1102</span></a>
+</span><span id="GenIce3-1103"><a href="#GenIce3-1103"><span class="linenos">1103</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1104"><a href="#GenIce3-1104"><span class="linenos">1104</span></a><span class="sd">            Dict[int, str]: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="GenIce3-1105"><a href="#GenIce3-1105"><span class="linenos">1105</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1106"><a href="#GenIce3-1106"><span class="linenos">1106</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_anions&quot;</span><span class="p">):</span>
+</span><span id="GenIce3-1107"><a href="#GenIce3-1107"><span class="linenos">1107</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3-1108"><a href="#GenIce3-1108"><span class="linenos">1108</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span>
+</span><span id="GenIce3-1109"><a href="#GenIce3-1109"><span class="linenos">1109</span></a>
+</span><span id="GenIce3-1110"><a href="#GenIce3-1110"><span class="linenos">1110</span></a>    <span class="nd">@spot_anions</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1111"><a href="#GenIce3-1111"><span class="linenos">1111</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_anions</span><span class="p">):</span>
+</span><span id="GenIce3-1112"><a href="#GenIce3-1112"><span class="linenos">1112</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するアニオンイオンを設定する。</span>
+</span><span id="GenIce3-1113"><a href="#GenIce3-1113"><span class="linenos">1113</span></a>
+</span><span id="GenIce3-1114"><a href="#GenIce3-1114"><span class="linenos">1114</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-1115"><a href="#GenIce3-1115"><span class="linenos">1115</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-1116"><a href="#GenIce3-1116"><span class="linenos">1116</span></a>
+</span><span id="GenIce3-1117"><a href="#GenIce3-1117"><span class="linenos">1117</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1118"><a href="#GenIce3-1118"><span class="linenos">1118</span></a><span class="sd">            spot_anions: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="GenIce3-1119"><a href="#GenIce3-1119"><span class="linenos">1119</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1120"><a href="#GenIce3-1120"><span class="linenos">1120</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span> <span class="o">=</span> <span class="n">spot_anions</span>
+</span><span id="GenIce3-1121"><a href="#GenIce3-1121"><span class="linenos">1121</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_anions</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1122"><a href="#GenIce3-1122"><span class="linenos">1122</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1123"><a href="#GenIce3-1123"><span class="linenos">1123</span></a>
+</span><span id="GenIce3-1124"><a href="#GenIce3-1124"><span class="linenos">1124</span></a>    <span class="c1"># spot_cations</span>
+</span><span id="GenIce3-1125"><a href="#GenIce3-1125"><span class="linenos">1125</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1126"><a href="#GenIce3-1126"><span class="linenos">1126</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1127"><a href="#GenIce3-1127"><span class="linenos">1127</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するカチオンイオンの辞書。</span>
+</span><span id="GenIce3-1128"><a href="#GenIce3-1128"><span class="linenos">1128</span></a>
+</span><span id="GenIce3-1129"><a href="#GenIce3-1129"><span class="linenos">1129</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1130"><a href="#GenIce3-1130"><span class="linenos">1130</span></a><span class="sd">            Dict[int, str]: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="GenIce3-1131"><a href="#GenIce3-1131"><span class="linenos">1131</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1132"><a href="#GenIce3-1132"><span class="linenos">1132</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_cations&quot;</span><span class="p">):</span>
+</span><span id="GenIce3-1133"><a href="#GenIce3-1133"><span class="linenos">1133</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3-1134"><a href="#GenIce3-1134"><span class="linenos">1134</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span>
+</span><span id="GenIce3-1135"><a href="#GenIce3-1135"><span class="linenos">1135</span></a>
+</span><span id="GenIce3-1136"><a href="#GenIce3-1136"><span class="linenos">1136</span></a>    <span class="nd">@spot_cations</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1137"><a href="#GenIce3-1137"><span class="linenos">1137</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_cations</span><span class="p">):</span>
+</span><span id="GenIce3-1138"><a href="#GenIce3-1138"><span class="linenos">1138</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するカチオンイオンを設定する。</span>
+</span><span id="GenIce3-1139"><a href="#GenIce3-1139"><span class="linenos">1139</span></a>
+</span><span id="GenIce3-1140"><a href="#GenIce3-1140"><span class="linenos">1140</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-1141"><a href="#GenIce3-1141"><span class="linenos">1141</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-1142"><a href="#GenIce3-1142"><span class="linenos">1142</span></a>
+</span><span id="GenIce3-1143"><a href="#GenIce3-1143"><span class="linenos">1143</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1144"><a href="#GenIce3-1144"><span class="linenos">1144</span></a><span class="sd">            spot_cations: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="GenIce3-1145"><a href="#GenIce3-1145"><span class="linenos">1145</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1146"><a href="#GenIce3-1146"><span class="linenos">1146</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span> <span class="o">=</span> <span class="n">spot_cations</span>
+</span><span id="GenIce3-1147"><a href="#GenIce3-1147"><span class="linenos">1147</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_cations</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1148"><a href="#GenIce3-1148"><span class="linenos">1148</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1149"><a href="#GenIce3-1149"><span class="linenos">1149</span></a>
+</span><span id="GenIce3-1150"><a href="#GenIce3-1150"><span class="linenos">1150</span></a>    <span class="c1"># spot_hydroniums (H3O+: 1受容・3供与)</span>
+</span><span id="GenIce3-1151"><a href="#GenIce3-1151"><span class="linenos">1151</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1152"><a href="#GenIce3-1152"><span class="linenos">1152</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroniums</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1153"><a href="#GenIce3-1153"><span class="linenos">1153</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を置くサイトのリスト。1本受け入れ・3本供与。</span>
+</span><span id="GenIce3-1154"><a href="#GenIce3-1154"><span class="linenos">1154</span></a>
+</span><span id="GenIce3-1155"><a href="#GenIce3-1155"><span class="linenos">1155</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1156"><a href="#GenIce3-1156"><span class="linenos">1156</span></a><span class="sd">            List[int]: サイトインデックスのリスト</span>
+</span><span id="GenIce3-1157"><a href="#GenIce3-1157"><span class="linenos">1157</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1158"><a href="#GenIce3-1158"><span class="linenos">1158</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_hydroniums&quot;</span><span class="p">):</span>
+</span><span id="GenIce3-1159"><a href="#GenIce3-1159"><span class="linenos">1159</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1160"><a href="#GenIce3-1160"><span class="linenos">1160</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span>
+</span><span id="GenIce3-1161"><a href="#GenIce3-1161"><span class="linenos">1161</span></a>
+</span><span id="GenIce3-1162"><a href="#GenIce3-1162"><span class="linenos">1162</span></a>    <span class="nd">@spot_hydroniums</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1163"><a href="#GenIce3-1163"><span class="linenos">1163</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroniums</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_hydroniums</span><span class="p">):</span>
+</span><span id="GenIce3-1164"><a href="#GenIce3-1164"><span class="linenos">1164</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="GenIce3-1165"><a href="#GenIce3-1165"><span class="linenos">1165</span></a>            <span class="nb">list</span><span class="p">(</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="k">if</span> <span class="n">spot_hydroniums</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1166"><a href="#GenIce3-1166"><span class="linenos">1166</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1167"><a href="#GenIce3-1167"><span class="linenos">1167</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_hydroniums</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1168"><a href="#GenIce3-1168"><span class="linenos">1168</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1169"><a href="#GenIce3-1169"><span class="linenos">1169</span></a>
+</span><span id="GenIce3-1170"><a href="#GenIce3-1170"><span class="linenos">1170</span></a>    <span class="c1"># spot_hydroxides (OH-: 3受容・1供与)</span>
+</span><span id="GenIce3-1171"><a href="#GenIce3-1171"><span class="linenos">1171</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1172"><a href="#GenIce3-1172"><span class="linenos">1172</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroxides</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1173"><a href="#GenIce3-1173"><span class="linenos">1173</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を置くサイトのリスト。3本受け入れ・1本供与。</span>
+</span><span id="GenIce3-1174"><a href="#GenIce3-1174"><span class="linenos">1174</span></a>
+</span><span id="GenIce3-1175"><a href="#GenIce3-1175"><span class="linenos">1175</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1176"><a href="#GenIce3-1176"><span class="linenos">1176</span></a><span class="sd">            List[int]: サイトインデックスのリスト</span>
+</span><span id="GenIce3-1177"><a href="#GenIce3-1177"><span class="linenos">1177</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1178"><a href="#GenIce3-1178"><span class="linenos">1178</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_hydroxides&quot;</span><span class="p">):</span>
+</span><span id="GenIce3-1179"><a href="#GenIce3-1179"><span class="linenos">1179</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1180"><a href="#GenIce3-1180"><span class="linenos">1180</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span>
+</span><span id="GenIce3-1181"><a href="#GenIce3-1181"><span class="linenos">1181</span></a>
+</span><span id="GenIce3-1182"><a href="#GenIce3-1182"><span class="linenos">1182</span></a>    <span class="nd">@spot_hydroxides</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1183"><a href="#GenIce3-1183"><span class="linenos">1183</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroxides</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot_hydroxides</span><span class="p">):</span>
+</span><span id="GenIce3-1184"><a href="#GenIce3-1184"><span class="linenos">1184</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="GenIce3-1185"><a href="#GenIce3-1185"><span class="linenos">1185</span></a>            <span class="nb">list</span><span class="p">(</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="k">if</span> <span class="n">spot_hydroxides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1186"><a href="#GenIce3-1186"><span class="linenos">1186</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1187"><a href="#GenIce3-1187"><span class="linenos">1187</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">spot_hydroxides</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1188"><a href="#GenIce3-1188"><span class="linenos">1188</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1189"><a href="#GenIce3-1189"><span class="linenos">1189</span></a>
+</span><span id="GenIce3-1190"><a href="#GenIce3-1190"><span class="linenos">1190</span></a>    <span class="c1"># Bjerrum L 欠陥に対応するエッジ集合（(i, j) のリスト）</span>
+</span><span id="GenIce3-1191"><a href="#GenIce3-1191"><span class="linenos">1191</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1192"><a href="#GenIce3-1192"><span class="linenos">1192</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_L_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+</span><span id="GenIce3-1193"><a href="#GenIce3-1193"><span class="linenos">1193</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bjerrum_L_edges&quot;</span><span class="p">):</span>
+</span><span id="GenIce3-1194"><a href="#GenIce3-1194"><span class="linenos">1194</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1195"><a href="#GenIce3-1195"><span class="linenos">1195</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span>
+</span><span id="GenIce3-1196"><a href="#GenIce3-1196"><span class="linenos">1196</span></a>
+</span><span id="GenIce3-1197"><a href="#GenIce3-1197"><span class="linenos">1197</span></a>    <span class="nd">@bjerrum_L_edges</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1198"><a href="#GenIce3-1198"><span class="linenos">1198</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_L_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="GenIce3-1199"><a href="#GenIce3-1199"><span class="linenos">1199</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1200"><a href="#GenIce3-1200"><span class="linenos">1200</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1201"><a href="#GenIce3-1201"><span class="linenos">1201</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1202"><a href="#GenIce3-1202"><span class="linenos">1202</span></a>
+</span><span id="GenIce3-1203"><a href="#GenIce3-1203"><span class="linenos">1203</span></a>    <span class="c1"># Bjerrum D 欠陥に対応するエッジ集合（(i, j) のリスト）</span>
+</span><span id="GenIce3-1204"><a href="#GenIce3-1204"><span class="linenos">1204</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1205"><a href="#GenIce3-1205"><span class="linenos">1205</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_D_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+</span><span id="GenIce3-1206"><a href="#GenIce3-1206"><span class="linenos">1206</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bjerrum_D_edges&quot;</span><span class="p">):</span>
+</span><span id="GenIce3-1207"><a href="#GenIce3-1207"><span class="linenos">1207</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1208"><a href="#GenIce3-1208"><span class="linenos">1208</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span>
+</span><span id="GenIce3-1209"><a href="#GenIce3-1209"><span class="linenos">1209</span></a>
+</span><span id="GenIce3-1210"><a href="#GenIce3-1210"><span class="linenos">1210</span></a>    <span class="nd">@bjerrum_D_edges</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1211"><a href="#GenIce3-1211"><span class="linenos">1211</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_D_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="GenIce3-1212"><a href="#GenIce3-1212"><span class="linenos">1212</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3-1213"><a href="#GenIce3-1213"><span class="linenos">1213</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1214"><a href="#GenIce3-1214"><span class="linenos">1214</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1215"><a href="#GenIce3-1215"><span class="linenos">1215</span></a>
+</span><span id="GenIce3-1216"><a href="#GenIce3-1216"><span class="linenos">1216</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_spot_hydronium</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sites</span><span class="p">):</span>
+</span><span id="GenIce3-1217"><a href="#GenIce3-1217"><span class="linenos">1217</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を置くサイトを追加登録するヘルパー。</span>
+</span><span id="GenIce3-1218"><a href="#GenIce3-1218"><span class="linenos">1218</span></a>
+</span><span id="GenIce3-1219"><a href="#GenIce3-1219"><span class="linenos">1219</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1220"><a href="#GenIce3-1220"><span class="linenos">1220</span></a><span class="sd">            sites: サイトインデックス（int）またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3-1221"><a href="#GenIce3-1221"><span class="linenos">1221</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1222"><a href="#GenIce3-1222"><span class="linenos">1222</span></a>        <span class="k">if</span> <span class="n">sites</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1223"><a href="#GenIce3-1223"><span class="linenos">1223</span></a>            <span class="k">return</span>
+</span><span id="GenIce3-1224"><a href="#GenIce3-1224"><span class="linenos">1224</span></a>        <span class="c1"># numpy のスカラーも受け付ける</span>
+</span><span id="GenIce3-1225"><a href="#GenIce3-1225"><span class="linenos">1225</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+</span><span id="GenIce3-1226"><a href="#GenIce3-1226"><span class="linenos">1226</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sites</span><span class="p">)]</span>
+</span><span id="GenIce3-1227"><a href="#GenIce3-1227"><span class="linenos">1227</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3-1228"><a href="#GenIce3-1228"><span class="linenos">1228</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+</span><span id="GenIce3-1229"><a href="#GenIce3-1229"><span class="linenos">1229</span></a>        <span class="c1"># setter を経由してキャッシュを無効化する</span>
+</span><span id="GenIce3-1230"><a href="#GenIce3-1230"><span class="linenos">1230</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_sites</span>
+</span><span id="GenIce3-1231"><a href="#GenIce3-1231"><span class="linenos">1231</span></a>
+</span><span id="GenIce3-1232"><a href="#GenIce3-1232"><span class="linenos">1232</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_spot_hydroxide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sites</span><span class="p">):</span>
+</span><span id="GenIce3-1233"><a href="#GenIce3-1233"><span class="linenos">1233</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を置くサイトを追加登録するヘルパー。</span>
+</span><span id="GenIce3-1234"><a href="#GenIce3-1234"><span class="linenos">1234</span></a>
+</span><span id="GenIce3-1235"><a href="#GenIce3-1235"><span class="linenos">1235</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1236"><a href="#GenIce3-1236"><span class="linenos">1236</span></a><span class="sd">            sites: サイトインデックス（int）またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3-1237"><a href="#GenIce3-1237"><span class="linenos">1237</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1238"><a href="#GenIce3-1238"><span class="linenos">1238</span></a>        <span class="k">if</span> <span class="n">sites</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1239"><a href="#GenIce3-1239"><span class="linenos">1239</span></a>            <span class="k">return</span>
+</span><span id="GenIce3-1240"><a href="#GenIce3-1240"><span class="linenos">1240</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+</span><span id="GenIce3-1241"><a href="#GenIce3-1241"><span class="linenos">1241</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sites</span><span class="p">)]</span>
+</span><span id="GenIce3-1242"><a href="#GenIce3-1242"><span class="linenos">1242</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3-1243"><a href="#GenIce3-1243"><span class="linenos">1243</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+</span><span id="GenIce3-1244"><a href="#GenIce3-1244"><span class="linenos">1244</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_sites</span>
+</span><span id="GenIce3-1245"><a href="#GenIce3-1245"><span class="linenos">1245</span></a>
+</span><span id="GenIce3-1246"><a href="#GenIce3-1246"><span class="linenos">1246</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_bjerrum_L</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">):</span>
+</span><span id="GenIce3-1247"><a href="#GenIce3-1247"><span class="linenos">1247</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bjerrum L 欠陥を追加登録するヘルパー。</span>
+</span><span id="GenIce3-1248"><a href="#GenIce3-1248"><span class="linenos">1248</span></a>
+</span><span id="GenIce3-1249"><a href="#GenIce3-1249"><span class="linenos">1249</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1250"><a href="#GenIce3-1250"><span class="linenos">1250</span></a><span class="sd">            edges: (i, j) のタプル、またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3-1251"><a href="#GenIce3-1251"><span class="linenos">1251</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1252"><a href="#GenIce3-1252"><span class="linenos">1252</span></a>        <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1253"><a href="#GenIce3-1253"><span class="linenos">1253</span></a>            <span class="k">return</span>
+</span><span id="GenIce3-1254"><a href="#GenIce3-1254"><span class="linenos">1254</span></a>        <span class="c1"># 単一タプル (i, j) も許容する</span>
+</span><span id="GenIce3-1255"><a href="#GenIce3-1255"><span class="linenos">1255</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="GenIce3-1256"><a href="#GenIce3-1256"><span class="linenos">1256</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">edges</span><span class="p">]</span>
+</span><span id="GenIce3-1257"><a href="#GenIce3-1257"><span class="linenos">1257</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3-1258"><a href="#GenIce3-1258"><span class="linenos">1258</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</span><span id="GenIce3-1259"><a href="#GenIce3-1259"><span class="linenos">1259</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_edges</span>
+</span><span id="GenIce3-1260"><a href="#GenIce3-1260"><span class="linenos">1260</span></a>
+</span><span id="GenIce3-1261"><a href="#GenIce3-1261"><span class="linenos">1261</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_bjerrum_D</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">):</span>
+</span><span id="GenIce3-1262"><a href="#GenIce3-1262"><span class="linenos">1262</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bjerrum D 欠陥を追加登録するヘルパー。</span>
+</span><span id="GenIce3-1263"><a href="#GenIce3-1263"><span class="linenos">1263</span></a>
+</span><span id="GenIce3-1264"><a href="#GenIce3-1264"><span class="linenos">1264</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1265"><a href="#GenIce3-1265"><span class="linenos">1265</span></a><span class="sd">            edges: (i, j) のタプル、またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3-1266"><a href="#GenIce3-1266"><span class="linenos">1266</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1267"><a href="#GenIce3-1267"><span class="linenos">1267</span></a>        <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1268"><a href="#GenIce3-1268"><span class="linenos">1268</span></a>            <span class="k">return</span>
+</span><span id="GenIce3-1269"><a href="#GenIce3-1269"><span class="linenos">1269</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="GenIce3-1270"><a href="#GenIce3-1270"><span class="linenos">1270</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">edges</span><span class="p">]</span>
+</span><span id="GenIce3-1271"><a href="#GenIce3-1271"><span class="linenos">1271</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3-1272"><a href="#GenIce3-1272"><span class="linenos">1272</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</span><span id="GenIce3-1273"><a href="#GenIce3-1273"><span class="linenos">1273</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_edges</span>
+</span><span id="GenIce3-1274"><a href="#GenIce3-1274"><span class="linenos">1274</span></a>
+</span><span id="GenIce3-1275"><a href="#GenIce3-1275"><span class="linenos">1275</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1276"><a href="#GenIce3-1276"><span class="linenos">1276</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1277"><a href="#GenIce3-1277"><span class="linenos">1277</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;乱数シード。</span>
+</span><span id="GenIce3-1278"><a href="#GenIce3-1278"><span class="linenos">1278</span></a>
+</span><span id="GenIce3-1279"><a href="#GenIce3-1279"><span class="linenos">1279</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1280"><a href="#GenIce3-1280"><span class="linenos">1280</span></a><span class="sd">            int: 乱数シード値</span>
+</span><span id="GenIce3-1281"><a href="#GenIce3-1281"><span class="linenos">1281</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1282"><a href="#GenIce3-1282"><span class="linenos">1282</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_seed</span>
+</span><span id="GenIce3-1283"><a href="#GenIce3-1283"><span class="linenos">1283</span></a>
+</span><span id="GenIce3-1284"><a href="#GenIce3-1284"><span class="linenos">1284</span></a>    <span class="nd">@seed</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1285"><a href="#GenIce3-1285"><span class="linenos">1285</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="p">):</span>
+</span><span id="GenIce3-1286"><a href="#GenIce3-1286"><span class="linenos">1286</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;乱数シードを設定する。</span>
+</span><span id="GenIce3-1287"><a href="#GenIce3-1287"><span class="linenos">1287</span></a>
+</span><span id="GenIce3-1288"><a href="#GenIce3-1288"><span class="linenos">1288</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-1289"><a href="#GenIce3-1289"><span class="linenos">1289</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-1290"><a href="#GenIce3-1290"><span class="linenos">1290</span></a>
+</span><span id="GenIce3-1291"><a href="#GenIce3-1291"><span class="linenos">1291</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1292"><a href="#GenIce3-1292"><span class="linenos">1292</span></a><span class="sd">            seed: 乱数シード値</span>
+</span><span id="GenIce3-1293"><a href="#GenIce3-1293"><span class="linenos">1293</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1294"><a href="#GenIce3-1294"><span class="linenos">1294</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_seed</span> <span class="o">=</span> <span class="n">seed</span>
+</span><span id="GenIce3-1295"><a href="#GenIce3-1295"><span class="linenos">1295</span></a>        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+</span><span id="GenIce3-1296"><a href="#GenIce3-1296"><span class="linenos">1296</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">seed</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1297"><a href="#GenIce3-1297"><span class="linenos">1297</span></a>        <span class="c1"># キャッシュをクリア（seedに依存するすべてのタスクを再計算させる）</span>
+</span><span id="GenIce3-1298"><a href="#GenIce3-1298"><span class="linenos">1298</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1299"><a href="#GenIce3-1299"><span class="linenos">1299</span></a>
+</span><span id="GenIce3-1300"><a href="#GenIce3-1300"><span class="linenos">1300</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1301"><a href="#GenIce3-1301"><span class="linenos">1301</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">depol_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1302"><a href="#GenIce3-1302"><span class="linenos">1302</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;双極子最適化の反復回数。</span>
+</span><span id="GenIce3-1303"><a href="#GenIce3-1303"><span class="linenos">1303</span></a>
+</span><span id="GenIce3-1304"><a href="#GenIce3-1304"><span class="linenos">1304</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1305"><a href="#GenIce3-1305"><span class="linenos">1305</span></a><span class="sd">            int: 双極子最適化アルゴリズムの反復回数</span>
+</span><span id="GenIce3-1306"><a href="#GenIce3-1306"><span class="linenos">1306</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1307"><a href="#GenIce3-1307"><span class="linenos">1307</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depol_loop</span>
+</span><span id="GenIce3-1308"><a href="#GenIce3-1308"><span class="linenos">1308</span></a>
+</span><span id="GenIce3-1309"><a href="#GenIce3-1309"><span class="linenos">1309</span></a>    <span class="nd">@depol_loop</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1310"><a href="#GenIce3-1310"><span class="linenos">1310</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">depol_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">depol_loop</span><span class="p">):</span>
+</span><span id="GenIce3-1311"><a href="#GenIce3-1311"><span class="linenos">1311</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;双極子最適化の反復回数を設定する。</span>
+</span><span id="GenIce3-1312"><a href="#GenIce3-1312"><span class="linenos">1312</span></a>
+</span><span id="GenIce3-1313"><a href="#GenIce3-1313"><span class="linenos">1313</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-1314"><a href="#GenIce3-1314"><span class="linenos">1314</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-1315"><a href="#GenIce3-1315"><span class="linenos">1315</span></a>
+</span><span id="GenIce3-1316"><a href="#GenIce3-1316"><span class="linenos">1316</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1317"><a href="#GenIce3-1317"><span class="linenos">1317</span></a><span class="sd">            depol_loop: 双極子最適化アルゴリズムの反復回数</span>
+</span><span id="GenIce3-1318"><a href="#GenIce3-1318"><span class="linenos">1318</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1319"><a href="#GenIce3-1319"><span class="linenos">1319</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_depol_loop</span> <span class="o">=</span> <span class="n">depol_loop</span>
+</span><span id="GenIce3-1320"><a href="#GenIce3-1320"><span class="linenos">1320</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">depol_loop</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1321"><a href="#GenIce3-1321"><span class="linenos">1321</span></a>        <span class="c1"># キャッシュをクリア（depol_loopに依存するすべてのタスクを再計算させる）</span>
+</span><span id="GenIce3-1322"><a href="#GenIce3-1322"><span class="linenos">1322</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1323"><a href="#GenIce3-1323"><span class="linenos">1323</span></a>
+</span><span id="GenIce3-1324"><a href="#GenIce3-1324"><span class="linenos">1324</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1325"><a href="#GenIce3-1325"><span class="linenos">1325</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">target_pol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1326"><a href="#GenIce3-1326"><span class="linenos">1326</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;分極の目標値（3要素のベクトル）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1327"><a href="#GenIce3-1327"><span class="linenos">1327</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_pol</span>
+</span><span id="GenIce3-1328"><a href="#GenIce3-1328"><span class="linenos">1328</span></a>
+</span><span id="GenIce3-1329"><a href="#GenIce3-1329"><span class="linenos">1329</span></a>    <span class="nd">@target_pol</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1330"><a href="#GenIce3-1330"><span class="linenos">1330</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">target_pol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_pol</span><span class="p">):</span>
+</span><span id="GenIce3-1331"><a href="#GenIce3-1331"><span class="linenos">1331</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;分極の目標値を設定する。変更時は依存するキャッシュをクリアする。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1332"><a href="#GenIce3-1332"><span class="linenos">1332</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_target_pol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">target_pol</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="GenIce3-1333"><a href="#GenIce3-1333"><span class="linenos">1333</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">target_pol</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1334"><a href="#GenIce3-1334"><span class="linenos">1334</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1335"><a href="#GenIce3-1335"><span class="linenos">1335</span></a>
+</span><span id="GenIce3-1336"><a href="#GenIce3-1336"><span class="linenos">1336</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1337"><a href="#GenIce3-1337"><span class="linenos">1337</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1338"><a href="#GenIce3-1338"><span class="linenos">1338</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞オブジェクト。</span>
+</span><span id="GenIce3-1339"><a href="#GenIce3-1339"><span class="linenos">1339</span></a>
+</span><span id="GenIce3-1340"><a href="#GenIce3-1340"><span class="linenos">1340</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1341"><a href="#GenIce3-1341"><span class="linenos">1341</span></a><span class="sd">            UnitCell: 基本単位胞オブジェクト</span>
+</span><span id="GenIce3-1342"><a href="#GenIce3-1342"><span class="linenos">1342</span></a>
+</span><span id="GenIce3-1343"><a href="#GenIce3-1343"><span class="linenos">1343</span></a><span class="sd">        Raises:</span>
+</span><span id="GenIce3-1344"><a href="#GenIce3-1344"><span class="linenos">1344</span></a><span class="sd">            ConfigurationError: 単位胞が設定されていない場合</span>
+</span><span id="GenIce3-1345"><a href="#GenIce3-1345"><span class="linenos">1345</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1346"><a href="#GenIce3-1346"><span class="linenos">1346</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_unitcell&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1347"><a href="#GenIce3-1347"><span class="linenos">1347</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="s2">&quot;Unitcell is not set.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1348"><a href="#GenIce3-1348"><span class="linenos">1348</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span>
+</span><span id="GenIce3-1349"><a href="#GenIce3-1349"><span class="linenos">1349</span></a>
+</span><span id="GenIce3-1350"><a href="#GenIce3-1350"><span class="linenos">1350</span></a>    <span class="nd">@unitcell</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1351"><a href="#GenIce3-1351"><span class="linenos">1351</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unitcell</span><span class="p">):</span>
+</span><span id="GenIce3-1352"><a href="#GenIce3-1352"><span class="linenos">1352</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞オブジェクトを設定する。</span>
+</span><span id="GenIce3-1353"><a href="#GenIce3-1353"><span class="linenos">1353</span></a>
+</span><span id="GenIce3-1354"><a href="#GenIce3-1354"><span class="linenos">1354</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-1355"><a href="#GenIce3-1355"><span class="linenos">1355</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-1356"><a href="#GenIce3-1356"><span class="linenos">1356</span></a>
+</span><span id="GenIce3-1357"><a href="#GenIce3-1357"><span class="linenos">1357</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1358"><a href="#GenIce3-1358"><span class="linenos">1358</span></a><span class="sd">            unitcell: 基本単位胞オブジェクト</span>
+</span><span id="GenIce3-1359"><a href="#GenIce3-1359"><span class="linenos">1359</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1360"><a href="#GenIce3-1360"><span class="linenos">1360</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span> <span class="o">=</span> <span class="n">unitcell</span>
+</span><span id="GenIce3-1361"><a href="#GenIce3-1361"><span class="linenos">1361</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1362"><a href="#GenIce3-1362"><span class="linenos">1362</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1363"><a href="#GenIce3-1363"><span class="linenos">1363</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="o">.</span><span class="n">graph</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1364"><a href="#GenIce3-1364"><span class="linenos">1364</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">unitcell</span><span class="o">.</span><span class="n">fixed</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1365"><a href="#GenIce3-1365"><span class="linenos">1365</span></a>
+</span><span id="GenIce3-1366"><a href="#GenIce3-1366"><span class="linenos">1366</span></a>        <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">cellshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
+</span><span id="GenIce3-1367"><a href="#GenIce3-1367"><span class="linenos">1367</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;  Reshaped cell:&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1368"><a href="#GenIce3-1368"><span class="linenos">1368</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">a</span><span class="si">=:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">b</span><span class="si">=:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">c</span><span class="si">=:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1369"><a href="#GenIce3-1369"><span class="linenos">1369</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">A</span><span class="si">=:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">B</span><span class="si">=:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">C</span><span class="si">=:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1370"><a href="#GenIce3-1370"><span class="linenos">1370</span></a>        <span class="c1"># キャッシュをクリア（unitcellに依存するすべてのタスクを再計算させる）</span>
+</span><span id="GenIce3-1371"><a href="#GenIce3-1371"><span class="linenos">1371</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1372"><a href="#GenIce3-1372"><span class="linenos">1372</span></a>
+</span><span id="GenIce3-1373"><a href="#GenIce3-1373"><span class="linenos">1373</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unitcell_or_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="GenIce3-1374"><a href="#GenIce3-1374"><span class="linenos">1374</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞を設定する（リアクティブプロパティ用のラッパー）。</span>
+</span><span id="GenIce3-1375"><a href="#GenIce3-1375"><span class="linenos">1375</span></a>
+</span><span id="GenIce3-1376"><a href="#GenIce3-1376"><span class="linenos">1376</span></a><span class="sd">        代入（genice.unitcell = ...）の代わりにこのメソッドを使うと、</span>
+</span><span id="GenIce3-1377"><a href="#GenIce3-1377"><span class="linenos">1377</span></a><span class="sd">        単位胞がリアクティブな設定であることが明確になります。</span>
+</span><span id="GenIce3-1378"><a href="#GenIce3-1378"><span class="linenos">1378</span></a>
+</span><span id="GenIce3-1379"><a href="#GenIce3-1379"><span class="linenos">1379</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1380"><a href="#GenIce3-1380"><span class="linenos">1380</span></a><span class="sd">            unitcell_or_name: 基本単位胞オブジェクト、または単位胞名（文字列）。</span>
+</span><span id="GenIce3-1381"><a href="#GenIce3-1381"><span class="linenos">1381</span></a><span class="sd">                文字列の場合は UnitCell(name, **kwargs) として内部で生成します。</span>
+</span><span id="GenIce3-1382"><a href="#GenIce3-1382"><span class="linenos">1382</span></a><span class="sd">            **kwargs: unitcell_or_name が文字列の場合に UnitCell(...) に渡すオプション。</span>
+</span><span id="GenIce3-1383"><a href="#GenIce3-1383"><span class="linenos">1383</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1384"><a href="#GenIce3-1384"><span class="linenos">1384</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unitcell_or_name</span><span class="p">,</span> <span class="n">UnitCell</span><span class="p">):</span>
+</span><span id="GenIce3-1385"><a href="#GenIce3-1385"><span class="linenos">1385</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span> <span class="o">=</span> <span class="n">unitcell_or_name</span>
+</span><span id="GenIce3-1386"><a href="#GenIce3-1386"><span class="linenos">1386</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3-1387"><a href="#GenIce3-1387"><span class="linenos">1387</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span> <span class="o">=</span> <span class="n">UnitCellPlugin</span><span class="p">(</span><span class="n">unitcell_or_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="GenIce3-1388"><a href="#GenIce3-1388"><span class="linenos">1388</span></a>
+</span><span id="GenIce3-1389"><a href="#GenIce3-1389"><span class="linenos">1389</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3-1390"><a href="#GenIce3-1390"><span class="linenos">1390</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1391"><a href="#GenIce3-1391"><span class="linenos">1391</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞を複製するための3x3整数行列。</span>
+</span><span id="GenIce3-1392"><a href="#GenIce3-1392"><span class="linenos">1392</span></a>
+</span><span id="GenIce3-1393"><a href="#GenIce3-1393"><span class="linenos">1393</span></a><span class="sd">        この行列により、基本単位胞をどのように積み重ねて拡大単位胞を</span>
+</span><span id="GenIce3-1394"><a href="#GenIce3-1394"><span class="linenos">1394</span></a><span class="sd">        作成するかを指定します。</span>
+</span><span id="GenIce3-1395"><a href="#GenIce3-1395"><span class="linenos">1395</span></a>
+</span><span id="GenIce3-1396"><a href="#GenIce3-1396"><span class="linenos">1396</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1397"><a href="#GenIce3-1397"><span class="linenos">1397</span></a><span class="sd">            np.ndarray: 3x3整数行列</span>
+</span><span id="GenIce3-1398"><a href="#GenIce3-1398"><span class="linenos">1398</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1399"><a href="#GenIce3-1399"><span class="linenos">1399</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span>
+</span><span id="GenIce3-1400"><a href="#GenIce3-1400"><span class="linenos">1400</span></a>
+</span><span id="GenIce3-1401"><a href="#GenIce3-1401"><span class="linenos">1401</span></a>    <span class="nd">@replication_matrix</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="GenIce3-1402"><a href="#GenIce3-1402"><span class="linenos">1402</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">):</span>
+</span><span id="GenIce3-1403"><a href="#GenIce3-1403"><span class="linenos">1403</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞複製行列を設定する。</span>
+</span><span id="GenIce3-1404"><a href="#GenIce3-1404"><span class="linenos">1404</span></a>
+</span><span id="GenIce3-1405"><a href="#GenIce3-1405"><span class="linenos">1405</span></a><span class="sd">        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの</span>
+</span><span id="GenIce3-1406"><a href="#GenIce3-1406"><span class="linenos">1406</span></a><span class="sd">        キャッシュが自動的にクリアされます。</span>
+</span><span id="GenIce3-1407"><a href="#GenIce3-1407"><span class="linenos">1407</span></a>
+</span><span id="GenIce3-1408"><a href="#GenIce3-1408"><span class="linenos">1408</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1409"><a href="#GenIce3-1409"><span class="linenos">1409</span></a><span class="sd">            replication_matrix: 3x3整数行列</span>
+</span><span id="GenIce3-1410"><a href="#GenIce3-1410"><span class="linenos">1410</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1411"><a href="#GenIce3-1411"><span class="linenos">1411</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">replication_matrix</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</span><span id="GenIce3-1412"><a href="#GenIce3-1412"><span class="linenos">1412</span></a>        <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span>
+</span><span id="GenIce3-1413"><a href="#GenIce3-1413"><span class="linenos">1413</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">i</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1414"><a href="#GenIce3-1414"><span class="linenos">1414</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">j</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1415"><a href="#GenIce3-1415"><span class="linenos">1415</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">k</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1416"><a href="#GenIce3-1416"><span class="linenos">1416</span></a>        <span class="c1"># キャッシュをクリア（replication_matrixに依存するすべてのタスクを再計算させる）</span>
+</span><span id="GenIce3-1417"><a href="#GenIce3-1417"><span class="linenos">1417</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="GenIce3-1418"><a href="#GenIce3-1418"><span class="linenos">1418</span></a>
+</span><span id="GenIce3-1419"><a href="#GenIce3-1419"><span class="linenos">1419</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">):</span>
+</span><span id="GenIce3-1420"><a href="#GenIce3-1420"><span class="linenos">1420</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞複製行列を設定する（リアクティブプロパティ用のラッパー）。</span>
+</span><span id="GenIce3-1421"><a href="#GenIce3-1421"><span class="linenos">1421</span></a>
+</span><span id="GenIce3-1422"><a href="#GenIce3-1422"><span class="linenos">1422</span></a><span class="sd">        代入（genice.replication_matrix = ...）の代わりにこのメソッドを使うと、</span>
+</span><span id="GenIce3-1423"><a href="#GenIce3-1423"><span class="linenos">1423</span></a><span class="sd">        複製行列がリアクティブな設定であることが明確になります。</span>
+</span><span id="GenIce3-1424"><a href="#GenIce3-1424"><span class="linenos">1424</span></a>
+</span><span id="GenIce3-1425"><a href="#GenIce3-1425"><span class="linenos">1425</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1426"><a href="#GenIce3-1426"><span class="linenos">1426</span></a><span class="sd">            replication_matrix: 3x3整数行列（リストのリストまたは ndarray）</span>
+</span><span id="GenIce3-1427"><a href="#GenIce3-1427"><span class="linenos">1427</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1428"><a href="#GenIce3-1428"><span class="linenos">1428</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">=</span> <span class="n">replication_matrix</span>
+</span><span id="GenIce3-1429"><a href="#GenIce3-1429"><span class="linenos">1429</span></a>
+</span><span id="GenIce3-1430"><a href="#GenIce3-1430"><span class="linenos">1430</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_get_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="GenIce3-1431"><a href="#GenIce3-1431"><span class="linenos">1431</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;engine.resolve()に渡すinputs辞書を取得&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1432"><a href="#GenIce3-1432"><span class="linenos">1432</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3-1433"><a href="#GenIce3-1433"><span class="linenos">1433</span></a>            <span class="s2">&quot;unitcell&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="p">,</span>
+</span><span id="GenIce3-1434"><a href="#GenIce3-1434"><span class="linenos">1434</span></a>            <span class="s2">&quot;replication_matrix&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span><span class="p">,</span>
+</span><span id="GenIce3-1435"><a href="#GenIce3-1435"><span class="linenos">1435</span></a>            <span class="s2">&quot;depol_loop&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">depol_loop</span><span class="p">,</span>
+</span><span id="GenIce3-1436"><a href="#GenIce3-1436"><span class="linenos">1436</span></a>            <span class="s2">&quot;target_pol&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_pol</span><span class="p">,</span>
+</span><span id="GenIce3-1437"><a href="#GenIce3-1437"><span class="linenos">1437</span></a>            <span class="s2">&quot;spot_anions&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_anions</span><span class="p">,</span>
+</span><span id="GenIce3-1438"><a href="#GenIce3-1438"><span class="linenos">1438</span></a>            <span class="s2">&quot;spot_cations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_cations</span><span class="p">,</span>
+</span><span id="GenIce3-1439"><a href="#GenIce3-1439"><span class="linenos">1439</span></a>            <span class="s2">&quot;spot_hydroniums&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">,</span>
+</span><span id="GenIce3-1440"><a href="#GenIce3-1440"><span class="linenos">1440</span></a>            <span class="s2">&quot;spot_hydroxides&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">,</span>
+</span><span id="GenIce3-1441"><a href="#GenIce3-1441"><span class="linenos">1441</span></a>            <span class="s2">&quot;bjerrum_L_edges&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span><span class="p">,</span>
+</span><span id="GenIce3-1442"><a href="#GenIce3-1442"><span class="linenos">1442</span></a>            <span class="s2">&quot;bjerrum_D_edges&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span><span class="p">,</span>
+</span><span id="GenIce3-1443"><a href="#GenIce3-1443"><span class="linenos">1443</span></a>        <span class="p">}</span>
+</span><span id="GenIce3-1444"><a href="#GenIce3-1444"><span class="linenos">1444</span></a>
+</span><span id="GenIce3-1445"><a href="#GenIce3-1445"><span class="linenos">1445</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="GenIce3-1446"><a href="#GenIce3-1446"><span class="linenos">1446</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;リアクティブプロパティへのアクセスを自動解決する。</span>
+</span><span id="GenIce3-1447"><a href="#GenIce3-1447"><span class="linenos">1447</span></a>
+</span><span id="GenIce3-1448"><a href="#GenIce3-1448"><span class="linenos">1448</span></a><span class="sd">        このメソッドにより、DependencyEngineに登録されたタスク関数が</span>
+</span><span id="GenIce3-1449"><a href="#GenIce3-1449"><span class="linenos">1449</span></a><span class="sd">        プロパティとしてアクセス可能になります。プロパティにアクセスすると、</span>
+</span><span id="GenIce3-1450"><a href="#GenIce3-1450"><span class="linenos">1450</span></a><span class="sd">        依存関係が自動的に解決され、必要な計算が実行されます。</span>
+</span><span id="GenIce3-1451"><a href="#GenIce3-1451"><span class="linenos">1451</span></a>
+</span><span id="GenIce3-1452"><a href="#GenIce3-1452"><span class="linenos">1452</span></a><span class="sd">        例:</span>
+</span><span id="GenIce3-1453"><a href="#GenIce3-1453"><span class="linenos">1453</span></a><span class="sd">            &gt;&gt;&gt; genice = GenIce3(unitcell=my_unitcell)</span>
+</span><span id="GenIce3-1454"><a href="#GenIce3-1454"><span class="linenos">1454</span></a><span class="sd">            &gt;&gt;&gt; digraph = genice.digraph  # この時点でdigraphとその依存関係が計算される</span>
+</span><span id="GenIce3-1455"><a href="#GenIce3-1455"><span class="linenos">1455</span></a>
+</span><span id="GenIce3-1456"><a href="#GenIce3-1456"><span class="linenos">1456</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1457"><a href="#GenIce3-1457"><span class="linenos">1457</span></a><span class="sd">            name: アクセスするプロパティ名（タスク関数名）</span>
+</span><span id="GenIce3-1458"><a href="#GenIce3-1458"><span class="linenos">1458</span></a>
+</span><span id="GenIce3-1459"><a href="#GenIce3-1459"><span class="linenos">1459</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1460"><a href="#GenIce3-1460"><span class="linenos">1460</span></a><span class="sd">            計算されたプロパティの値</span>
+</span><span id="GenIce3-1461"><a href="#GenIce3-1461"><span class="linenos">1461</span></a>
+</span><span id="GenIce3-1462"><a href="#GenIce3-1462"><span class="linenos">1462</span></a><span class="sd">        Raises:</span>
+</span><span id="GenIce3-1463"><a href="#GenIce3-1463"><span class="linenos">1463</span></a><span class="sd">            AttributeError: 指定された名前のプロパティが存在しない場合</span>
+</span><span id="GenIce3-1464"><a href="#GenIce3-1464"><span class="linenos">1464</span></a><span class="sd">            ConfigurationError: 必要な入力が設定されていない場合</span>
+</span><span id="GenIce3-1465"><a href="#GenIce3-1465"><span class="linenos">1465</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1466"><a href="#GenIce3-1466"><span class="linenos">1466</span></a>        <span class="c1"># DependencyEngineに登録されているタスクかチェック</span>
+</span><span id="GenIce3-1467"><a href="#GenIce3-1467"><span class="linenos">1467</span></a>        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
+</span><span id="GenIce3-1468"><a href="#GenIce3-1468"><span class="linenos">1468</span></a>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_inputs</span><span class="p">())</span>
+</span><span id="GenIce3-1469"><a href="#GenIce3-1469"><span class="linenos">1469</span></a>
+</span><span id="GenIce3-1470"><a href="#GenIce3-1470"><span class="linenos">1470</span></a>        <span class="c1"># それ以外は通常のAttributeErrorを発生</span>
+</span><span id="GenIce3-1471"><a href="#GenIce3-1471"><span class="linenos">1471</span></a>        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+</span><span id="GenIce3-1472"><a href="#GenIce3-1472"><span class="linenos">1472</span></a>            <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; object has no attribute &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+</span><span id="GenIce3-1473"><a href="#GenIce3-1473"><span class="linenos">1473</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1474"><a href="#GenIce3-1474"><span class="linenos">1474</span></a>
+</span><span id="GenIce3-1475"><a href="#GenIce3-1475"><span class="linenos">1475</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">water_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">water_model</span><span class="p">:</span> <span class="n">Molecule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="GenIce3-1476"><a href="#GenIce3-1476"><span class="linenos">1476</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;格子サイトが水のサイトについて、配向・位置を適用した水分子の辞書を返す。</span>
+</span><span id="GenIce3-1477"><a href="#GenIce3-1477"><span class="linenos">1477</span></a>
+</span><span id="GenIce3-1478"><a href="#GenIce3-1478"><span class="linenos">1478</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1479"><a href="#GenIce3-1479"><span class="linenos">1479</span></a><span class="sd">            water_model: 水分子のテンプレート（sites, labels など）。</span>
+</span><span id="GenIce3-1480"><a href="#GenIce3-1480"><span class="linenos">1480</span></a>
+</span><span id="GenIce3-1481"><a href="#GenIce3-1481"><span class="linenos">1481</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1482"><a href="#GenIce3-1482"><span class="linenos">1482</span></a><span class="sd">            サイト番号（ノード番号）→ Molecule の辞書。イオンサイトは含まない。</span>
+</span><span id="GenIce3-1483"><a href="#GenIce3-1483"><span class="linenos">1483</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1484"><a href="#GenIce3-1484"><span class="linenos">1484</span></a>        <span class="n">mols</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3-1485"><a href="#GenIce3-1485"><span class="linenos">1485</span></a>        <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)):</span>
+</span><span id="GenIce3-1486"><a href="#GenIce3-1486"><span class="linenos">1486</span></a>            <span class="n">occ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">site_occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="GenIce3-1487"><a href="#GenIce3-1487"><span class="linenos">1487</span></a>            <span class="c1"># hydroniumやhydroxideはwater-likeではない。</span>
+</span><span id="GenIce3-1488"><a href="#GenIce3-1488"><span class="linenos">1488</span></a>            <span class="n">is_water_like</span> <span class="o">=</span> <span class="n">occ</span> <span class="o">==</span> <span class="s2">&quot;water&quot;</span>
+</span><span id="GenIce3-1489"><a href="#GenIce3-1489"><span class="linenos">1489</span></a>            <span class="k">if</span> <span class="n">is_water_like</span><span class="p">:</span>
+</span><span id="GenIce3-1490"><a href="#GenIce3-1490"><span class="linenos">1490</span></a>                <span class="n">rel_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="GenIce3-1491"><a href="#GenIce3-1491"><span class="linenos">1491</span></a>                <span class="n">orientation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientations</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="GenIce3-1492"><a href="#GenIce3-1492"><span class="linenos">1492</span></a>
+</span><span id="GenIce3-1493"><a href="#GenIce3-1493"><span class="linenos">1493</span></a>                <span class="n">sites</span> <span class="o">=</span> <span class="n">water_model</span><span class="o">.</span><span class="n">sites</span> <span class="o">@</span> <span class="n">orientation</span> <span class="o">+</span> <span class="n">rel_position</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3-1494"><a href="#GenIce3-1494"><span class="linenos">1494</span></a>                <span class="n">mols</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3-1495"><a href="#GenIce3-1495"><span class="linenos">1495</span></a>                    <span class="n">name</span><span class="o">=</span><span class="n">water_model</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3-1496"><a href="#GenIce3-1496"><span class="linenos">1496</span></a>                    <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="GenIce3-1497"><a href="#GenIce3-1497"><span class="linenos">1497</span></a>                    <span class="n">labels</span><span class="o">=</span><span class="n">water_model</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3-1498"><a href="#GenIce3-1498"><span class="linenos">1498</span></a>                    <span class="n">is_water</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="GenIce3-1499"><a href="#GenIce3-1499"><span class="linenos">1499</span></a>                <span class="p">)</span>
+</span><span id="GenIce3-1500"><a href="#GenIce3-1500"><span class="linenos">1500</span></a>        <span class="k">return</span> <span class="n">mols</span>
+</span><span id="GenIce3-1501"><a href="#GenIce3-1501"><span class="linenos">1501</span></a>
+</span><span id="GenIce3-1502"><a href="#GenIce3-1502"><span class="linenos">1502</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">guest_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="GenIce3-1503"><a href="#GenIce3-1503"><span class="linenos">1503</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;GenIce3に設定されたguestsとspot_guestsからゲスト分子リストを生成する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1504"><a href="#GenIce3-1504"><span class="linenos">1504</span></a>        <span class="c1"># 通常の氷（ゲストなし）ではケージ不要 → assess_cages を呼ばない</span>
+</span><span id="GenIce3-1505"><a href="#GenIce3-1505"><span class="linenos">1505</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span><span class="p">:</span>
+</span><span id="GenIce3-1506"><a href="#GenIce3-1506"><span class="linenos">1506</span></a>            <span class="k">return</span> <span class="p">[]</span>
+</span><span id="GenIce3-1507"><a href="#GenIce3-1507"><span class="linenos">1507</span></a>
+</span><span id="GenIce3-1508"><a href="#GenIce3-1508"><span class="linenos">1508</span></a>        <span class="n">all_cage_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">]</span>
+</span><span id="GenIce3-1509"><a href="#GenIce3-1509"><span class="linenos">1509</span></a>        <span class="n">available</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">all_cage_types</span><span class="p">))</span>
+</span><span id="GenIce3-1510"><a href="#GenIce3-1510"><span class="linenos">1510</span></a>        <span class="c1"># guest_specで指定されているのに存在しない種類のケージはエラーにする。</span>
+</span><span id="GenIce3-1511"><a href="#GenIce3-1511"><span class="linenos">1511</span></a>        <span class="k">for</span> <span class="n">cage_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">:</span>
+</span><span id="GenIce3-1512"><a href="#GenIce3-1512"><span class="linenos">1512</span></a>            <span class="k">if</span> <span class="n">cage_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">all_cage_types</span><span class="p">:</span>
+</span><span id="GenIce3-1513"><a href="#GenIce3-1513"><span class="linenos">1513</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="GenIce3-1514"><a href="#GenIce3-1514"><span class="linenos">1514</span></a>                    <span class="sa">f</span><span class="s2">&quot;Cage type </span><span class="si">{</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> is not defined. &quot;</span>
+</span><span id="GenIce3-1515"><a href="#GenIce3-1515"><span class="linenos">1515</span></a>                    <span class="sa">f</span><span class="s2">&quot;Available cage types in this structure: </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="GenIce3-1516"><a href="#GenIce3-1516"><span class="linenos">1516</span></a>                <span class="p">)</span>
+</span><span id="GenIce3-1517"><a href="#GenIce3-1517"><span class="linenos">1517</span></a>
+</span><span id="GenIce3-1518"><a href="#GenIce3-1518"><span class="linenos">1518</span></a>        <span class="n">randoms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">))</span>
+</span><span id="GenIce3-1519"><a href="#GenIce3-1519"><span class="linenos">1519</span></a>
+</span><span id="GenIce3-1520"><a href="#GenIce3-1520"><span class="linenos">1520</span></a>        <span class="n">mols</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1521"><a href="#GenIce3-1521"><span class="linenos">1521</span></a>        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">probability</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="GenIce3-1522"><a href="#GenIce3-1522"><span class="linenos">1522</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">,</span> <span class="n">randoms</span>
+</span><span id="GenIce3-1523"><a href="#GenIce3-1523"><span class="linenos">1523</span></a>        <span class="p">):</span>
+</span><span id="GenIce3-1524"><a href="#GenIce3-1524"><span class="linenos">1524</span></a>            <span class="n">accum</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span id="GenIce3-1525"><a href="#GenIce3-1525"><span class="linenos">1525</span></a>            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">:</span>
+</span><span id="GenIce3-1526"><a href="#GenIce3-1526"><span class="linenos">1526</span></a>                <span class="k">for</span> <span class="n">guest_spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="p">]:</span>
+</span><span id="GenIce3-1527"><a href="#GenIce3-1527"><span class="linenos">1527</span></a>                    <span class="n">molecule</span> <span class="o">=</span> <span class="n">guest_spec</span><span class="o">.</span><span class="n">molecule</span>
+</span><span id="GenIce3-1528"><a href="#GenIce3-1528"><span class="linenos">1528</span></a>                    <span class="n">occupancy</span> <span class="o">=</span> <span class="n">guest_spec</span><span class="o">.</span><span class="n">occupancy</span>
+</span><span id="GenIce3-1529"><a href="#GenIce3-1529"><span class="linenos">1529</span></a>                    <span class="n">accum</span> <span class="o">+=</span> <span class="n">occupancy</span>
+</span><span id="GenIce3-1530"><a href="#GenIce3-1530"><span class="linenos">1530</span></a>                    <span class="k">if</span> <span class="n">accum</span> <span class="o">&gt;</span> <span class="n">probability</span><span class="p">:</span>
+</span><span id="GenIce3-1531"><a href="#GenIce3-1531"><span class="linenos">1531</span></a>                        <span class="n">mols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="GenIce3-1532"><a href="#GenIce3-1532"><span class="linenos">1532</span></a>                            <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3-1533"><a href="#GenIce3-1533"><span class="linenos">1533</span></a>                                <span class="n">name</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3-1534"><a href="#GenIce3-1534"><span class="linenos">1534</span></a>                                <span class="n">sites</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">pos</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3-1535"><a href="#GenIce3-1535"><span class="linenos">1535</span></a>                                <span class="n">labels</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3-1536"><a href="#GenIce3-1536"><span class="linenos">1536</span></a>                                <span class="n">is_water</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">is_water</span><span class="p">,</span>
+</span><span id="GenIce3-1537"><a href="#GenIce3-1537"><span class="linenos">1537</span></a>                            <span class="p">)</span>
+</span><span id="GenIce3-1538"><a href="#GenIce3-1538"><span class="linenos">1538</span></a>                        <span class="p">)</span>
+</span><span id="GenIce3-1539"><a href="#GenIce3-1539"><span class="linenos">1539</span></a>                        <span class="k">break</span>
+</span><span id="GenIce3-1540"><a href="#GenIce3-1540"><span class="linenos">1540</span></a>
+</span><span id="GenIce3-1541"><a href="#GenIce3-1541"><span class="linenos">1541</span></a>        <span class="c1"># spot guestの配置</span>
+</span><span id="GenIce3-1542"><a href="#GenIce3-1542"><span class="linenos">1542</span></a>        <span class="k">for</span> <span class="n">cage_index</span><span class="p">,</span> <span class="n">guest</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1543"><a href="#GenIce3-1543"><span class="linenos">1543</span></a>            <span class="n">mols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="GenIce3-1544"><a href="#GenIce3-1544"><span class="linenos">1544</span></a>                <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3-1545"><a href="#GenIce3-1545"><span class="linenos">1545</span></a>                    <span class="n">name</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3-1546"><a href="#GenIce3-1546"><span class="linenos">1546</span></a>                    <span class="n">sites</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">cage_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3-1547"><a href="#GenIce3-1547"><span class="linenos">1547</span></a>                    <span class="n">labels</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3-1548"><a href="#GenIce3-1548"><span class="linenos">1548</span></a>                    <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3-1549"><a href="#GenIce3-1549"><span class="linenos">1549</span></a>                <span class="p">)</span>
+</span><span id="GenIce3-1550"><a href="#GenIce3-1550"><span class="linenos">1550</span></a>            <span class="p">)</span>
+</span><span id="GenIce3-1551"><a href="#GenIce3-1551"><span class="linenos">1551</span></a>        <span class="k">return</span> <span class="n">mols</span>
+</span><span id="GenIce3-1552"><a href="#GenIce3-1552"><span class="linenos">1552</span></a>
+</span><span id="GenIce3-1553"><a href="#GenIce3-1553"><span class="linenos">1553</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_molecular_ion</span><span class="p">(</span>
+</span><span id="GenIce3-1554"><a href="#GenIce3-1554"><span class="linenos">1554</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="GenIce3-1555"><a href="#GenIce3-1555"><span class="linenos">1555</span></a>        <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="GenIce3-1556"><a href="#GenIce3-1556"><span class="linenos">1556</span></a>        <span class="n">molecule</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="GenIce3-1557"><a href="#GenIce3-1557"><span class="linenos">1557</span></a>        <span class="n">groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3-1558"><a href="#GenIce3-1558"><span class="linenos">1558</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="GenIce3-1559"><a href="#GenIce3-1559"><span class="linenos">1559</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト site_index（格子サイトのノード番号）に分子イオン（および spot cation 用の修飾 group）を構築する。</span>
+</span><span id="GenIce3-1560"><a href="#GenIce3-1560"><span class="linenos">1560</span></a>
+</span><span id="GenIce3-1561"><a href="#GenIce3-1561"><span class="linenos">1561</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3-1562"><a href="#GenIce3-1562"><span class="linenos">1562</span></a><span class="sd">            site_index: 格子サイトのノード番号。</span>
+</span><span id="GenIce3-1563"><a href="#GenIce3-1563"><span class="linenos">1563</span></a><span class="sd">            molecule: 分子イオンのプラグイン名（例: &quot;ammonium&quot;）。</span>
+</span><span id="GenIce3-1564"><a href="#GenIce3-1564"><span class="linenos">1564</span></a><span class="sd">            groups: 当該サイトに隣接するケージID → group名。spot cation の修飾用。</span>
+</span><span id="GenIce3-1565"><a href="#GenIce3-1565"><span class="linenos">1565</span></a>
+</span><span id="GenIce3-1566"><a href="#GenIce3-1566"><span class="linenos">1566</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1567"><a href="#GenIce3-1567"><span class="linenos">1567</span></a><span class="sd">            直交座標で配置された Molecule（原子名は labels）。</span>
+</span><span id="GenIce3-1568"><a href="#GenIce3-1568"><span class="linenos">1568</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1569"><a href="#GenIce3-1569"><span class="linenos">1569</span></a>        <span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span> <span class="ow">or</span> <span class="p">{}</span>
+</span><span id="GenIce3-1570"><a href="#GenIce3-1570"><span class="linenos">1570</span></a>        <span class="n">ion_center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3-1571"><a href="#GenIce3-1571"><span class="linenos">1571</span></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="GenIce3-1572"><a href="#GenIce3-1572"><span class="linenos">1572</span></a>            <span class="n">ion</span> <span class="o">=</span> <span class="n">safe_import</span><span class="p">(</span><span class="s2">&quot;molecule&quot;</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span><span class="o">.</span><span class="n">Molecule</span><span class="p">()</span>
+</span><span id="GenIce3-1573"><a href="#GenIce3-1573"><span class="linenos">1573</span></a>            <span class="n">name</span> <span class="o">=</span> <span class="n">ion</span><span class="o">.</span><span class="n">name</span>
+</span><span id="GenIce3-1574"><a href="#GenIce3-1574"><span class="linenos">1574</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">ion</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">ion_center</span>
+</span><span id="GenIce3-1575"><a href="#GenIce3-1575"><span class="linenos">1575</span></a>            <span class="n">atom_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ion</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+</span><span id="GenIce3-1576"><a href="#GenIce3-1576"><span class="linenos">1576</span></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="GenIce3-1577"><a href="#GenIce3-1577"><span class="linenos">1577</span></a>            <span class="n">name</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="GenIce3-1578"><a href="#GenIce3-1578"><span class="linenos">1578</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ion_center</span><span class="p">])</span>
+</span><span id="GenIce3-1579"><a href="#GenIce3-1579"><span class="linenos">1579</span></a>            <span class="n">atom_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">molecule</span><span class="p">]</span>
+</span><span id="GenIce3-1580"><a href="#GenIce3-1580"><span class="linenos">1580</span></a>        <span class="c1"># 修飾グループを置いていく（--group 指定があったサイトのみ）</span>
+</span><span id="GenIce3-1581"><a href="#GenIce3-1581"><span class="linenos">1581</span></a>        <span class="k">for</span> <span class="n">cage</span><span class="p">,</span> <span class="n">group_name</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1582"><a href="#GenIce3-1582"><span class="linenos">1582</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">cage</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="GenIce3-1583"><a href="#GenIce3-1583"><span class="linenos">1583</span></a>            <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="GenIce3-1584"><a href="#GenIce3-1584"><span class="linenos">1584</span></a>            <span class="n">group</span> <span class="o">=</span> <span class="n">place_group</span><span class="p">(</span>
+</span><span id="GenIce3-1585"><a href="#GenIce3-1585"><span class="linenos">1585</span></a>                <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3-1586"><a href="#GenIce3-1586"><span class="linenos">1586</span></a>                <span class="mf">0.13</span><span class="p">,</span>  <span class="c1"># あとでなんとかする。N-H結合距離</span>
+</span><span id="GenIce3-1587"><a href="#GenIce3-1587"><span class="linenos">1587</span></a>                <span class="n">group_name</span><span class="p">,</span>
+</span><span id="GenIce3-1588"><a href="#GenIce3-1588"><span class="linenos">1588</span></a>            <span class="p">)</span>
+</span><span id="GenIce3-1589"><a href="#GenIce3-1589"><span class="linenos">1589</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">sites</span><span class="p">,</span> <span class="n">group</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">ion_center</span><span class="p">])</span>
+</span><span id="GenIce3-1590"><a href="#GenIce3-1590"><span class="linenos">1590</span></a>            <span class="n">atom_names</span> <span class="o">+=</span> <span class="n">group</span><span class="o">.</span><span class="n">labels</span>
+</span><span id="GenIce3-1591"><a href="#GenIce3-1591"><span class="linenos">1591</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">atom_names</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1592"><a href="#GenIce3-1592"><span class="linenos">1592</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3-1593"><a href="#GenIce3-1593"><span class="linenos">1593</span></a>            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3-1594"><a href="#GenIce3-1594"><span class="linenos">1594</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="GenIce3-1595"><a href="#GenIce3-1595"><span class="linenos">1595</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">atom_names</span><span class="p">,</span>
+</span><span id="GenIce3-1596"><a href="#GenIce3-1596"><span class="linenos">1596</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3-1597"><a href="#GenIce3-1597"><span class="linenos">1597</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1598"><a href="#GenIce3-1598"><span class="linenos">1598</span></a>
+</span><span id="GenIce3-1599"><a href="#GenIce3-1599"><span class="linenos">1599</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_spot_cation_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+</span><span id="GenIce3-1600"><a href="#GenIce3-1600"><span class="linenos">1600</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;spot_cation_groups に単位胞由来の cation_groups を展開してマージした辞書を返す（on-demand）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1601"><a href="#GenIce3-1601"><span class="linenos">1601</span></a>        <span class="c1"># ベースは CLI/API で指定された spot_cation_groups</span>
+</span><span id="GenIce3-1602"><a href="#GenIce3-1602"><span class="linenos">1602</span></a>        <span class="n">effective</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="GenIce3-1603"><a href="#GenIce3-1603"><span class="linenos">1603</span></a>            <span class="n">k</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_cation_groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="GenIce3-1604"><a href="#GenIce3-1604"><span class="linenos">1604</span></a>        <span class="p">}</span>
+</span><span id="GenIce3-1605"><a href="#GenIce3-1605"><span class="linenos">1605</span></a>        <span class="c1"># number of nodes in the unitcell</span>
+</span><span id="GenIce3-1606"><a href="#GenIce3-1606"><span class="linenos">1606</span></a>        <span class="n">nuc_nodes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)</span>
+</span><span id="GenIce3-1607"><a href="#GenIce3-1607"><span class="linenos">1607</span></a>        <span class="c1"># number of cages in the unitcell</span>
+</span><span id="GenIce3-1608"><a href="#GenIce3-1608"><span class="linenos">1608</span></a>        <span class="n">nuc_cages</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span>
+</span><span id="GenIce3-1609"><a href="#GenIce3-1609"><span class="linenos">1609</span></a>        <span class="k">for</span> <span class="n">un_node</span><span class="p">,</span> <span class="n">uc_group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span><span class="o">.</span><span class="n">cation_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1610"><a href="#GenIce3-1610"><span class="linenos">1610</span></a>            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">_replicate_lattice_node</span><span class="p">(</span>
+</span><span id="GenIce3-1611"><a href="#GenIce3-1611"><span class="linenos">1611</span></a>                <span class="n">un_node</span><span class="p">,</span> <span class="n">nuc_nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span>
+</span><span id="GenIce3-1612"><a href="#GenIce3-1612"><span class="linenos">1612</span></a>            <span class="p">):</span>
+</span><span id="GenIce3-1613"><a href="#GenIce3-1613"><span class="linenos">1613</span></a>                <span class="c1"># 拡大胞のノードに隣接する4つのケージのインデックス</span>
+</span><span id="GenIce3-1614"><a href="#GenIce3-1614"><span class="linenos">1614</span></a>                <span class="n">cage_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">node_to_cage_indices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="GenIce3-1615"><a href="#GenIce3-1615"><span class="linenos">1615</span></a>                <span class="k">for</span> <span class="n">cage_index</span> <span class="ow">in</span> <span class="n">cage_indices</span><span class="p">:</span>
+</span><span id="GenIce3-1616"><a href="#GenIce3-1616"><span class="linenos">1616</span></a>                    <span class="c1"># ケージのインデックスを単位胞でのインデックスになおし、そこに入るグループを取得</span>
+</span><span id="GenIce3-1617"><a href="#GenIce3-1617"><span class="linenos">1617</span></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cage_index</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">nuc_cages</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">uc_group</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">node</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1618"><a href="#GenIce3-1618"><span class="linenos">1618</span></a>                    <span class="n">uc_cage_index</span> <span class="o">=</span> <span class="n">cage_index</span> <span class="o">%</span> <span class="n">nuc_cages</span>
+</span><span id="GenIce3-1619"><a href="#GenIce3-1619"><span class="linenos">1619</span></a>                    <span class="k">if</span> <span class="n">uc_cage_index</span> <span class="ow">in</span> <span class="n">uc_group</span><span class="p">:</span>
+</span><span id="GenIce3-1620"><a href="#GenIce3-1620"><span class="linenos">1620</span></a>                        <span class="n">group</span> <span class="o">=</span> <span class="n">uc_group</span><span class="p">[</span><span class="n">cage_index</span> <span class="o">%</span> <span class="n">nuc_cages</span><span class="p">]</span>
+</span><span id="GenIce3-1621"><a href="#GenIce3-1621"><span class="linenos">1621</span></a>                        <span class="c1"># 拡大胞のノードに隣接する4つのケージのインデックスに、グループをマッピング</span>
+</span><span id="GenIce3-1622"><a href="#GenIce3-1622"><span class="linenos">1622</span></a>                        <span class="n">effective</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cage_index</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+</span><span id="GenIce3-1623"><a href="#GenIce3-1623"><span class="linenos">1623</span></a>        <span class="k">return</span> <span class="n">effective</span>
+</span><span id="GenIce3-1624"><a href="#GenIce3-1624"><span class="linenos">1624</span></a>
+</span><span id="GenIce3-1625"><a href="#GenIce3-1625"><span class="linenos">1625</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_hydronium</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="GenIce3-1626"><a href="#GenIce3-1626"><span class="linenos">1626</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を構築する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1627"><a href="#GenIce3-1627"><span class="linenos">1627</span></a>        <span class="n">sites</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1628"><a href="#GenIce3-1628"><span class="linenos">1628</span></a>        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Cn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">]</span>
+</span><span id="GenIce3-1629"><a href="#GenIce3-1629"><span class="linenos">1629</span></a>        <span class="n">OH</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="GenIce3-1630"><a href="#GenIce3-1630"><span class="linenos">1630</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span id="GenIce3-1631"><a href="#GenIce3-1631"><span class="linenos">1631</span></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="GenIce3-1632"><a href="#GenIce3-1632"><span class="linenos">1632</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+</span><span id="GenIce3-1633"><a href="#GenIce3-1633"><span class="linenos">1633</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;H3O+ must have 3 neighbors.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1634"><a href="#GenIce3-1634"><span class="linenos">1634</span></a>        <span class="k">for</span> <span class="n">neighbor</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
+</span><span id="GenIce3-1635"><a href="#GenIce3-1635"><span class="linenos">1635</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">neighbor</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="GenIce3-1636"><a href="#GenIce3-1636"><span class="linenos">1636</span></a>            <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="GenIce3-1637"><a href="#GenIce3-1637"><span class="linenos">1637</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3-1638"><a href="#GenIce3-1638"><span class="linenos">1638</span></a>            <span class="n">direction</span> <span class="o">*=</span> <span class="n">OH</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3-1639"><a href="#GenIce3-1639"><span class="linenos">1639</span></a>            <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3-1640"><a href="#GenIce3-1640"><span class="linenos">1640</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3-1641"><a href="#GenIce3-1641"><span class="linenos">1641</span></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;H3O&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1642"><a href="#GenIce3-1642"><span class="linenos">1642</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3-1643"><a href="#GenIce3-1643"><span class="linenos">1643</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3-1644"><a href="#GenIce3-1644"><span class="linenos">1644</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3-1645"><a href="#GenIce3-1645"><span class="linenos">1645</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1646"><a href="#GenIce3-1646"><span class="linenos">1646</span></a>
+</span><span id="GenIce3-1647"><a href="#GenIce3-1647"><span class="linenos">1647</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_hydroxide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="GenIce3-1648"><a href="#GenIce3-1648"><span class="linenos">1648</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を構築する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1649"><a href="#GenIce3-1649"><span class="linenos">1649</span></a>        <span class="n">sites</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3-1650"><a href="#GenIce3-1650"><span class="linenos">1650</span></a>        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Nx&quot;</span><span class="p">,</span> <span class="s2">&quot;Hx&quot;</span><span class="p">]</span>
+</span><span id="GenIce3-1651"><a href="#GenIce3-1651"><span class="linenos">1651</span></a>        <span class="n">OH</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="GenIce3-1652"><a href="#GenIce3-1652"><span class="linenos">1652</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span id="GenIce3-1653"><a href="#GenIce3-1653"><span class="linenos">1653</span></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="GenIce3-1654"><a href="#GenIce3-1654"><span class="linenos">1654</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="GenIce3-1655"><a href="#GenIce3-1655"><span class="linenos">1655</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OH- must have 1 neighbor. </span><span class="si">{</span><span class="n">site_index</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">neighbors</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1656"><a href="#GenIce3-1656"><span class="linenos">1656</span></a>        <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">neighbors</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="GenIce3-1657"><a href="#GenIce3-1657"><span class="linenos">1657</span></a>        <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="GenIce3-1658"><a href="#GenIce3-1658"><span class="linenos">1658</span></a>        <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3-1659"><a href="#GenIce3-1659"><span class="linenos">1659</span></a>        <span class="n">direction</span> <span class="o">*=</span> <span class="n">OH</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3-1660"><a href="#GenIce3-1660"><span class="linenos">1660</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3-1661"><a href="#GenIce3-1661"><span class="linenos">1661</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3-1662"><a href="#GenIce3-1662"><span class="linenos">1662</span></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;OH&quot;</span><span class="p">,</span>
+</span><span id="GenIce3-1663"><a href="#GenIce3-1663"><span class="linenos">1663</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3-1664"><a href="#GenIce3-1664"><span class="linenos">1664</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3-1665"><a href="#GenIce3-1665"><span class="linenos">1665</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3-1666"><a href="#GenIce3-1666"><span class="linenos">1666</span></a>        <span class="p">)</span>
+</span><span id="GenIce3-1667"><a href="#GenIce3-1667"><span class="linenos">1667</span></a>
+</span><span id="GenIce3-1668"><a href="#GenIce3-1668"><span class="linenos">1668</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">substitutional_ions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="GenIce3-1669"><a href="#GenIce3-1669"><span class="linenos">1669</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1670"><a href="#GenIce3-1670"><span class="linenos">1670</span></a>        <span class="c1"># 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う</span>
+</span><span id="GenIce3-1671"><a href="#GenIce3-1671"><span class="linenos">1671</span></a>
+</span><span id="GenIce3-1672"><a href="#GenIce3-1672"><span class="linenos">1672</span></a>        <span class="c1"># 前提条件: anions, cations, hydroniums, hydroxidesのサイトに重複がないこと。</span>
+</span><span id="GenIce3-1673"><a href="#GenIce3-1673"><span class="linenos">1673</span></a>        <span class="c1"># そうでない場合は、エラーを返す。</span>
+</span><span id="GenIce3-1674"><a href="#GenIce3-1674"><span class="linenos">1674</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3-1675"><a href="#GenIce3-1675"><span class="linenos">1675</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroniums and hydroxides must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1676"><a href="#GenIce3-1676"><span class="linenos">1676</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3-1677"><a href="#GenIce3-1677"><span class="linenos">1677</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;anions and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1678"><a href="#GenIce3-1678"><span class="linenos">1678</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3-1679"><a href="#GenIce3-1679"><span class="linenos">1679</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroniums and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1680"><a href="#GenIce3-1680"><span class="linenos">1680</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3-1681"><a href="#GenIce3-1681"><span class="linenos">1681</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroxides and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1682"><a href="#GenIce3-1682"><span class="linenos">1682</span></a>
+</span><span id="GenIce3-1683"><a href="#GenIce3-1683"><span class="linenos">1683</span></a>        <span class="n">ions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3-1684"><a href="#GenIce3-1684"><span class="linenos">1684</span></a>        <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="GenIce3-1685"><a href="#GenIce3-1685"><span class="linenos">1685</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_hydronium</span><span class="p">(</span><span class="n">site_index</span><span class="p">)</span>
+</span><span id="GenIce3-1686"><a href="#GenIce3-1686"><span class="linenos">1686</span></a>        <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="GenIce3-1687"><a href="#GenIce3-1687"><span class="linenos">1687</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_hydroxide</span><span class="p">(</span><span class="n">site_index</span><span class="p">)</span>
+</span><span id="GenIce3-1688"><a href="#GenIce3-1688"><span class="linenos">1688</span></a>        <span class="c1"># ならべかえはここではしない。formatterにまかせる。</span>
+</span><span id="GenIce3-1689"><a href="#GenIce3-1689"><span class="linenos">1689</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1690"><a href="#GenIce3-1690"><span class="linenos">1690</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_molecular_ion</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span>
+</span><span id="GenIce3-1691"><a href="#GenIce3-1691"><span class="linenos">1691</span></a>        <span class="n">effective_groups</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_spot_cation_groups</span><span class="p">()</span>
+</span><span id="GenIce3-1692"><a href="#GenIce3-1692"><span class="linenos">1692</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1693"><a href="#GenIce3-1693"><span class="linenos">1693</span></a>            <span class="c1"># cationには腕がつく可能性がある。</span>
+</span><span id="GenIce3-1694"><a href="#GenIce3-1694"><span class="linenos">1694</span></a>            <span class="n">groups</span> <span class="o">=</span> <span class="n">effective_groups</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="p">{})</span>
+</span><span id="GenIce3-1695"><a href="#GenIce3-1695"><span class="linenos">1695</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_molecular_ion</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+</span><span id="GenIce3-1696"><a href="#GenIce3-1696"><span class="linenos">1696</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ions</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3-1697"><a href="#GenIce3-1697"><span class="linenos">1697</span></a>        <span class="k">return</span> <span class="n">ions</span>
+</span><span id="GenIce3-1698"><a href="#GenIce3-1698"><span class="linenos">1698</span></a>
+</span><span id="GenIce3-1699"><a href="#GenIce3-1699"><span class="linenos">1699</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dope_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1700"><a href="#GenIce3-1700"><span class="linenos">1700</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト番号→分子の辞書でアニオン配置を上書きする（主に API/テスト用）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1701"><a href="#GenIce3-1701"><span class="linenos">1701</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1702"><a href="#GenIce3-1702"><span class="linenos">1702</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="GenIce3-1703"><a href="#GenIce3-1703"><span class="linenos">1703</span></a>
+</span><span id="GenIce3-1704"><a href="#GenIce3-1704"><span class="linenos">1704</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dope_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3-1705"><a href="#GenIce3-1705"><span class="linenos">1705</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト番号→分子の辞書でカチオン配置を上書きする（主に API/テスト用）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1706"><a href="#GenIce3-1706"><span class="linenos">1706</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3-1707"><a href="#GenIce3-1707"><span class="linenos">1707</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="GenIce3-1708"><a href="#GenIce3-1708"><span class="linenos">1708</span></a>
+</span><span id="GenIce3-1709"><a href="#GenIce3-1709"><span class="linenos">1709</span></a>    <span class="c1"># def get_atomic_structure(</span>
+</span><span id="GenIce3-1710"><a href="#GenIce3-1710"><span class="linenos">1710</span></a>    <span class="c1">#     self,</span>
+</span><span id="GenIce3-1711"><a href="#GenIce3-1711"><span class="linenos">1711</span></a>    <span class="c1">#     water_model: Optional[Molecule] = None,</span>
+</span><span id="GenIce3-1712"><a href="#GenIce3-1712"><span class="linenos">1712</span></a>    <span class="c1">#     guests: Optional[Dict[str, List[GuestSpec]]] = None,</span>
+</span><span id="GenIce3-1713"><a href="#GenIce3-1713"><span class="linenos">1713</span></a>    <span class="c1">#     spot_guests: Optional[Dict[int, Molecule]] = None,</span>
+</span><span id="GenIce3-1714"><a href="#GenIce3-1714"><span class="linenos">1714</span></a>    <span class="c1"># ) -&gt; AtomicStructure:</span>
+</span><span id="GenIce3-1715"><a href="#GenIce3-1715"><span class="linenos">1715</span></a>    <span class="c1">#     &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1716"><a href="#GenIce3-1716"><span class="linenos">1716</span></a>    <span class="c1">#     原子構造データを統合的に取得する。</span>
+</span><span id="GenIce3-1717"><a href="#GenIce3-1717"><span class="linenos">1717</span></a>    <span class="c1">#     exporterプラグインが使用するための統一インターフェース。</span>
+</span><span id="GenIce3-1718"><a href="#GenIce3-1718"><span class="linenos">1718</span></a>
+</span><span id="GenIce3-1719"><a href="#GenIce3-1719"><span class="linenos">1719</span></a>    <span class="c1">#     Args:</span>
+</span><span id="GenIce3-1720"><a href="#GenIce3-1720"><span class="linenos">1720</span></a>    <span class="c1">#         water_model: 水分子モデル（デフォルト: FourSiteWater()）</span>
+</span><span id="GenIce3-1721"><a href="#GenIce3-1721"><span class="linenos">1721</span></a>    <span class="c1">#         guests: ケージタイプごとのゲスト分子の指定（デフォルト: {}）</span>
+</span><span id="GenIce3-1722"><a href="#GenIce3-1722"><span class="linenos">1722</span></a>    <span class="c1">#         spot_guests: 特定ケージ位置へのゲスト分子の指定（デフォルト: {}）</span>
+</span><span id="GenIce3-1723"><a href="#GenIce3-1723"><span class="linenos">1723</span></a>
+</span><span id="GenIce3-1724"><a href="#GenIce3-1724"><span class="linenos">1724</span></a>    <span class="c1">#     Returns:</span>
+</span><span id="GenIce3-1725"><a href="#GenIce3-1725"><span class="linenos">1725</span></a>    <span class="c1">#         AtomicStructure: 水分子、ゲスト分子、イオン、セル行列を含む統合データ構造</span>
+</span><span id="GenIce3-1726"><a href="#GenIce3-1726"><span class="linenos">1726</span></a>    <span class="c1">#     &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1727"><a href="#GenIce3-1727"><span class="linenos">1727</span></a>
+</span><span id="GenIce3-1728"><a href="#GenIce3-1728"><span class="linenos">1728</span></a>    <span class="c1">#     return AtomicStructure(</span>
+</span><span id="GenIce3-1729"><a href="#GenIce3-1729"><span class="linenos">1729</span></a>    <span class="c1">#         waters=self.water_molecules(water_model=water_model),</span>
+</span><span id="GenIce3-1730"><a href="#GenIce3-1730"><span class="linenos">1730</span></a>    <span class="c1">#         guests=self.guest_molecules(</span>
+</span><span id="GenIce3-1731"><a href="#GenIce3-1731"><span class="linenos">1731</span></a>    <span class="c1">#             guests=guests or {}, spot_guests=spot_guests or {}</span>
+</span><span id="GenIce3-1732"><a href="#GenIce3-1732"><span class="linenos">1732</span></a>    <span class="c1">#         ),</span>
+</span><span id="GenIce3-1733"><a href="#GenIce3-1733"><span class="linenos">1733</span></a>    <span class="c1">#         ions=self.substitutional_ions(),</span>
+</span><span id="GenIce3-1734"><a href="#GenIce3-1734"><span class="linenos">1734</span></a>    <span class="c1">#         cell=self.cell,</span>
+</span><span id="GenIce3-1735"><a href="#GenIce3-1735"><span class="linenos">1735</span></a>    <span class="c1">#     )</span>
+</span><span id="GenIce3-1736"><a href="#GenIce3-1736"><span class="linenos">1736</span></a>
+</span><span id="GenIce3-1737"><a href="#GenIce3-1737"><span class="linenos">1737</span></a>    <span class="nd">@classmethod</span>
+</span><span id="GenIce3-1738"><a href="#GenIce3-1738"><span class="linenos">1738</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_public_api_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="GenIce3-1739"><a href="#GenIce3-1739"><span class="linenos">1739</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1740"><a href="#GenIce3-1740"><span class="linenos">1740</span></a><span class="sd">        ユーザー向けAPIとして公開されているpropertyのリストを返す。</span>
+</span><span id="GenIce3-1741"><a href="#GenIce3-1741"><span class="linenos">1741</span></a>
+</span><span id="GenIce3-1742"><a href="#GenIce3-1742"><span class="linenos">1742</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1743"><a href="#GenIce3-1743"><span class="linenos">1743</span></a><span class="sd">            list: 公開API property名のリスト</span>
+</span><span id="GenIce3-1744"><a href="#GenIce3-1744"><span class="linenos">1744</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1745"><a href="#GenIce3-1745"><span class="linenos">1745</span></a>        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="GenIce3-1746"><a href="#GenIce3-1746"><span class="linenos">1746</span></a>
+</span><span id="GenIce3-1747"><a href="#GenIce3-1747"><span class="linenos">1747</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_all_reactive_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1748"><a href="#GenIce3-1748"><span class="linenos">1748</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1749"><a href="#GenIce3-1749"><span class="linenos">1749</span></a><span class="sd">        すべてのリアクティブプロパティ（DependencyEngineに登録されたタスク）を列挙する。</span>
+</span><span id="GenIce3-1750"><a href="#GenIce3-1750"><span class="linenos">1750</span></a>
+</span><span id="GenIce3-1751"><a href="#GenIce3-1751"><span class="linenos">1751</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1752"><a href="#GenIce3-1752"><span class="linenos">1752</span></a><span class="sd">            dict: property名をキー、タスク関数を値とする辞書</span>
+</span><span id="GenIce3-1753"><a href="#GenIce3-1753"><span class="linenos">1753</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1754"><a href="#GenIce3-1754"><span class="linenos">1754</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">registry</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="GenIce3-1755"><a href="#GenIce3-1755"><span class="linenos">1755</span></a>
+</span><span id="GenIce3-1756"><a href="#GenIce3-1756"><span class="linenos">1756</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_public_reactive_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3-1757"><a href="#GenIce3-1757"><span class="linenos">1757</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1758"><a href="#GenIce3-1758"><span class="linenos">1758</span></a><span class="sd">        ユーザー向けAPIとして公開されているリアクティブプロパティのみを列挙する。</span>
+</span><span id="GenIce3-1759"><a href="#GenIce3-1759"><span class="linenos">1759</span></a>
+</span><span id="GenIce3-1760"><a href="#GenIce3-1760"><span class="linenos">1760</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3-1761"><a href="#GenIce3-1761"><span class="linenos">1761</span></a><span class="sd">            dict: property名をキー、タスク関数を値とする辞書</span>
+</span><span id="GenIce3-1762"><a href="#GenIce3-1762"><span class="linenos">1762</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3-1763"><a href="#GenIce3-1763"><span class="linenos">1763</span></a>        <span class="n">all_reactive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_all_reactive_properties</span><span class="p">()</span>
+</span><span id="GenIce3-1764"><a href="#GenIce3-1764"><span class="linenos">1764</span></a>        <span class="n">public_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span><span class="p">)</span>
+</span><span id="GenIce3-1765"><a href="#GenIce3-1765"><span class="linenos">1765</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3-1766"><a href="#GenIce3-1766"><span class="linenos">1766</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">func</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">all_reactive</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">public_names</span>
+</span><span id="GenIce3-1767"><a href="#GenIce3-1767"><span class="linenos">1767</span></a>        <span class="p">}</span>
+</span><span id="GenIce3-1768"><a href="#GenIce3-1768"><span class="linenos">1768</span></a>
+</span><span id="GenIce3-1769"><a href="#GenIce3-1769"><span class="linenos">1769</span></a>    <span class="nd">@classmethod</span>
+</span><span id="GenIce3-1770"><a href="#GenIce3-1770"><span class="linenos">1770</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_settable_reactive_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="GenIce3-1771"><a href="#GenIce3-1771"><span class="linenos">1771</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;setterを持つリアクティブな変数を列挙する&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1772"><a href="#GenIce3-1772"><span class="linenos">1772</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3-1773"><a href="#GenIce3-1773"><span class="linenos">1773</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">prop</span>
+</span><span id="GenIce3-1774"><a href="#GenIce3-1774"><span class="linenos">1774</span></a>            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span>
+</span><span id="GenIce3-1775"><a href="#GenIce3-1775"><span class="linenos">1775</span></a>                <span class="bp">cls</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">property</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="o">.</span><span class="n">fset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="GenIce3-1776"><a href="#GenIce3-1776"><span class="linenos">1776</span></a>            <span class="p">)</span>
+</span><span id="GenIce3-1777"><a href="#GenIce3-1777"><span class="linenos">1777</span></a>        <span class="p">}</span>
+</span><span id="GenIce3-1778"><a href="#GenIce3-1778"><span class="linenos">1778</span></a>
+</span><span id="GenIce3-1779"><a href="#GenIce3-1779"><span class="linenos">1779</span></a>    <span class="nd">@classmethod</span>
+</span><span id="GenIce3-1780"><a href="#GenIce3-1780"><span class="linenos">1780</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_public_settable_reactive_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="GenIce3-1781"><a href="#GenIce3-1781"><span class="linenos">1781</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;公開APIのうち、setter を持つリアクティブプロパティのみを列挙する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3-1782"><a href="#GenIce3-1782"><span class="linenos">1782</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3-1783"><a href="#GenIce3-1783"><span class="linenos">1783</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">prop</span>
+</span><span id="GenIce3-1784"><a href="#GenIce3-1784"><span class="linenos">1784</span></a>            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">list_settable_reactive_properties</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="GenIce3-1785"><a href="#GenIce3-1785"><span class="linenos">1785</span></a>            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span>
+</span><span id="GenIce3-1786"><a href="#GenIce3-1786"><span class="linenos">1786</span></a>        <span class="p">}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>GenIce3のメインクラス：リアクティブプロパティによる氷構造生成システム</p>
+
+<p>GenIce3は、依存関係エンジン（DependencyEngine）を使用して、必要な時に
+自動的に計算されるリアクティブプロパティを提供します。これにより、ユーザーは
+必要なプロパティにアクセスするだけで、そのプロパティに依存するすべての
+計算が自動的に実行されます。</p>
+
+<p>リアクティブプロパティの仕組み:
+    - 各プロパティ（digraph, graph, lattice_sitesなど）は、アクセス時に
+      必要に応じて自動的に計算されます
+    - 依存関係は関数の引数名から自動的に推論されます
+    - 一度計算されたプロパティはキャッシュされ、依存する入力が変更されるまで
+      再利用されます
+    - 入力プロパティ（unitcell, replication_matrix, depol_loopなど）が
+      変更されると、それに依存するすべてのプロパティのキャッシュが自動的に
+      クリアされます</p>
+
+<p>使用例:</p>
+
+<blockquote>
+  <blockquote>
+    <blockquote>
+      <p>genice = GenIce3(unitcell=my_unitcell)
+      digraph = genice.digraph  # 自動的に必要な計算が実行される
+      orientations = genice.orientations  # digraphに依存するため、digraphが先に計算される</p>
+    </blockquote>
+  </blockquote>
+</blockquote>
+
+<p>Attributes:
+    digraph (nx.DiGraph): 水素結合の方向が決定された有向グラフ。
+        無向グラフから双極子最適化アルゴリズムにより各水素結合の方向を決定した
+        有向グラフです。固定エッジで指定された方向は維持され、それ以外のエッジは
+        最適化により決定されます。このプロパティにアクセスすると、必要な依存関係
+        （graph, lattice_sites, fixed_edges など）が自動的に計算されます。</p>
+
+<pre><code>graph (nx.Graph): 水素結合ネットワークの無向グラフ。
+    拡大単位胞全体の水分子間の水素結合ネットワークを表す無向グラフです。
+    基本単位胞のグラフを拡大単位胞全体に複製して統合したものです。
+
+lattice_sites (np.ndarray): 格子サイト位置の配列。
+    拡大単位胞内のすべての水分子の座標を表すNx3配列です（Nは水分子数）。
+    基本単位胞内の水分子の座標を、単位胞の周期境界条件に従って拡大単位胞全体に
+    複製したものです。
+
+orientations (np.ndarray): 各水分子の配向行列。
+    各水分子の配向（回転行列）を表すNx3x3配列です（Nは水分子数）。
+    有向グラフで決定された水素結合の方向に基づいて、各水分子のOHベクトルの
+    方向から分子全体の配向を決定します。
+
+unitcell (UnitCell): 基本単位胞オブジェクト。
+    氷構造の基本単位胞を表すオブジェクトです。格子構造、水分子の配置、
+    水素結合ネットワーク、固定エッジなどの情報を含みます。
+
+replication_matrix (np.ndarray): 単位胞複製行列。
+    基本単位胞をどのように積み重ねて拡大単位胞を作成するかを指定する3x3整数行列です。
+    単位行列の場合は基本単位胞のみを使用します。
+
+depol_loop (int): 双極子最適化の反復回数。
+    有向グラフを生成する際の双極子最適化アルゴリズムの反復回数です。
+    値が大きいほどより最適化された構造が得られますが、計算時間も増加します。
+
+seed (int): 乱数シード。
+    乱数生成器のシード値です。digraphの生成などで使用される乱数の初期化に使用されます。
+    このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
+    キャッシュが自動的にクリアされます。
+
+spot_anions (Dict[int, str]): 特定の格子サイト位置に配置するアニオンイオンの辞書。
+    サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、
+    それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。
+
+spot_cations (Dict[int, str]): 特定の格子サイト位置に配置するカチオンイオンの辞書。
+    サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、
+    それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。
+
+spot_hydroniums (List[int]): H3O+ を置くサイトのリスト（1受容・3供与）。
+
+spot_hydroxides (List[int]): OH- を置くサイトのリスト（3受容・1供与）。
+
+cages (CageSpecs): 拡大単位胞全体でのケージ位置・タイプ。
+    単位胞のケージを replica_vectors に従って複製したもので、ゲスト配置や cage_survey 出力に利用します。
+
+fixed_edges (nx.DiGraph): 拡大単位胞全体での固定エッジの有向グラフ。
+    単位胞の固定エッジと spot_anion/spot_cation/spot_hydronium/spot_hydroxide に基づく固定を統合したもので、digraph の生成に利用します。
+</code></pre>
+</div>
+
+
+                            <div id="GenIce3.__init__" class="classattr">
+                                        <input id="GenIce3.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="name">GenIce3</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>,</span><span class="param">	<span class="n">replication_matrix</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+       <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+       <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>,</span><span class="param">	<span class="n">target_pol</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">])</span>,</span><span class="param">	<span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>,</span><span class="param">	<span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>,</span><span class="param">	<span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>,</span><span class="param">	<span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n"><a href="#GuestSpec">GuestSpec</a></span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">spot_guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span></span>)</span>
+
+                <label class="view-source-button" for="GenIce3.__init__-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.__init__"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.__init__-1025"><a href="#GenIce3.__init__-1025"><span class="linenos">1025</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="GenIce3.__init__-1026"><a href="#GenIce3.__init__-1026"><span class="linenos">1026</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1027"><a href="#GenIce3.__init__-1027"><span class="linenos">1027</span></a>        <span class="n">depol_loop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1028"><a href="#GenIce3.__init__-1028"><span class="linenos">1028</span></a>        <span class="n">replication_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+</span><span id="GenIce3.__init__-1029"><a href="#GenIce3.__init__-1029"><span class="linenos">1029</span></a>        <span class="n">target_pol</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+</span><span id="GenIce3.__init__-1030"><a href="#GenIce3.__init__-1030"><span class="linenos">1030</span></a>        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1031"><a href="#GenIce3.__init__-1031"><span class="linenos">1031</span></a>        <span class="n">spot_anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+</span><span id="GenIce3.__init__-1032"><a href="#GenIce3.__init__-1032"><span class="linenos">1032</span></a>        <span class="n">spot_cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+</span><span id="GenIce3.__init__-1033"><a href="#GenIce3.__init__-1033"><span class="linenos">1033</span></a>        <span class="n">spot_hydroniums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1034"><a href="#GenIce3.__init__-1034"><span class="linenos">1034</span></a>        <span class="n">spot_hydroxides</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1035"><a href="#GenIce3.__init__-1035"><span class="linenos">1035</span></a>        <span class="n">bjerrum_L_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1036"><a href="#GenIce3.__init__-1036"><span class="linenos">1036</span></a>        <span class="n">bjerrum_D_edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1037"><a href="#GenIce3.__init__-1037"><span class="linenos">1037</span></a>        <span class="n">guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;GuestSpec&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1038"><a href="#GenIce3.__init__-1038"><span class="linenos">1038</span></a>        <span class="n">spot_guests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1039"><a href="#GenIce3.__init__-1039"><span class="linenos">1039</span></a>        <span class="n">spot_cation_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1040"><a href="#GenIce3.__init__-1040"><span class="linenos">1040</span></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+</span><span id="GenIce3.__init__-1041"><a href="#GenIce3.__init__-1041"><span class="linenos">1041</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.__init__-1042"><a href="#GenIce3.__init__-1042"><span class="linenos">1042</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;GenIce3インスタンスを初期化する。</span>
+</span><span id="GenIce3.__init__-1043"><a href="#GenIce3.__init__-1043"><span class="linenos">1043</span></a>
+</span><span id="GenIce3.__init__-1044"><a href="#GenIce3.__init__-1044"><span class="linenos">1044</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.__init__-1045"><a href="#GenIce3.__init__-1045"><span class="linenos">1045</span></a><span class="sd">            depol_loop: 双極子最適化の反復回数（デフォルト: 1000）</span>
+</span><span id="GenIce3.__init__-1046"><a href="#GenIce3.__init__-1046"><span class="linenos">1046</span></a><span class="sd">            replication_matrix: 単位胞複製行列（デフォルト: 単位行列）</span>
+</span><span id="GenIce3.__init__-1047"><a href="#GenIce3.__init__-1047"><span class="linenos">1047</span></a><span class="sd">            target_pol: 分極の目標値（デフォルト: [0, 0, 0]）</span>
+</span><span id="GenIce3.__init__-1048"><a href="#GenIce3.__init__-1048"><span class="linenos">1048</span></a><span class="sd">            seed: 乱数シード（デフォルト: 1）</span>
+</span><span id="GenIce3.__init__-1049"><a href="#GenIce3.__init__-1049"><span class="linenos">1049</span></a><span class="sd">            spot_anions: 特定位置のアニオン配置（デフォルト: {}）</span>
+</span><span id="GenIce3.__init__-1050"><a href="#GenIce3.__init__-1050"><span class="linenos">1050</span></a><span class="sd">            spot_cations: 特定位置のカチオン配置（デフォルト: {}）</span>
+</span><span id="GenIce3.__init__-1051"><a href="#GenIce3.__init__-1051"><span class="linenos">1051</span></a><span class="sd">            spot_hydroniums: H3O+ を置くサイトのリスト（デフォルト: []）</span>
+</span><span id="GenIce3.__init__-1052"><a href="#GenIce3.__init__-1052"><span class="linenos">1052</span></a><span class="sd">            spot_hydroxides: OH- を置くサイトのリスト（デフォルト: []）</span>
+</span><span id="GenIce3.__init__-1053"><a href="#GenIce3.__init__-1053"><span class="linenos">1053</span></a><span class="sd">            guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）</span>
+</span><span id="GenIce3.__init__-1054"><a href="#GenIce3.__init__-1054"><span class="linenos">1054</span></a><span class="sd">            spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）</span>
+</span><span id="GenIce3.__init__-1055"><a href="#GenIce3.__init__-1055"><span class="linenos">1055</span></a><span class="sd">            spot_cation_groups: spot_cation の --group 指定（サイト -&gt; {ケージID -&gt; group名}）（デフォルト: {}）</span>
+</span><span id="GenIce3.__init__-1056"><a href="#GenIce3.__init__-1056"><span class="linenos">1056</span></a><span class="sd">            **kwargs: その他のリアクティブプロパティ（unitcellなど）</span>
+</span><span id="GenIce3.__init__-1057"><a href="#GenIce3.__init__-1057"><span class="linenos">1057</span></a>
+</span><span id="GenIce3.__init__-1058"><a href="#GenIce3.__init__-1058"><span class="linenos">1058</span></a><span class="sd">        Raises:</span>
+</span><span id="GenIce3.__init__-1059"><a href="#GenIce3.__init__-1059"><span class="linenos">1059</span></a><span class="sd">            ConfigurationError: 無効なキーワード引数が指定された場合</span>
+</span><span id="GenIce3.__init__-1060"><a href="#GenIce3.__init__-1060"><span class="linenos">1060</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.__init__-1061"><a href="#GenIce3.__init__-1061"><span class="linenos">1061</span></a>        <span class="c1"># DependencyEngineインスタンスを作成</span>
+</span><span id="GenIce3.__init__-1062"><a href="#GenIce3.__init__-1062"><span class="linenos">1062</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">DependencyEngine</span><span class="p">()</span>
+</span><span id="GenIce3.__init__-1063"><a href="#GenIce3.__init__-1063"><span class="linenos">1063</span></a>
+</span><span id="GenIce3.__init__-1064"><a href="#GenIce3.__init__-1064"><span class="linenos">1064</span></a>        <span class="c1"># Default値が必要なもの</span>
+</span><span id="GenIce3.__init__-1065"><a href="#GenIce3.__init__-1065"><span class="linenos">1065</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="GenIce3.__init__-1066"><a href="#GenIce3.__init__-1066"><span class="linenos">1066</span></a>            <span class="n">seed</span>  <span class="c1"># reactive propertyとして設定（setterでnp.random.seed()も実行される）</span>
+</span><span id="GenIce3.__init__-1067"><a href="#GenIce3.__init__-1067"><span class="linenos">1067</span></a>        <span class="p">)</span>
+</span><span id="GenIce3.__init__-1068"><a href="#GenIce3.__init__-1068"><span class="linenos">1068</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">depol_loop</span> <span class="o">=</span> <span class="n">depol_loop</span>
+</span><span id="GenIce3.__init__-1069"><a href="#GenIce3.__init__-1069"><span class="linenos">1069</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">=</span> <span class="n">replication_matrix</span>
+</span><span id="GenIce3.__init__-1070"><a href="#GenIce3.__init__-1070"><span class="linenos">1070</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">target_pol</span> <span class="o">=</span> <span class="n">target_pol</span>
+</span><span id="GenIce3.__init__-1071"><a href="#GenIce3.__init__-1071"><span class="linenos">1071</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_anions</span> <span class="o">=</span> <span class="n">spot_anions</span>
+</span><span id="GenIce3.__init__-1072"><a href="#GenIce3.__init__-1072"><span class="linenos">1072</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_cations</span> <span class="o">=</span> <span class="n">spot_cations</span>
+</span><span id="GenIce3.__init__-1073"><a href="#GenIce3.__init__-1073"><span class="linenos">1073</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span> <span class="o">=</span> <span class="n">spot_hydroniums</span> <span class="k">if</span> <span class="n">spot_hydroniums</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3.__init__-1074"><a href="#GenIce3.__init__-1074"><span class="linenos">1074</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span> <span class="o">=</span> <span class="n">spot_hydroxides</span> <span class="k">if</span> <span class="n">spot_hydroxides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3.__init__-1075"><a href="#GenIce3.__init__-1075"><span class="linenos">1075</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span> <span class="o">=</span> <span class="n">bjerrum_L_edges</span> <span class="k">if</span> <span class="n">bjerrum_L_edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3.__init__-1076"><a href="#GenIce3.__init__-1076"><span class="linenos">1076</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span> <span class="o">=</span> <span class="n">bjerrum_D_edges</span> <span class="k">if</span> <span class="n">bjerrum_D_edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+</span><span id="GenIce3.__init__-1077"><a href="#GenIce3.__init__-1077"><span class="linenos">1077</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">guests</span> <span class="o">=</span> <span class="n">guests</span> <span class="k">if</span> <span class="n">guests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="GenIce3.__init__-1078"><a href="#GenIce3.__init__-1078"><span class="linenos">1078</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span> <span class="o">=</span> <span class="n">spot_guests</span> <span class="k">if</span> <span class="n">spot_guests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="GenIce3.__init__-1079"><a href="#GenIce3.__init__-1079"><span class="linenos">1079</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_cation_groups</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="GenIce3.__init__-1080"><a href="#GenIce3.__init__-1080"><span class="linenos">1080</span></a>            <span class="n">spot_cation_groups</span> <span class="k">if</span> <span class="n">spot_cation_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="GenIce3.__init__-1081"><a href="#GenIce3.__init__-1081"><span class="linenos">1081</span></a>        <span class="p">)</span>
+</span><span id="GenIce3.__init__-1082"><a href="#GenIce3.__init__-1082"><span class="linenos">1082</span></a>
+</span><span id="GenIce3.__init__-1083"><a href="#GenIce3.__init__-1083"><span class="linenos">1083</span></a>        <span class="c1"># タスクを登録（モジュールレベルの関数を登録）</span>
+</span><span id="GenIce3.__init__-1084"><a href="#GenIce3.__init__-1084"><span class="linenos">1084</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_register_tasks</span><span class="p">()</span>
+</span><span id="GenIce3.__init__-1085"><a href="#GenIce3.__init__-1085"><span class="linenos">1085</span></a>
+</span><span id="GenIce3.__init__-1086"><a href="#GenIce3.__init__-1086"><span class="linenos">1086</span></a>        <span class="c1"># Default値が不要なもの</span>
+</span><span id="GenIce3.__init__-1087"><a href="#GenIce3.__init__-1087"><span class="linenos">1087</span></a>        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_settable_reactive_properties</span><span class="p">():</span>
+</span><span id="GenIce3.__init__-1088"><a href="#GenIce3.__init__-1088"><span class="linenos">1088</span></a>            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+</span><span id="GenIce3.__init__-1089"><a href="#GenIce3.__init__-1089"><span class="linenos">1089</span></a>                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+</span><span id="GenIce3.__init__-1090"><a href="#GenIce3.__init__-1090"><span class="linenos">1090</span></a>        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+</span><span id="GenIce3.__init__-1091"><a href="#GenIce3.__init__-1091"><span class="linenos">1091</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid keyword arguments: </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>GenIce3インスタンスを初期化する。</p>
+
+<p>Args:
+    depol_loop: 双極子最適化の反復回数（デフォルト: 1000）
+    replication_matrix: 単位胞複製行列（デフォルト: 単位行列）
+    target_pol: 分極の目標値（デフォルト: [0, 0, 0]）
+    seed: 乱数シード（デフォルト: 1）
+    spot_anions: 特定位置のアニオン配置（デフォルト: {}）
+    spot_cations: 特定位置のカチオン配置（デフォルト: {}）
+    spot_hydroniums: H3O+ を置くサイトのリスト（デフォルト: []）
+    spot_hydroxides: OH- を置くサイトのリスト（デフォルト: []）
+    guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）
+    spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）
+    spot_cation_groups: spot_cation の --group 指定（サイト -> {ケージID -> group名}）（デフォルト: {}）
+    **kwargs: その他のリアクティブプロパティ（unitcellなど）</p>
+
+<p>Raises:
+    ConfigurationError: 無効なキーワード引数が指定された場合</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.logger" class="classattr">
+                                <div class="attr variable">
+            <span class="name">logger</span>        =
+<span class="default_value">&lt;Logger GenIce3 (WARNING)&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GenIce3.logger"></a>
+    
+    
+
+                            </div>
+                            <div id="GenIce3.PUBLIC_API_PROPERTIES" class="classattr">
+                                <div class="attr variable">
+            <span class="name">PUBLIC_API_PROPERTIES</span>        =
+<input id="GenIce3.PUBLIC_API_PROPERTIES-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+            <label class="view-value-button pdoc-button" for="GenIce3.PUBLIC_API_PROPERTIES-view-value"></label><span class="default_value">[&#39;digraph&#39;, &#39;graph&#39;, &#39;lattice_sites&#39;, &#39;orientations&#39;, &#39;unitcell&#39;, &#39;replication_matrix&#39;, &#39;depol_loop&#39;, &#39;target_pol&#39;, &#39;seed&#39;, &#39;spot_anions&#39;, &#39;spot_cations&#39;, &#39;spot_hydroniums&#39;, &#39;spot_hydroxides&#39;]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GenIce3.PUBLIC_API_PROPERTIES"></a>
+    
+    
+
+                            </div>
+                            <div id="GenIce3.engine" class="classattr">
+                                <div class="attr variable">
+            <span class="name">engine</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GenIce3.engine"></a>
+    
+    
+
+                            </div>
+                            <div id="GenIce3.seed" class="classattr">
+                                        <input id="GenIce3.seed-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">seed</span>
+
+                <label class="view-source-button" for="GenIce3.seed-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.seed"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.seed-1275"><a href="#GenIce3.seed-1275"><span class="linenos">1275</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.seed-1276"><a href="#GenIce3.seed-1276"><span class="linenos">1276</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.seed-1277"><a href="#GenIce3.seed-1277"><span class="linenos">1277</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;乱数シード。</span>
+</span><span id="GenIce3.seed-1278"><a href="#GenIce3.seed-1278"><span class="linenos">1278</span></a>
+</span><span id="GenIce3.seed-1279"><a href="#GenIce3.seed-1279"><span class="linenos">1279</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.seed-1280"><a href="#GenIce3.seed-1280"><span class="linenos">1280</span></a><span class="sd">            int: 乱数シード値</span>
+</span><span id="GenIce3.seed-1281"><a href="#GenIce3.seed-1281"><span class="linenos">1281</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.seed-1282"><a href="#GenIce3.seed-1282"><span class="linenos">1282</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_seed</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>乱数シード。</p>
+
+<p>Returns:
+    int: 乱数シード値</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.depol_loop" class="classattr">
+                                        <input id="GenIce3.depol_loop-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">depol_loop</span>
+
+                <label class="view-source-button" for="GenIce3.depol_loop-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.depol_loop"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.depol_loop-1300"><a href="#GenIce3.depol_loop-1300"><span class="linenos">1300</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.depol_loop-1301"><a href="#GenIce3.depol_loop-1301"><span class="linenos">1301</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">depol_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.depol_loop-1302"><a href="#GenIce3.depol_loop-1302"><span class="linenos">1302</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;双極子最適化の反復回数。</span>
+</span><span id="GenIce3.depol_loop-1303"><a href="#GenIce3.depol_loop-1303"><span class="linenos">1303</span></a>
+</span><span id="GenIce3.depol_loop-1304"><a href="#GenIce3.depol_loop-1304"><span class="linenos">1304</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.depol_loop-1305"><a href="#GenIce3.depol_loop-1305"><span class="linenos">1305</span></a><span class="sd">            int: 双極子最適化アルゴリズムの反復回数</span>
+</span><span id="GenIce3.depol_loop-1306"><a href="#GenIce3.depol_loop-1306"><span class="linenos">1306</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.depol_loop-1307"><a href="#GenIce3.depol_loop-1307"><span class="linenos">1307</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depol_loop</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>双極子最適化の反復回数。</p>
+
+<p>Returns:
+    int: 双極子最適化アルゴリズムの反復回数</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.replication_matrix" class="classattr">
+                                        <input id="GenIce3.replication_matrix-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">replication_matrix</span>
+
+                <label class="view-source-button" for="GenIce3.replication_matrix-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.replication_matrix"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.replication_matrix-1389"><a href="#GenIce3.replication_matrix-1389"><span class="linenos">1389</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.replication_matrix-1390"><a href="#GenIce3.replication_matrix-1390"><span class="linenos">1390</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.replication_matrix-1391"><a href="#GenIce3.replication_matrix-1391"><span class="linenos">1391</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞を複製するための3x3整数行列。</span>
+</span><span id="GenIce3.replication_matrix-1392"><a href="#GenIce3.replication_matrix-1392"><span class="linenos">1392</span></a>
+</span><span id="GenIce3.replication_matrix-1393"><a href="#GenIce3.replication_matrix-1393"><span class="linenos">1393</span></a><span class="sd">        この行列により、基本単位胞をどのように積み重ねて拡大単位胞を</span>
+</span><span id="GenIce3.replication_matrix-1394"><a href="#GenIce3.replication_matrix-1394"><span class="linenos">1394</span></a><span class="sd">        作成するかを指定します。</span>
+</span><span id="GenIce3.replication_matrix-1395"><a href="#GenIce3.replication_matrix-1395"><span class="linenos">1395</span></a>
+</span><span id="GenIce3.replication_matrix-1396"><a href="#GenIce3.replication_matrix-1396"><span class="linenos">1396</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.replication_matrix-1397"><a href="#GenIce3.replication_matrix-1397"><span class="linenos">1397</span></a><span class="sd">            np.ndarray: 3x3整数行列</span>
+</span><span id="GenIce3.replication_matrix-1398"><a href="#GenIce3.replication_matrix-1398"><span class="linenos">1398</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.replication_matrix-1399"><a href="#GenIce3.replication_matrix-1399"><span class="linenos">1399</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replication_matrix</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>単位胞を複製するための3x3整数行列。</p>
+
+<p>この行列により、基本単位胞をどのように積み重ねて拡大単位胞を
+作成するかを指定します。</p>
+
+<p>Returns:
+    np.ndarray: 3x3整数行列</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.target_pol" class="classattr">
+                                        <input id="GenIce3.target_pol-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">target_pol</span>
+
+                <label class="view-source-button" for="GenIce3.target_pol-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.target_pol"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.target_pol-1324"><a href="#GenIce3.target_pol-1324"><span class="linenos">1324</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.target_pol-1325"><a href="#GenIce3.target_pol-1325"><span class="linenos">1325</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">target_pol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.target_pol-1326"><a href="#GenIce3.target_pol-1326"><span class="linenos">1326</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;分極の目標値（3要素のベクトル）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.target_pol-1327"><a href="#GenIce3.target_pol-1327"><span class="linenos">1327</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_pol</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>分極の目標値（3要素のベクトル）。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.spot_anions" class="classattr">
+                                        <input id="GenIce3.spot_anions-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">spot_anions</span>
+
+                <label class="view-source-button" for="GenIce3.spot_anions-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.spot_anions"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.spot_anions-1099"><a href="#GenIce3.spot_anions-1099"><span class="linenos">1099</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.spot_anions-1100"><a href="#GenIce3.spot_anions-1100"><span class="linenos">1100</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.spot_anions-1101"><a href="#GenIce3.spot_anions-1101"><span class="linenos">1101</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するアニオンイオンの辞書。</span>
+</span><span id="GenIce3.spot_anions-1102"><a href="#GenIce3.spot_anions-1102"><span class="linenos">1102</span></a>
+</span><span id="GenIce3.spot_anions-1103"><a href="#GenIce3.spot_anions-1103"><span class="linenos">1103</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.spot_anions-1104"><a href="#GenIce3.spot_anions-1104"><span class="linenos">1104</span></a><span class="sd">            Dict[int, str]: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="GenIce3.spot_anions-1105"><a href="#GenIce3.spot_anions-1105"><span class="linenos">1105</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.spot_anions-1106"><a href="#GenIce3.spot_anions-1106"><span class="linenos">1106</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_anions&quot;</span><span class="p">):</span>
+</span><span id="GenIce3.spot_anions-1107"><a href="#GenIce3.spot_anions-1107"><span class="linenos">1107</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3.spot_anions-1108"><a href="#GenIce3.spot_anions-1108"><span class="linenos">1108</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_anions</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>特定の格子サイト位置に配置するアニオンイオンの辞書。</p>
+
+<p>Returns:
+    Dict[int, str]: サイトインデックスからイオン名へのマッピング</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.spot_cations" class="classattr">
+                                        <input id="GenIce3.spot_cations-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">spot_cations</span>
+
+                <label class="view-source-button" for="GenIce3.spot_cations-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.spot_cations"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.spot_cations-1125"><a href="#GenIce3.spot_cations-1125"><span class="linenos">1125</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.spot_cations-1126"><a href="#GenIce3.spot_cations-1126"><span class="linenos">1126</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.spot_cations-1127"><a href="#GenIce3.spot_cations-1127"><span class="linenos">1127</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;特定の格子サイト位置に配置するカチオンイオンの辞書。</span>
+</span><span id="GenIce3.spot_cations-1128"><a href="#GenIce3.spot_cations-1128"><span class="linenos">1128</span></a>
+</span><span id="GenIce3.spot_cations-1129"><a href="#GenIce3.spot_cations-1129"><span class="linenos">1129</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.spot_cations-1130"><a href="#GenIce3.spot_cations-1130"><span class="linenos">1130</span></a><span class="sd">            Dict[int, str]: サイトインデックスからイオン名へのマッピング</span>
+</span><span id="GenIce3.spot_cations-1131"><a href="#GenIce3.spot_cations-1131"><span class="linenos">1131</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.spot_cations-1132"><a href="#GenIce3.spot_cations-1132"><span class="linenos">1132</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_cations&quot;</span><span class="p">):</span>
+</span><span id="GenIce3.spot_cations-1133"><a href="#GenIce3.spot_cations-1133"><span class="linenos">1133</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3.spot_cations-1134"><a href="#GenIce3.spot_cations-1134"><span class="linenos">1134</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_cations</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>特定の格子サイト位置に配置するカチオンイオンの辞書。</p>
+
+<p>Returns:
+    Dict[int, str]: サイトインデックスからイオン名へのマッピング</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.spot_hydroniums" class="classattr">
+                                        <input id="GenIce3.spot_hydroniums-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">spot_hydroniums</span>
+
+                <label class="view-source-button" for="GenIce3.spot_hydroniums-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.spot_hydroniums"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.spot_hydroniums-1151"><a href="#GenIce3.spot_hydroniums-1151"><span class="linenos">1151</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.spot_hydroniums-1152"><a href="#GenIce3.spot_hydroniums-1152"><span class="linenos">1152</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroniums</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.spot_hydroniums-1153"><a href="#GenIce3.spot_hydroniums-1153"><span class="linenos">1153</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を置くサイトのリスト。1本受け入れ・3本供与。</span>
+</span><span id="GenIce3.spot_hydroniums-1154"><a href="#GenIce3.spot_hydroniums-1154"><span class="linenos">1154</span></a>
+</span><span id="GenIce3.spot_hydroniums-1155"><a href="#GenIce3.spot_hydroniums-1155"><span class="linenos">1155</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.spot_hydroniums-1156"><a href="#GenIce3.spot_hydroniums-1156"><span class="linenos">1156</span></a><span class="sd">            List[int]: サイトインデックスのリスト</span>
+</span><span id="GenIce3.spot_hydroniums-1157"><a href="#GenIce3.spot_hydroniums-1157"><span class="linenos">1157</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.spot_hydroniums-1158"><a href="#GenIce3.spot_hydroniums-1158"><span class="linenos">1158</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_hydroniums&quot;</span><span class="p">):</span>
+</span><span id="GenIce3.spot_hydroniums-1159"><a href="#GenIce3.spot_hydroniums-1159"><span class="linenos">1159</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.spot_hydroniums-1160"><a href="#GenIce3.spot_hydroniums-1160"><span class="linenos">1160</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroniums</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>H3O+ を置くサイトのリスト。1本受け入れ・3本供与。</p>
+
+<p>Returns:
+    List[int]: サイトインデックスのリスト</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.spot_hydroxides" class="classattr">
+                                        <input id="GenIce3.spot_hydroxides-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">spot_hydroxides</span>
+
+                <label class="view-source-button" for="GenIce3.spot_hydroxides-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.spot_hydroxides"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.spot_hydroxides-1171"><a href="#GenIce3.spot_hydroxides-1171"><span class="linenos">1171</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.spot_hydroxides-1172"><a href="#GenIce3.spot_hydroxides-1172"><span class="linenos">1172</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">spot_hydroxides</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.spot_hydroxides-1173"><a href="#GenIce3.spot_hydroxides-1173"><span class="linenos">1173</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を置くサイトのリスト。3本受け入れ・1本供与。</span>
+</span><span id="GenIce3.spot_hydroxides-1174"><a href="#GenIce3.spot_hydroxides-1174"><span class="linenos">1174</span></a>
+</span><span id="GenIce3.spot_hydroxides-1175"><a href="#GenIce3.spot_hydroxides-1175"><span class="linenos">1175</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.spot_hydroxides-1176"><a href="#GenIce3.spot_hydroxides-1176"><span class="linenos">1176</span></a><span class="sd">            List[int]: サイトインデックスのリスト</span>
+</span><span id="GenIce3.spot_hydroxides-1177"><a href="#GenIce3.spot_hydroxides-1177"><span class="linenos">1177</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.spot_hydroxides-1178"><a href="#GenIce3.spot_hydroxides-1178"><span class="linenos">1178</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_spot_hydroxides&quot;</span><span class="p">):</span>
+</span><span id="GenIce3.spot_hydroxides-1179"><a href="#GenIce3.spot_hydroxides-1179"><span class="linenos">1179</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.spot_hydroxides-1180"><a href="#GenIce3.spot_hydroxides-1180"><span class="linenos">1180</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spot_hydroxides</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>OH- を置くサイトのリスト。3本受け入れ・1本供与。</p>
+
+<p>Returns:
+    List[int]: サイトインデックスのリスト</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.bjerrum_L_edges" class="classattr">
+                                        <input id="GenIce3.bjerrum_L_edges-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">bjerrum_L_edges</span><span class="annotation">: List[Tuple[int, int]]</span>
+
+                <label class="view-source-button" for="GenIce3.bjerrum_L_edges-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.bjerrum_L_edges"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.bjerrum_L_edges-1191"><a href="#GenIce3.bjerrum_L_edges-1191"><span class="linenos">1191</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.bjerrum_L_edges-1192"><a href="#GenIce3.bjerrum_L_edges-1192"><span class="linenos">1192</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_L_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+</span><span id="GenIce3.bjerrum_L_edges-1193"><a href="#GenIce3.bjerrum_L_edges-1193"><span class="linenos">1193</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bjerrum_L_edges&quot;</span><span class="p">):</span>
+</span><span id="GenIce3.bjerrum_L_edges-1194"><a href="#GenIce3.bjerrum_L_edges-1194"><span class="linenos">1194</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.bjerrum_L_edges-1195"><a href="#GenIce3.bjerrum_L_edges-1195"><span class="linenos">1195</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_L_edges</span>
+</span></pre></div>
+
+
+    
+
+                            </div>
+                            <div id="GenIce3.bjerrum_D_edges" class="classattr">
+                                        <input id="GenIce3.bjerrum_D_edges-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">bjerrum_D_edges</span><span class="annotation">: List[Tuple[int, int]]</span>
+
+                <label class="view-source-button" for="GenIce3.bjerrum_D_edges-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.bjerrum_D_edges"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.bjerrum_D_edges-1204"><a href="#GenIce3.bjerrum_D_edges-1204"><span class="linenos">1204</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.bjerrum_D_edges-1205"><a href="#GenIce3.bjerrum_D_edges-1205"><span class="linenos">1205</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bjerrum_D_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+</span><span id="GenIce3.bjerrum_D_edges-1206"><a href="#GenIce3.bjerrum_D_edges-1206"><span class="linenos">1206</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bjerrum_D_edges&quot;</span><span class="p">):</span>
+</span><span id="GenIce3.bjerrum_D_edges-1207"><a href="#GenIce3.bjerrum_D_edges-1207"><span class="linenos">1207</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.bjerrum_D_edges-1208"><a href="#GenIce3.bjerrum_D_edges-1208"><span class="linenos">1208</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bjerrum_D_edges</span>
+</span></pre></div>
+
+
+    
+
+                            </div>
+                            <div id="GenIce3.guests" class="classattr">
+                                <div class="attr variable">
+            <span class="name">guests</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GenIce3.guests"></a>
+    
+    
+
+                            </div>
+                            <div id="GenIce3.spot_guests" class="classattr">
+                                <div class="attr variable">
+            <span class="name">spot_guests</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GenIce3.spot_guests"></a>
+    
+    
+
+                            </div>
+                            <div id="GenIce3.spot_cation_groups" class="classattr">
+                                <div class="attr variable">
+            <span class="name">spot_cation_groups</span>
+
+        
+    </div>
+    <a class="headerlink" href="#GenIce3.spot_cation_groups"></a>
+    
+    
+
+                            </div>
+                            <div id="GenIce3.add_spot_hydronium" class="classattr">
+                                        <input id="GenIce3.add_spot_hydronium-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">add_spot_hydronium</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">sites</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.add_spot_hydronium-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.add_spot_hydronium"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.add_spot_hydronium-1216"><a href="#GenIce3.add_spot_hydronium-1216"><span class="linenos">1216</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_spot_hydronium</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sites</span><span class="p">):</span>
+</span><span id="GenIce3.add_spot_hydronium-1217"><a href="#GenIce3.add_spot_hydronium-1217"><span class="linenos">1217</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を置くサイトを追加登録するヘルパー。</span>
+</span><span id="GenIce3.add_spot_hydronium-1218"><a href="#GenIce3.add_spot_hydronium-1218"><span class="linenos">1218</span></a>
+</span><span id="GenIce3.add_spot_hydronium-1219"><a href="#GenIce3.add_spot_hydronium-1219"><span class="linenos">1219</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.add_spot_hydronium-1220"><a href="#GenIce3.add_spot_hydronium-1220"><span class="linenos">1220</span></a><span class="sd">            sites: サイトインデックス（int）またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3.add_spot_hydronium-1221"><a href="#GenIce3.add_spot_hydronium-1221"><span class="linenos">1221</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.add_spot_hydronium-1222"><a href="#GenIce3.add_spot_hydronium-1222"><span class="linenos">1222</span></a>        <span class="k">if</span> <span class="n">sites</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.add_spot_hydronium-1223"><a href="#GenIce3.add_spot_hydronium-1223"><span class="linenos">1223</span></a>            <span class="k">return</span>
+</span><span id="GenIce3.add_spot_hydronium-1224"><a href="#GenIce3.add_spot_hydronium-1224"><span class="linenos">1224</span></a>        <span class="c1"># numpy のスカラーも受け付ける</span>
+</span><span id="GenIce3.add_spot_hydronium-1225"><a href="#GenIce3.add_spot_hydronium-1225"><span class="linenos">1225</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+</span><span id="GenIce3.add_spot_hydronium-1226"><a href="#GenIce3.add_spot_hydronium-1226"><span class="linenos">1226</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sites</span><span class="p">)]</span>
+</span><span id="GenIce3.add_spot_hydronium-1227"><a href="#GenIce3.add_spot_hydronium-1227"><span class="linenos">1227</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3.add_spot_hydronium-1228"><a href="#GenIce3.add_spot_hydronium-1228"><span class="linenos">1228</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+</span><span id="GenIce3.add_spot_hydronium-1229"><a href="#GenIce3.add_spot_hydronium-1229"><span class="linenos">1229</span></a>        <span class="c1"># setter を経由してキャッシュを無効化する</span>
+</span><span id="GenIce3.add_spot_hydronium-1230"><a href="#GenIce3.add_spot_hydronium-1230"><span class="linenos">1230</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_sites</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>H3O+ を置くサイトを追加登録するヘルパー。</p>
+
+<p>Args:
+    sites: サイトインデックス（int）またはその反復可能オブジェクト。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.add_spot_hydroxide" class="classattr">
+                                        <input id="GenIce3.add_spot_hydroxide-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">add_spot_hydroxide</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">sites</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.add_spot_hydroxide-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.add_spot_hydroxide"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.add_spot_hydroxide-1232"><a href="#GenIce3.add_spot_hydroxide-1232"><span class="linenos">1232</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_spot_hydroxide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sites</span><span class="p">):</span>
+</span><span id="GenIce3.add_spot_hydroxide-1233"><a href="#GenIce3.add_spot_hydroxide-1233"><span class="linenos">1233</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を置くサイトを追加登録するヘルパー。</span>
+</span><span id="GenIce3.add_spot_hydroxide-1234"><a href="#GenIce3.add_spot_hydroxide-1234"><span class="linenos">1234</span></a>
+</span><span id="GenIce3.add_spot_hydroxide-1235"><a href="#GenIce3.add_spot_hydroxide-1235"><span class="linenos">1235</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.add_spot_hydroxide-1236"><a href="#GenIce3.add_spot_hydroxide-1236"><span class="linenos">1236</span></a><span class="sd">            sites: サイトインデックス（int）またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3.add_spot_hydroxide-1237"><a href="#GenIce3.add_spot_hydroxide-1237"><span class="linenos">1237</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.add_spot_hydroxide-1238"><a href="#GenIce3.add_spot_hydroxide-1238"><span class="linenos">1238</span></a>        <span class="k">if</span> <span class="n">sites</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.add_spot_hydroxide-1239"><a href="#GenIce3.add_spot_hydroxide-1239"><span class="linenos">1239</span></a>            <span class="k">return</span>
+</span><span id="GenIce3.add_spot_hydroxide-1240"><a href="#GenIce3.add_spot_hydroxide-1240"><span class="linenos">1240</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sites</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+</span><span id="GenIce3.add_spot_hydroxide-1241"><a href="#GenIce3.add_spot_hydroxide-1241"><span class="linenos">1241</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sites</span><span class="p">)]</span>
+</span><span id="GenIce3.add_spot_hydroxide-1242"><a href="#GenIce3.add_spot_hydroxide-1242"><span class="linenos">1242</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3.add_spot_hydroxide-1243"><a href="#GenIce3.add_spot_hydroxide-1243"><span class="linenos">1243</span></a>            <span class="n">new_sites</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
+</span><span id="GenIce3.add_spot_hydroxide-1244"><a href="#GenIce3.add_spot_hydroxide-1244"><span class="linenos">1244</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_sites</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>OH- を置くサイトを追加登録するヘルパー。</p>
+
+<p>Args:
+    sites: サイトインデックス（int）またはその反復可能オブジェクト。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.add_bjerrum_L" class="classattr">
+                                        <input id="GenIce3.add_bjerrum_L-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">add_bjerrum_L</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">edges</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.add_bjerrum_L-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.add_bjerrum_L"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.add_bjerrum_L-1246"><a href="#GenIce3.add_bjerrum_L-1246"><span class="linenos">1246</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_bjerrum_L</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">):</span>
+</span><span id="GenIce3.add_bjerrum_L-1247"><a href="#GenIce3.add_bjerrum_L-1247"><span class="linenos">1247</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bjerrum L 欠陥を追加登録するヘルパー。</span>
+</span><span id="GenIce3.add_bjerrum_L-1248"><a href="#GenIce3.add_bjerrum_L-1248"><span class="linenos">1248</span></a>
+</span><span id="GenIce3.add_bjerrum_L-1249"><a href="#GenIce3.add_bjerrum_L-1249"><span class="linenos">1249</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.add_bjerrum_L-1250"><a href="#GenIce3.add_bjerrum_L-1250"><span class="linenos">1250</span></a><span class="sd">            edges: (i, j) のタプル、またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3.add_bjerrum_L-1251"><a href="#GenIce3.add_bjerrum_L-1251"><span class="linenos">1251</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.add_bjerrum_L-1252"><a href="#GenIce3.add_bjerrum_L-1252"><span class="linenos">1252</span></a>        <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.add_bjerrum_L-1253"><a href="#GenIce3.add_bjerrum_L-1253"><span class="linenos">1253</span></a>            <span class="k">return</span>
+</span><span id="GenIce3.add_bjerrum_L-1254"><a href="#GenIce3.add_bjerrum_L-1254"><span class="linenos">1254</span></a>        <span class="c1"># 単一タプル (i, j) も許容する</span>
+</span><span id="GenIce3.add_bjerrum_L-1255"><a href="#GenIce3.add_bjerrum_L-1255"><span class="linenos">1255</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="GenIce3.add_bjerrum_L-1256"><a href="#GenIce3.add_bjerrum_L-1256"><span class="linenos">1256</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">edges</span><span class="p">]</span>
+</span><span id="GenIce3.add_bjerrum_L-1257"><a href="#GenIce3.add_bjerrum_L-1257"><span class="linenos">1257</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3.add_bjerrum_L-1258"><a href="#GenIce3.add_bjerrum_L-1258"><span class="linenos">1258</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</span><span id="GenIce3.add_bjerrum_L-1259"><a href="#GenIce3.add_bjerrum_L-1259"><span class="linenos">1259</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_L_edges</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_edges</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Bjerrum L 欠陥を追加登録するヘルパー。</p>
+
+<p>Args:
+    edges: (i, j) のタプル、またはその反復可能オブジェクト。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.add_bjerrum_D" class="classattr">
+                                        <input id="GenIce3.add_bjerrum_D-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">add_bjerrum_D</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">edges</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.add_bjerrum_D-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.add_bjerrum_D"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.add_bjerrum_D-1261"><a href="#GenIce3.add_bjerrum_D-1261"><span class="linenos">1261</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_bjerrum_D</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edges</span><span class="p">):</span>
+</span><span id="GenIce3.add_bjerrum_D-1262"><a href="#GenIce3.add_bjerrum_D-1262"><span class="linenos">1262</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bjerrum D 欠陥を追加登録するヘルパー。</span>
+</span><span id="GenIce3.add_bjerrum_D-1263"><a href="#GenIce3.add_bjerrum_D-1263"><span class="linenos">1263</span></a>
+</span><span id="GenIce3.add_bjerrum_D-1264"><a href="#GenIce3.add_bjerrum_D-1264"><span class="linenos">1264</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.add_bjerrum_D-1265"><a href="#GenIce3.add_bjerrum_D-1265"><span class="linenos">1265</span></a><span class="sd">            edges: (i, j) のタプル、またはその反復可能オブジェクト。</span>
+</span><span id="GenIce3.add_bjerrum_D-1266"><a href="#GenIce3.add_bjerrum_D-1266"><span class="linenos">1266</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.add_bjerrum_D-1267"><a href="#GenIce3.add_bjerrum_D-1267"><span class="linenos">1267</span></a>        <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.add_bjerrum_D-1268"><a href="#GenIce3.add_bjerrum_D-1268"><span class="linenos">1268</span></a>            <span class="k">return</span>
+</span><span id="GenIce3.add_bjerrum_D-1269"><a href="#GenIce3.add_bjerrum_D-1269"><span class="linenos">1269</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="GenIce3.add_bjerrum_D-1270"><a href="#GenIce3.add_bjerrum_D-1270"><span class="linenos">1270</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">edges</span><span class="p">]</span>
+</span><span id="GenIce3.add_bjerrum_D-1271"><a href="#GenIce3.add_bjerrum_D-1271"><span class="linenos">1271</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3.add_bjerrum_D-1272"><a href="#GenIce3.add_bjerrum_D-1272"><span class="linenos">1272</span></a>            <span class="n">new_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</span><span id="GenIce3.add_bjerrum_D-1273"><a href="#GenIce3.add_bjerrum_D-1273"><span class="linenos">1273</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bjerrum_D_edges</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_edges</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Bjerrum D 欠陥を追加登録するヘルパー。</p>
+
+<p>Args:
+    edges: (i, j) のタプル、またはその反復可能オブジェクト。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.unitcell" class="classattr">
+                                        <input id="GenIce3.unitcell-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr variable">
+            <span class="name">unitcell</span>
+
+                <label class="view-source-button" for="GenIce3.unitcell-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.unitcell"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.unitcell-1336"><a href="#GenIce3.unitcell-1336"><span class="linenos">1336</span></a>    <span class="nd">@property</span>
+</span><span id="GenIce3.unitcell-1337"><a href="#GenIce3.unitcell-1337"><span class="linenos">1337</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.unitcell-1338"><a href="#GenIce3.unitcell-1338"><span class="linenos">1338</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞オブジェクト。</span>
+</span><span id="GenIce3.unitcell-1339"><a href="#GenIce3.unitcell-1339"><span class="linenos">1339</span></a>
+</span><span id="GenIce3.unitcell-1340"><a href="#GenIce3.unitcell-1340"><span class="linenos">1340</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.unitcell-1341"><a href="#GenIce3.unitcell-1341"><span class="linenos">1341</span></a><span class="sd">            UnitCell: 基本単位胞オブジェクト</span>
+</span><span id="GenIce3.unitcell-1342"><a href="#GenIce3.unitcell-1342"><span class="linenos">1342</span></a>
+</span><span id="GenIce3.unitcell-1343"><a href="#GenIce3.unitcell-1343"><span class="linenos">1343</span></a><span class="sd">        Raises:</span>
+</span><span id="GenIce3.unitcell-1344"><a href="#GenIce3.unitcell-1344"><span class="linenos">1344</span></a><span class="sd">            ConfigurationError: 単位胞が設定されていない場合</span>
+</span><span id="GenIce3.unitcell-1345"><a href="#GenIce3.unitcell-1345"><span class="linenos">1345</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.unitcell-1346"><a href="#GenIce3.unitcell-1346"><span class="linenos">1346</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_unitcell&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.unitcell-1347"><a href="#GenIce3.unitcell-1347"><span class="linenos">1347</span></a>            <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span><span class="s2">&quot;Unitcell is not set.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.unitcell-1348"><a href="#GenIce3.unitcell-1348"><span class="linenos">1348</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unitcell</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>基本単位胞オブジェクト。</p>
+
+<p>Returns:
+    UnitCell: 基本単位胞オブジェクト</p>
+
+<p>Raises:
+    ConfigurationError: 単位胞が設定されていない場合</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.set_unitcell" class="classattr">
+                                        <input id="GenIce3.set_unitcell-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">set_unitcell</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">unitcell_or_name</span>, </span><span class="param"><span class="o">**</span><span class="n">kwargs</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.set_unitcell-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.set_unitcell"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.set_unitcell-1373"><a href="#GenIce3.set_unitcell-1373"><span class="linenos">1373</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_unitcell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unitcell_or_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="GenIce3.set_unitcell-1374"><a href="#GenIce3.set_unitcell-1374"><span class="linenos">1374</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;基本単位胞を設定する（リアクティブプロパティ用のラッパー）。</span>
+</span><span id="GenIce3.set_unitcell-1375"><a href="#GenIce3.set_unitcell-1375"><span class="linenos">1375</span></a>
+</span><span id="GenIce3.set_unitcell-1376"><a href="#GenIce3.set_unitcell-1376"><span class="linenos">1376</span></a><span class="sd">        代入（genice.unitcell = ...）の代わりにこのメソッドを使うと、</span>
+</span><span id="GenIce3.set_unitcell-1377"><a href="#GenIce3.set_unitcell-1377"><span class="linenos">1377</span></a><span class="sd">        単位胞がリアクティブな設定であることが明確になります。</span>
+</span><span id="GenIce3.set_unitcell-1378"><a href="#GenIce3.set_unitcell-1378"><span class="linenos">1378</span></a>
+</span><span id="GenIce3.set_unitcell-1379"><a href="#GenIce3.set_unitcell-1379"><span class="linenos">1379</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.set_unitcell-1380"><a href="#GenIce3.set_unitcell-1380"><span class="linenos">1380</span></a><span class="sd">            unitcell_or_name: 基本単位胞オブジェクト、または単位胞名（文字列）。</span>
+</span><span id="GenIce3.set_unitcell-1381"><a href="#GenIce3.set_unitcell-1381"><span class="linenos">1381</span></a><span class="sd">                文字列の場合は UnitCell(name, **kwargs) として内部で生成します。</span>
+</span><span id="GenIce3.set_unitcell-1382"><a href="#GenIce3.set_unitcell-1382"><span class="linenos">1382</span></a><span class="sd">            **kwargs: unitcell_or_name が文字列の場合に UnitCell(...) に渡すオプション。</span>
+</span><span id="GenIce3.set_unitcell-1383"><a href="#GenIce3.set_unitcell-1383"><span class="linenos">1383</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.set_unitcell-1384"><a href="#GenIce3.set_unitcell-1384"><span class="linenos">1384</span></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unitcell_or_name</span><span class="p">,</span> <span class="n">UnitCell</span><span class="p">):</span>
+</span><span id="GenIce3.set_unitcell-1385"><a href="#GenIce3.set_unitcell-1385"><span class="linenos">1385</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span> <span class="o">=</span> <span class="n">unitcell_or_name</span>
+</span><span id="GenIce3.set_unitcell-1386"><a href="#GenIce3.set_unitcell-1386"><span class="linenos">1386</span></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="GenIce3.set_unitcell-1387"><a href="#GenIce3.set_unitcell-1387"><span class="linenos">1387</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">unitcell</span> <span class="o">=</span> <span class="n">UnitCellPlugin</span><span class="p">(</span><span class="n">unitcell_or_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>基本単位胞を設定する（リアクティブプロパティ用のラッパー）。</p>
+
+<p>代入（genice.unitcell = ...）の代わりにこのメソッドを使うと、
+単位胞がリアクティブな設定であることが明確になります。</p>
+
+<p>Args:
+    unitcell_or_name: 基本単位胞オブジェクト、または単位胞名（文字列）。
+        文字列の場合は UnitCell(name, <em>*kwargs) として内部で生成します。
+    *</em>kwargs: unitcell_or_name が文字列の場合に UnitCell(...) に渡すオプション。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.set_replication_matrix" class="classattr">
+                                        <input id="GenIce3.set_replication_matrix-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">set_replication_matrix</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">replication_matrix</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.set_replication_matrix-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.set_replication_matrix"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.set_replication_matrix-1419"><a href="#GenIce3.set_replication_matrix-1419"><span class="linenos">1419</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_replication_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replication_matrix</span><span class="p">):</span>
+</span><span id="GenIce3.set_replication_matrix-1420"><a href="#GenIce3.set_replication_matrix-1420"><span class="linenos">1420</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞複製行列を設定する（リアクティブプロパティ用のラッパー）。</span>
+</span><span id="GenIce3.set_replication_matrix-1421"><a href="#GenIce3.set_replication_matrix-1421"><span class="linenos">1421</span></a>
+</span><span id="GenIce3.set_replication_matrix-1422"><a href="#GenIce3.set_replication_matrix-1422"><span class="linenos">1422</span></a><span class="sd">        代入（genice.replication_matrix = ...）の代わりにこのメソッドを使うと、</span>
+</span><span id="GenIce3.set_replication_matrix-1423"><a href="#GenIce3.set_replication_matrix-1423"><span class="linenos">1423</span></a><span class="sd">        複製行列がリアクティブな設定であることが明確になります。</span>
+</span><span id="GenIce3.set_replication_matrix-1424"><a href="#GenIce3.set_replication_matrix-1424"><span class="linenos">1424</span></a>
+</span><span id="GenIce3.set_replication_matrix-1425"><a href="#GenIce3.set_replication_matrix-1425"><span class="linenos">1425</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.set_replication_matrix-1426"><a href="#GenIce3.set_replication_matrix-1426"><span class="linenos">1426</span></a><span class="sd">            replication_matrix: 3x3整数行列（リストのリストまたは ndarray）</span>
+</span><span id="GenIce3.set_replication_matrix-1427"><a href="#GenIce3.set_replication_matrix-1427"><span class="linenos">1427</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.set_replication_matrix-1428"><a href="#GenIce3.set_replication_matrix-1428"><span class="linenos">1428</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">replication_matrix</span> <span class="o">=</span> <span class="n">replication_matrix</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>単位胞複製行列を設定する（リアクティブプロパティ用のラッパー）。</p>
+
+<p>代入（genice.replication_matrix = ...）の代わりにこのメソッドを使うと、
+複製行列がリアクティブな設定であることが明確になります。</p>
+
+<p>Args:
+    replication_matrix: 3x3整数行列（リストのリストまたは ndarray）</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.water_molecules" class="classattr">
+                                        <input id="GenIce3.water_molecules-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">water_molecules</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">water_model</span><span class="p">:</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span></span><span class="return-annotation">) -> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.water_molecules-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.water_molecules"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.water_molecules-1475"><a href="#GenIce3.water_molecules-1475"><span class="linenos">1475</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">water_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">water_model</span><span class="p">:</span> <span class="n">Molecule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="GenIce3.water_molecules-1476"><a href="#GenIce3.water_molecules-1476"><span class="linenos">1476</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;格子サイトが水のサイトについて、配向・位置を適用した水分子の辞書を返す。</span>
+</span><span id="GenIce3.water_molecules-1477"><a href="#GenIce3.water_molecules-1477"><span class="linenos">1477</span></a>
+</span><span id="GenIce3.water_molecules-1478"><a href="#GenIce3.water_molecules-1478"><span class="linenos">1478</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.water_molecules-1479"><a href="#GenIce3.water_molecules-1479"><span class="linenos">1479</span></a><span class="sd">            water_model: 水分子のテンプレート（sites, labels など）。</span>
+</span><span id="GenIce3.water_molecules-1480"><a href="#GenIce3.water_molecules-1480"><span class="linenos">1480</span></a>
+</span><span id="GenIce3.water_molecules-1481"><a href="#GenIce3.water_molecules-1481"><span class="linenos">1481</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.water_molecules-1482"><a href="#GenIce3.water_molecules-1482"><span class="linenos">1482</span></a><span class="sd">            サイト番号（ノード番号）→ Molecule の辞書。イオンサイトは含まない。</span>
+</span><span id="GenIce3.water_molecules-1483"><a href="#GenIce3.water_molecules-1483"><span class="linenos">1483</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.water_molecules-1484"><a href="#GenIce3.water_molecules-1484"><span class="linenos">1484</span></a>        <span class="n">mols</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3.water_molecules-1485"><a href="#GenIce3.water_molecules-1485"><span class="linenos">1485</span></a>        <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">)):</span>
+</span><span id="GenIce3.water_molecules-1486"><a href="#GenIce3.water_molecules-1486"><span class="linenos">1486</span></a>            <span class="n">occ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">site_occupants</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="GenIce3.water_molecules-1487"><a href="#GenIce3.water_molecules-1487"><span class="linenos">1487</span></a>            <span class="c1"># hydroniumやhydroxideはwater-likeではない。</span>
+</span><span id="GenIce3.water_molecules-1488"><a href="#GenIce3.water_molecules-1488"><span class="linenos">1488</span></a>            <span class="n">is_water_like</span> <span class="o">=</span> <span class="n">occ</span> <span class="o">==</span> <span class="s2">&quot;water&quot;</span>
+</span><span id="GenIce3.water_molecules-1489"><a href="#GenIce3.water_molecules-1489"><span class="linenos">1489</span></a>            <span class="k">if</span> <span class="n">is_water_like</span><span class="p">:</span>
+</span><span id="GenIce3.water_molecules-1490"><a href="#GenIce3.water_molecules-1490"><span class="linenos">1490</span></a>                <span class="n">rel_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="GenIce3.water_molecules-1491"><a href="#GenIce3.water_molecules-1491"><span class="linenos">1491</span></a>                <span class="n">orientation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientations</span><span class="p">[</span><span class="n">site</span><span class="p">]</span>
+</span><span id="GenIce3.water_molecules-1492"><a href="#GenIce3.water_molecules-1492"><span class="linenos">1492</span></a>
+</span><span id="GenIce3.water_molecules-1493"><a href="#GenIce3.water_molecules-1493"><span class="linenos">1493</span></a>                <span class="n">sites</span> <span class="o">=</span> <span class="n">water_model</span><span class="o">.</span><span class="n">sites</span> <span class="o">@</span> <span class="n">orientation</span> <span class="o">+</span> <span class="n">rel_position</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3.water_molecules-1494"><a href="#GenIce3.water_molecules-1494"><span class="linenos">1494</span></a>                <span class="n">mols</span><span class="p">[</span><span class="n">site</span><span class="p">]</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3.water_molecules-1495"><a href="#GenIce3.water_molecules-1495"><span class="linenos">1495</span></a>                    <span class="n">name</span><span class="o">=</span><span class="n">water_model</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3.water_molecules-1496"><a href="#GenIce3.water_molecules-1496"><span class="linenos">1496</span></a>                    <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="GenIce3.water_molecules-1497"><a href="#GenIce3.water_molecules-1497"><span class="linenos">1497</span></a>                    <span class="n">labels</span><span class="o">=</span><span class="n">water_model</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3.water_molecules-1498"><a href="#GenIce3.water_molecules-1498"><span class="linenos">1498</span></a>                    <span class="n">is_water</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="GenIce3.water_molecules-1499"><a href="#GenIce3.water_molecules-1499"><span class="linenos">1499</span></a>                <span class="p">)</span>
+</span><span id="GenIce3.water_molecules-1500"><a href="#GenIce3.water_molecules-1500"><span class="linenos">1500</span></a>        <span class="k">return</span> <span class="n">mols</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>格子サイトが水のサイトについて、配向・位置を適用した水分子の辞書を返す。</p>
+
+<p>Args:
+    water_model: 水分子のテンプレート（sites, labels など）。</p>
+
+<p>Returns:
+    サイト番号（ノード番号）→ Molecule の辞書。イオンサイトは含まない。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.guest_molecules" class="classattr">
+                                        <input id="GenIce3.guest_molecules-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">guest_molecules</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="n">List</span><span class="p">[</span><span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.guest_molecules-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.guest_molecules"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.guest_molecules-1502"><a href="#GenIce3.guest_molecules-1502"><span class="linenos">1502</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">guest_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="GenIce3.guest_molecules-1503"><a href="#GenIce3.guest_molecules-1503"><span class="linenos">1503</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;GenIce3に設定されたguestsとspot_guestsからゲスト分子リストを生成する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.guest_molecules-1504"><a href="#GenIce3.guest_molecules-1504"><span class="linenos">1504</span></a>        <span class="c1"># 通常の氷（ゲストなし）ではケージ不要 → assess_cages を呼ばない</span>
+</span><span id="GenIce3.guest_molecules-1505"><a href="#GenIce3.guest_molecules-1505"><span class="linenos">1505</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span><span class="p">:</span>
+</span><span id="GenIce3.guest_molecules-1506"><a href="#GenIce3.guest_molecules-1506"><span class="linenos">1506</span></a>            <span class="k">return</span> <span class="p">[]</span>
+</span><span id="GenIce3.guest_molecules-1507"><a href="#GenIce3.guest_molecules-1507"><span class="linenos">1507</span></a>
+</span><span id="GenIce3.guest_molecules-1508"><a href="#GenIce3.guest_molecules-1508"><span class="linenos">1508</span></a>        <span class="n">all_cage_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">]</span>
+</span><span id="GenIce3.guest_molecules-1509"><a href="#GenIce3.guest_molecules-1509"><span class="linenos">1509</span></a>        <span class="n">available</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">all_cage_types</span><span class="p">))</span>
+</span><span id="GenIce3.guest_molecules-1510"><a href="#GenIce3.guest_molecules-1510"><span class="linenos">1510</span></a>        <span class="c1"># guest_specで指定されているのに存在しない種類のケージはエラーにする。</span>
+</span><span id="GenIce3.guest_molecules-1511"><a href="#GenIce3.guest_molecules-1511"><span class="linenos">1511</span></a>        <span class="k">for</span> <span class="n">cage_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">:</span>
+</span><span id="GenIce3.guest_molecules-1512"><a href="#GenIce3.guest_molecules-1512"><span class="linenos">1512</span></a>            <span class="k">if</span> <span class="n">cage_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">all_cage_types</span><span class="p">:</span>
+</span><span id="GenIce3.guest_molecules-1513"><a href="#GenIce3.guest_molecules-1513"><span class="linenos">1513</span></a>                <span class="k">raise</span> <span class="n">ConfigurationError</span><span class="p">(</span>
+</span><span id="GenIce3.guest_molecules-1514"><a href="#GenIce3.guest_molecules-1514"><span class="linenos">1514</span></a>                    <span class="sa">f</span><span class="s2">&quot;Cage type </span><span class="si">{</span><span class="n">cage_type</span><span class="si">}</span><span class="s2"> is not defined. &quot;</span>
+</span><span id="GenIce3.guest_molecules-1515"><a href="#GenIce3.guest_molecules-1515"><span class="linenos">1515</span></a>                    <span class="sa">f</span><span class="s2">&quot;Available cage types in this structure: </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="GenIce3.guest_molecules-1516"><a href="#GenIce3.guest_molecules-1516"><span class="linenos">1516</span></a>                <span class="p">)</span>
+</span><span id="GenIce3.guest_molecules-1517"><a href="#GenIce3.guest_molecules-1517"><span class="linenos">1517</span></a>
+</span><span id="GenIce3.guest_molecules-1518"><a href="#GenIce3.guest_molecules-1518"><span class="linenos">1518</span></a>        <span class="n">randoms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">))</span>
+</span><span id="GenIce3.guest_molecules-1519"><a href="#GenIce3.guest_molecules-1519"><span class="linenos">1519</span></a>
+</span><span id="GenIce3.guest_molecules-1520"><a href="#GenIce3.guest_molecules-1520"><span class="linenos">1520</span></a>        <span class="n">mols</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.guest_molecules-1521"><a href="#GenIce3.guest_molecules-1521"><span class="linenos">1521</span></a>        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">probability</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="GenIce3.guest_molecules-1522"><a href="#GenIce3.guest_molecules-1522"><span class="linenos">1522</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">specs</span><span class="p">,</span> <span class="n">randoms</span>
+</span><span id="GenIce3.guest_molecules-1523"><a href="#GenIce3.guest_molecules-1523"><span class="linenos">1523</span></a>        <span class="p">):</span>
+</span><span id="GenIce3.guest_molecules-1524"><a href="#GenIce3.guest_molecules-1524"><span class="linenos">1524</span></a>            <span class="n">accum</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span id="GenIce3.guest_molecules-1525"><a href="#GenIce3.guest_molecules-1525"><span class="linenos">1525</span></a>            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">:</span>
+</span><span id="GenIce3.guest_molecules-1526"><a href="#GenIce3.guest_molecules-1526"><span class="linenos">1526</span></a>                <span class="k">for</span> <span class="n">guest_spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guests</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">cage_type</span><span class="p">]:</span>
+</span><span id="GenIce3.guest_molecules-1527"><a href="#GenIce3.guest_molecules-1527"><span class="linenos">1527</span></a>                    <span class="n">molecule</span> <span class="o">=</span> <span class="n">guest_spec</span><span class="o">.</span><span class="n">molecule</span>
+</span><span id="GenIce3.guest_molecules-1528"><a href="#GenIce3.guest_molecules-1528"><span class="linenos">1528</span></a>                    <span class="n">occupancy</span> <span class="o">=</span> <span class="n">guest_spec</span><span class="o">.</span><span class="n">occupancy</span>
+</span><span id="GenIce3.guest_molecules-1529"><a href="#GenIce3.guest_molecules-1529"><span class="linenos">1529</span></a>                    <span class="n">accum</span> <span class="o">+=</span> <span class="n">occupancy</span>
+</span><span id="GenIce3.guest_molecules-1530"><a href="#GenIce3.guest_molecules-1530"><span class="linenos">1530</span></a>                    <span class="k">if</span> <span class="n">accum</span> <span class="o">&gt;</span> <span class="n">probability</span><span class="p">:</span>
+</span><span id="GenIce3.guest_molecules-1531"><a href="#GenIce3.guest_molecules-1531"><span class="linenos">1531</span></a>                        <span class="n">mols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="GenIce3.guest_molecules-1532"><a href="#GenIce3.guest_molecules-1532"><span class="linenos">1532</span></a>                            <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3.guest_molecules-1533"><a href="#GenIce3.guest_molecules-1533"><span class="linenos">1533</span></a>                                <span class="n">name</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1534"><a href="#GenIce3.guest_molecules-1534"><span class="linenos">1534</span></a>                                <span class="n">sites</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">pos</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1535"><a href="#GenIce3.guest_molecules-1535"><span class="linenos">1535</span></a>                                <span class="n">labels</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1536"><a href="#GenIce3.guest_molecules-1536"><span class="linenos">1536</span></a>                                <span class="n">is_water</span><span class="o">=</span><span class="n">molecule</span><span class="o">.</span><span class="n">is_water</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1537"><a href="#GenIce3.guest_molecules-1537"><span class="linenos">1537</span></a>                            <span class="p">)</span>
+</span><span id="GenIce3.guest_molecules-1538"><a href="#GenIce3.guest_molecules-1538"><span class="linenos">1538</span></a>                        <span class="p">)</span>
+</span><span id="GenIce3.guest_molecules-1539"><a href="#GenIce3.guest_molecules-1539"><span class="linenos">1539</span></a>                        <span class="k">break</span>
+</span><span id="GenIce3.guest_molecules-1540"><a href="#GenIce3.guest_molecules-1540"><span class="linenos">1540</span></a>
+</span><span id="GenIce3.guest_molecules-1541"><a href="#GenIce3.guest_molecules-1541"><span class="linenos">1541</span></a>        <span class="c1"># spot guestの配置</span>
+</span><span id="GenIce3.guest_molecules-1542"><a href="#GenIce3.guest_molecules-1542"><span class="linenos">1542</span></a>        <span class="k">for</span> <span class="n">cage_index</span><span class="p">,</span> <span class="n">guest</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_guests</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3.guest_molecules-1543"><a href="#GenIce3.guest_molecules-1543"><span class="linenos">1543</span></a>            <span class="n">mols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="GenIce3.guest_molecules-1544"><a href="#GenIce3.guest_molecules-1544"><span class="linenos">1544</span></a>                <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3.guest_molecules-1545"><a href="#GenIce3.guest_molecules-1545"><span class="linenos">1545</span></a>                    <span class="n">name</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1546"><a href="#GenIce3.guest_molecules-1546"><span class="linenos">1546</span></a>                    <span class="n">sites</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">cage_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1547"><a href="#GenIce3.guest_molecules-1547"><span class="linenos">1547</span></a>                    <span class="n">labels</span><span class="o">=</span><span class="n">guest</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1548"><a href="#GenIce3.guest_molecules-1548"><span class="linenos">1548</span></a>                    <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3.guest_molecules-1549"><a href="#GenIce3.guest_molecules-1549"><span class="linenos">1549</span></a>                <span class="p">)</span>
+</span><span id="GenIce3.guest_molecules-1550"><a href="#GenIce3.guest_molecules-1550"><span class="linenos">1550</span></a>            <span class="p">)</span>
+</span><span id="GenIce3.guest_molecules-1551"><a href="#GenIce3.guest_molecules-1551"><span class="linenos">1551</span></a>        <span class="k">return</span> <span class="n">mols</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>GenIce3に設定されたguestsとspot_guestsからゲスト分子リストを生成する。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.build_molecular_ion" class="classattr">
+                                        <input id="GenIce3.build_molecular_ion-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">build_molecular_ion</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">molecule</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">groups</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.build_molecular_ion-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.build_molecular_ion"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.build_molecular_ion-1553"><a href="#GenIce3.build_molecular_ion-1553"><span class="linenos">1553</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_molecular_ion</span><span class="p">(</span>
+</span><span id="GenIce3.build_molecular_ion-1554"><a href="#GenIce3.build_molecular_ion-1554"><span class="linenos">1554</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1555"><a href="#GenIce3.build_molecular_ion-1555"><span class="linenos">1555</span></a>        <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1556"><a href="#GenIce3.build_molecular_ion-1556"><span class="linenos">1556</span></a>        <span class="n">molecule</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1557"><a href="#GenIce3.build_molecular_ion-1557"><span class="linenos">1557</span></a>        <span class="n">groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1558"><a href="#GenIce3.build_molecular_ion-1558"><span class="linenos">1558</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="GenIce3.build_molecular_ion-1559"><a href="#GenIce3.build_molecular_ion-1559"><span class="linenos">1559</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト site_index（格子サイトのノード番号）に分子イオン（および spot cation 用の修飾 group）を構築する。</span>
+</span><span id="GenIce3.build_molecular_ion-1560"><a href="#GenIce3.build_molecular_ion-1560"><span class="linenos">1560</span></a>
+</span><span id="GenIce3.build_molecular_ion-1561"><a href="#GenIce3.build_molecular_ion-1561"><span class="linenos">1561</span></a><span class="sd">        Args:</span>
+</span><span id="GenIce3.build_molecular_ion-1562"><a href="#GenIce3.build_molecular_ion-1562"><span class="linenos">1562</span></a><span class="sd">            site_index: 格子サイトのノード番号。</span>
+</span><span id="GenIce3.build_molecular_ion-1563"><a href="#GenIce3.build_molecular_ion-1563"><span class="linenos">1563</span></a><span class="sd">            molecule: 分子イオンのプラグイン名（例: &quot;ammonium&quot;）。</span>
+</span><span id="GenIce3.build_molecular_ion-1564"><a href="#GenIce3.build_molecular_ion-1564"><span class="linenos">1564</span></a><span class="sd">            groups: 当該サイトに隣接するケージID → group名。spot cation の修飾用。</span>
+</span><span id="GenIce3.build_molecular_ion-1565"><a href="#GenIce3.build_molecular_ion-1565"><span class="linenos">1565</span></a>
+</span><span id="GenIce3.build_molecular_ion-1566"><a href="#GenIce3.build_molecular_ion-1566"><span class="linenos">1566</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.build_molecular_ion-1567"><a href="#GenIce3.build_molecular_ion-1567"><span class="linenos">1567</span></a><span class="sd">            直交座標で配置された Molecule（原子名は labels）。</span>
+</span><span id="GenIce3.build_molecular_ion-1568"><a href="#GenIce3.build_molecular_ion-1568"><span class="linenos">1568</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.build_molecular_ion-1569"><a href="#GenIce3.build_molecular_ion-1569"><span class="linenos">1569</span></a>        <span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span> <span class="ow">or</span> <span class="p">{}</span>
+</span><span id="GenIce3.build_molecular_ion-1570"><a href="#GenIce3.build_molecular_ion-1570"><span class="linenos">1570</span></a>        <span class="n">ion_center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3.build_molecular_ion-1571"><a href="#GenIce3.build_molecular_ion-1571"><span class="linenos">1571</span></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="GenIce3.build_molecular_ion-1572"><a href="#GenIce3.build_molecular_ion-1572"><span class="linenos">1572</span></a>            <span class="n">ion</span> <span class="o">=</span> <span class="n">safe_import</span><span class="p">(</span><span class="s2">&quot;molecule&quot;</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span><span class="o">.</span><span class="n">Molecule</span><span class="p">()</span>
+</span><span id="GenIce3.build_molecular_ion-1573"><a href="#GenIce3.build_molecular_ion-1573"><span class="linenos">1573</span></a>            <span class="n">name</span> <span class="o">=</span> <span class="n">ion</span><span class="o">.</span><span class="n">name</span>
+</span><span id="GenIce3.build_molecular_ion-1574"><a href="#GenIce3.build_molecular_ion-1574"><span class="linenos">1574</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">ion</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">ion_center</span>
+</span><span id="GenIce3.build_molecular_ion-1575"><a href="#GenIce3.build_molecular_ion-1575"><span class="linenos">1575</span></a>            <span class="n">atom_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ion</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+</span><span id="GenIce3.build_molecular_ion-1576"><a href="#GenIce3.build_molecular_ion-1576"><span class="linenos">1576</span></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="GenIce3.build_molecular_ion-1577"><a href="#GenIce3.build_molecular_ion-1577"><span class="linenos">1577</span></a>            <span class="n">name</span> <span class="o">=</span> <span class="n">molecule</span>
+</span><span id="GenIce3.build_molecular_ion-1578"><a href="#GenIce3.build_molecular_ion-1578"><span class="linenos">1578</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ion_center</span><span class="p">])</span>
+</span><span id="GenIce3.build_molecular_ion-1579"><a href="#GenIce3.build_molecular_ion-1579"><span class="linenos">1579</span></a>            <span class="n">atom_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">molecule</span><span class="p">]</span>
+</span><span id="GenIce3.build_molecular_ion-1580"><a href="#GenIce3.build_molecular_ion-1580"><span class="linenos">1580</span></a>        <span class="c1"># 修飾グループを置いていく（--group 指定があったサイトのみ）</span>
+</span><span id="GenIce3.build_molecular_ion-1581"><a href="#GenIce3.build_molecular_ion-1581"><span class="linenos">1581</span></a>        <span class="k">for</span> <span class="n">cage</span><span class="p">,</span> <span class="n">group_name</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3.build_molecular_ion-1582"><a href="#GenIce3.build_molecular_ion-1582"><span class="linenos">1582</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cages</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">cage</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="GenIce3.build_molecular_ion-1583"><a href="#GenIce3.build_molecular_ion-1583"><span class="linenos">1583</span></a>            <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="GenIce3.build_molecular_ion-1584"><a href="#GenIce3.build_molecular_ion-1584"><span class="linenos">1584</span></a>            <span class="n">group</span> <span class="o">=</span> <span class="n">place_group</span><span class="p">(</span>
+</span><span id="GenIce3.build_molecular_ion-1585"><a href="#GenIce3.build_molecular_ion-1585"><span class="linenos">1585</span></a>                <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1586"><a href="#GenIce3.build_molecular_ion-1586"><span class="linenos">1586</span></a>                <span class="mf">0.13</span><span class="p">,</span>  <span class="c1"># あとでなんとかする。N-H結合距離</span>
+</span><span id="GenIce3.build_molecular_ion-1587"><a href="#GenIce3.build_molecular_ion-1587"><span class="linenos">1587</span></a>                <span class="n">group_name</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1588"><a href="#GenIce3.build_molecular_ion-1588"><span class="linenos">1588</span></a>            <span class="p">)</span>
+</span><span id="GenIce3.build_molecular_ion-1589"><a href="#GenIce3.build_molecular_ion-1589"><span class="linenos">1589</span></a>            <span class="n">sites</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">sites</span><span class="p">,</span> <span class="n">group</span><span class="o">.</span><span class="n">sites</span> <span class="o">+</span> <span class="n">ion_center</span><span class="p">])</span>
+</span><span id="GenIce3.build_molecular_ion-1590"><a href="#GenIce3.build_molecular_ion-1590"><span class="linenos">1590</span></a>            <span class="n">atom_names</span> <span class="o">+=</span> <span class="n">group</span><span class="o">.</span><span class="n">labels</span>
+</span><span id="GenIce3.build_molecular_ion-1591"><a href="#GenIce3.build_molecular_ion-1591"><span class="linenos">1591</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">atom_names</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.build_molecular_ion-1592"><a href="#GenIce3.build_molecular_ion-1592"><span class="linenos">1592</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3.build_molecular_ion-1593"><a href="#GenIce3.build_molecular_ion-1593"><span class="linenos">1593</span></a>            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1594"><a href="#GenIce3.build_molecular_ion-1594"><span class="linenos">1594</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">sites</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1595"><a href="#GenIce3.build_molecular_ion-1595"><span class="linenos">1595</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">atom_names</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1596"><a href="#GenIce3.build_molecular_ion-1596"><span class="linenos">1596</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3.build_molecular_ion-1597"><a href="#GenIce3.build_molecular_ion-1597"><span class="linenos">1597</span></a>        <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>サイト site_index（格子サイトのノード番号）に分子イオン（および spot cation 用の修飾 group）を構築する。</p>
+
+<p>Args:
+    site_index: 格子サイトのノード番号。
+    molecule: 分子イオンのプラグイン名（例: "ammonium"）。
+    groups: 当該サイトに隣接するケージID → group名。spot cation の修飾用。</p>
+
+<p>Returns:
+    直交座標で配置された Molecule（原子名は labels）。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.build_hydronium" class="classattr">
+                                        <input id="GenIce3.build_hydronium-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">build_hydronium</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.build_hydronium-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.build_hydronium"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.build_hydronium-1625"><a href="#GenIce3.build_hydronium-1625"><span class="linenos">1625</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_hydronium</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="GenIce3.build_hydronium-1626"><a href="#GenIce3.build_hydronium-1626"><span class="linenos">1626</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;H3O+ を構築する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.build_hydronium-1627"><a href="#GenIce3.build_hydronium-1627"><span class="linenos">1627</span></a>        <span class="n">sites</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.build_hydronium-1628"><a href="#GenIce3.build_hydronium-1628"><span class="linenos">1628</span></a>        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Cn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">,</span> <span class="s2">&quot;Hn&quot;</span><span class="p">]</span>
+</span><span id="GenIce3.build_hydronium-1629"><a href="#GenIce3.build_hydronium-1629"><span class="linenos">1629</span></a>        <span class="n">OH</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="GenIce3.build_hydronium-1630"><a href="#GenIce3.build_hydronium-1630"><span class="linenos">1630</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span id="GenIce3.build_hydronium-1631"><a href="#GenIce3.build_hydronium-1631"><span class="linenos">1631</span></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="GenIce3.build_hydronium-1632"><a href="#GenIce3.build_hydronium-1632"><span class="linenos">1632</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+</span><span id="GenIce3.build_hydronium-1633"><a href="#GenIce3.build_hydronium-1633"><span class="linenos">1633</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;H3O+ must have 3 neighbors.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydronium-1634"><a href="#GenIce3.build_hydronium-1634"><span class="linenos">1634</span></a>        <span class="k">for</span> <span class="n">neighbor</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
+</span><span id="GenIce3.build_hydronium-1635"><a href="#GenIce3.build_hydronium-1635"><span class="linenos">1635</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">neighbor</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="GenIce3.build_hydronium-1636"><a href="#GenIce3.build_hydronium-1636"><span class="linenos">1636</span></a>            <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydronium-1637"><a href="#GenIce3.build_hydronium-1637"><span class="linenos">1637</span></a>            <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3.build_hydronium-1638"><a href="#GenIce3.build_hydronium-1638"><span class="linenos">1638</span></a>            <span class="n">direction</span> <span class="o">*=</span> <span class="n">OH</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydronium-1639"><a href="#GenIce3.build_hydronium-1639"><span class="linenos">1639</span></a>            <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydronium-1640"><a href="#GenIce3.build_hydronium-1640"><span class="linenos">1640</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3.build_hydronium-1641"><a href="#GenIce3.build_hydronium-1641"><span class="linenos">1641</span></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;H3O&quot;</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydronium-1642"><a href="#GenIce3.build_hydronium-1642"><span class="linenos">1642</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydronium-1643"><a href="#GenIce3.build_hydronium-1643"><span class="linenos">1643</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydronium-1644"><a href="#GenIce3.build_hydronium-1644"><span class="linenos">1644</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydronium-1645"><a href="#GenIce3.build_hydronium-1645"><span class="linenos">1645</span></a>        <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>H3O+ を構築する。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.build_hydroxide" class="classattr">
+                                        <input id="GenIce3.build_hydroxide-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">build_hydroxide</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.build_hydroxide-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.build_hydroxide"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.build_hydroxide-1647"><a href="#GenIce3.build_hydroxide-1647"><span class="linenos">1647</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">build_hydroxide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+</span><span id="GenIce3.build_hydroxide-1648"><a href="#GenIce3.build_hydroxide-1648"><span class="linenos">1648</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;OH- を構築する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.build_hydroxide-1649"><a href="#GenIce3.build_hydroxide-1649"><span class="linenos">1649</span></a>        <span class="n">sites</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="GenIce3.build_hydroxide-1650"><a href="#GenIce3.build_hydroxide-1650"><span class="linenos">1650</span></a>        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Nx&quot;</span><span class="p">,</span> <span class="s2">&quot;Hx&quot;</span><span class="p">]</span>
+</span><span id="GenIce3.build_hydroxide-1651"><a href="#GenIce3.build_hydroxide-1651"><span class="linenos">1651</span></a>        <span class="n">OH</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="GenIce3.build_hydroxide-1652"><a href="#GenIce3.build_hydroxide-1652"><span class="linenos">1652</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span id="GenIce3.build_hydroxide-1653"><a href="#GenIce3.build_hydroxide-1653"><span class="linenos">1653</span></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">site_index</span><span class="p">))</span>
+</span><span id="GenIce3.build_hydroxide-1654"><a href="#GenIce3.build_hydroxide-1654"><span class="linenos">1654</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="GenIce3.build_hydroxide-1655"><a href="#GenIce3.build_hydroxide-1655"><span class="linenos">1655</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OH- must have 1 neighbor. </span><span class="si">{</span><span class="n">site_index</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="n">neighbors</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydroxide-1656"><a href="#GenIce3.build_hydroxide-1656"><span class="linenos">1656</span></a>        <span class="n">direction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">neighbors</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span>
+</span><span id="GenIce3.build_hydroxide-1657"><a href="#GenIce3.build_hydroxide-1657"><span class="linenos">1657</span></a>        <span class="n">direction</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydroxide-1658"><a href="#GenIce3.build_hydroxide-1658"><span class="linenos">1658</span></a>        <span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+</span><span id="GenIce3.build_hydroxide-1659"><a href="#GenIce3.build_hydroxide-1659"><span class="linenos">1659</span></a>        <span class="n">direction</span> <span class="o">*=</span> <span class="n">OH</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydroxide-1660"><a href="#GenIce3.build_hydroxide-1660"><span class="linenos">1660</span></a>        <span class="n">sites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+</span><span id="GenIce3.build_hydroxide-1661"><a href="#GenIce3.build_hydroxide-1661"><span class="linenos">1661</span></a>        <span class="k">return</span> <span class="n">Molecule</span><span class="p">(</span>
+</span><span id="GenIce3.build_hydroxide-1662"><a href="#GenIce3.build_hydroxide-1662"><span class="linenos">1662</span></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;OH&quot;</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydroxide-1663"><a href="#GenIce3.build_hydroxide-1663"><span class="linenos">1663</span></a>            <span class="n">sites</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_sites</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydroxide-1664"><a href="#GenIce3.build_hydroxide-1664"><span class="linenos">1664</span></a>            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydroxide-1665"><a href="#GenIce3.build_hydroxide-1665"><span class="linenos">1665</span></a>            <span class="n">is_water</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="GenIce3.build_hydroxide-1666"><a href="#GenIce3.build_hydroxide-1666"><span class="linenos">1666</span></a>        <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>OH- を構築する。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.substitutional_ions" class="classattr">
+                                        <input id="GenIce3.substitutional_ions-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">substitutional_ions</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.substitutional_ions-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.substitutional_ions"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.substitutional_ions-1668"><a href="#GenIce3.substitutional_ions-1668"><span class="linenos">1668</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">substitutional_ions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]:</span>
+</span><span id="GenIce3.substitutional_ions-1669"><a href="#GenIce3.substitutional_ions-1669"><span class="linenos">1669</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.substitutional_ions-1670"><a href="#GenIce3.substitutional_ions-1670"><span class="linenos">1670</span></a>        <span class="c1"># 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う</span>
+</span><span id="GenIce3.substitutional_ions-1671"><a href="#GenIce3.substitutional_ions-1671"><span class="linenos">1671</span></a>
+</span><span id="GenIce3.substitutional_ions-1672"><a href="#GenIce3.substitutional_ions-1672"><span class="linenos">1672</span></a>        <span class="c1"># 前提条件: anions, cations, hydroniums, hydroxidesのサイトに重複がないこと。</span>
+</span><span id="GenIce3.substitutional_ions-1673"><a href="#GenIce3.substitutional_ions-1673"><span class="linenos">1673</span></a>        <span class="c1"># そうでない場合は、エラーを返す。</span>
+</span><span id="GenIce3.substitutional_ions-1674"><a href="#GenIce3.substitutional_ions-1674"><span class="linenos">1674</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3.substitutional_ions-1675"><a href="#GenIce3.substitutional_ions-1675"><span class="linenos">1675</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroniums and hydroxides must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1676"><a href="#GenIce3.substitutional_ions-1676"><span class="linenos">1676</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3.substitutional_ions-1677"><a href="#GenIce3.substitutional_ions-1677"><span class="linenos">1677</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;anions and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1678"><a href="#GenIce3.substitutional_ions-1678"><span class="linenos">1678</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3.substitutional_ions-1679"><a href="#GenIce3.substitutional_ions-1679"><span class="linenos">1679</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroniums and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1680"><a href="#GenIce3.substitutional_ions-1680"><span class="linenos">1680</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="GenIce3.substitutional_ions-1681"><a href="#GenIce3.substitutional_ions-1681"><span class="linenos">1681</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;hydroxides and cations must not have the same site.&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1682"><a href="#GenIce3.substitutional_ions-1682"><span class="linenos">1682</span></a>
+</span><span id="GenIce3.substitutional_ions-1683"><a href="#GenIce3.substitutional_ions-1683"><span class="linenos">1683</span></a>        <span class="n">ions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="GenIce3.substitutional_ions-1684"><a href="#GenIce3.substitutional_ions-1684"><span class="linenos">1684</span></a>        <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroniums</span><span class="p">:</span>
+</span><span id="GenIce3.substitutional_ions-1685"><a href="#GenIce3.substitutional_ions-1685"><span class="linenos">1685</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_hydronium</span><span class="p">(</span><span class="n">site_index</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1686"><a href="#GenIce3.substitutional_ions-1686"><span class="linenos">1686</span></a>        <span class="k">for</span> <span class="n">site_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spot_hydroxides</span><span class="p">:</span>
+</span><span id="GenIce3.substitutional_ions-1687"><a href="#GenIce3.substitutional_ions-1687"><span class="linenos">1687</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_hydroxide</span><span class="p">(</span><span class="n">site_index</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1688"><a href="#GenIce3.substitutional_ions-1688"><span class="linenos">1688</span></a>        <span class="c1"># ならべかえはここではしない。formatterにまかせる。</span>
+</span><span id="GenIce3.substitutional_ions-1689"><a href="#GenIce3.substitutional_ions-1689"><span class="linenos">1689</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3.substitutional_ions-1690"><a href="#GenIce3.substitutional_ions-1690"><span class="linenos">1690</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_molecular_ion</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1691"><a href="#GenIce3.substitutional_ions-1691"><span class="linenos">1691</span></a>        <span class="n">effective_groups</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_spot_cation_groups</span><span class="p">()</span>
+</span><span id="GenIce3.substitutional_ions-1692"><a href="#GenIce3.substitutional_ions-1692"><span class="linenos">1692</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3.substitutional_ions-1693"><a href="#GenIce3.substitutional_ions-1693"><span class="linenos">1693</span></a>            <span class="c1"># cationには腕がつく可能性がある。</span>
+</span><span id="GenIce3.substitutional_ions-1694"><a href="#GenIce3.substitutional_ions-1694"><span class="linenos">1694</span></a>            <span class="n">groups</span> <span class="o">=</span> <span class="n">effective_groups</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="p">{})</span>
+</span><span id="GenIce3.substitutional_ions-1695"><a href="#GenIce3.substitutional_ions-1695"><span class="linenos">1695</span></a>            <span class="n">ions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_molecular_ion</span><span class="p">(</span><span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1696"><a href="#GenIce3.substitutional_ions-1696"><span class="linenos">1696</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ions</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="GenIce3.substitutional_ions-1697"><a href="#GenIce3.substitutional_ions-1697"><span class="linenos">1697</span></a>        <span class="k">return</span> <span class="n">ions</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.dope_anions" class="classattr">
+                                        <input id="GenIce3.dope_anions-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">dope_anions</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.dope_anions-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.dope_anions"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.dope_anions-1699"><a href="#GenIce3.dope_anions-1699"><span class="linenos">1699</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dope_anions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.dope_anions-1700"><a href="#GenIce3.dope_anions-1700"><span class="linenos">1700</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト番号→分子の辞書でアニオン配置を上書きする（主に API/テスト用）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.dope_anions-1701"><a href="#GenIce3.dope_anions-1701"><span class="linenos">1701</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">anions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3.dope_anions-1702"><a href="#GenIce3.dope_anions-1702"><span class="linenos">1702</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">anions</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">molecule</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>サイト番号→分子の辞書でアニオン配置を上書きする（主に API/テスト用）。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.dope_cations" class="classattr">
+                                        <input id="GenIce3.dope_cations-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">dope_cations</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">genice3</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">Molecule</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
+
+                <label class="view-source-button" for="GenIce3.dope_cations-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.dope_cations"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.dope_cations-1704"><a href="#GenIce3.dope_cations-1704"><span class="linenos">1704</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dope_cations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="GenIce3.dope_cations-1705"><a href="#GenIce3.dope_cations-1705"><span class="linenos">1705</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;サイト番号→分子の辞書でカチオン配置を上書きする（主に API/テスト用）。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.dope_cations-1706"><a href="#GenIce3.dope_cations-1706"><span class="linenos">1706</span></a>        <span class="k">for</span> <span class="n">site_index</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">cations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="GenIce3.dope_cations-1707"><a href="#GenIce3.dope_cations-1707"><span class="linenos">1707</span></a>            <span class="bp">self</span><span class="o">.</span><span class="n">cations</span><span class="p">[</span><span class="n">site_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">molecule</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>サイト番号→分子の辞書でカチオン配置を上書きする（主に API/テスト用）。</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.get_public_api_properties" class="classattr">
+                                        <input id="GenIce3.get_public_api_properties-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-classmethod">@classmethod</div>
+
+        <span class="def">def</span>
+        <span class="name">get_public_api_properties</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">cls</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.get_public_api_properties-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.get_public_api_properties"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.get_public_api_properties-1737"><a href="#GenIce3.get_public_api_properties-1737"><span class="linenos">1737</span></a>    <span class="nd">@classmethod</span>
+</span><span id="GenIce3.get_public_api_properties-1738"><a href="#GenIce3.get_public_api_properties-1738"><span class="linenos">1738</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_public_api_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="GenIce3.get_public_api_properties-1739"><a href="#GenIce3.get_public_api_properties-1739"><span class="linenos">1739</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GenIce3.get_public_api_properties-1740"><a href="#GenIce3.get_public_api_properties-1740"><span class="linenos">1740</span></a><span class="sd">        ユーザー向けAPIとして公開されているpropertyのリストを返す。</span>
+</span><span id="GenIce3.get_public_api_properties-1741"><a href="#GenIce3.get_public_api_properties-1741"><span class="linenos">1741</span></a>
+</span><span id="GenIce3.get_public_api_properties-1742"><a href="#GenIce3.get_public_api_properties-1742"><span class="linenos">1742</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.get_public_api_properties-1743"><a href="#GenIce3.get_public_api_properties-1743"><span class="linenos">1743</span></a><span class="sd">            list: 公開API property名のリスト</span>
+</span><span id="GenIce3.get_public_api_properties-1744"><a href="#GenIce3.get_public_api_properties-1744"><span class="linenos">1744</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.get_public_api_properties-1745"><a href="#GenIce3.get_public_api_properties-1745"><span class="linenos">1745</span></a>        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>ユーザー向けAPIとして公開されているpropertyのリストを返す。</p>
+
+<p>Returns:
+    list: 公開API property名のリスト</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.list_all_reactive_properties" class="classattr">
+                                        <input id="GenIce3.list_all_reactive_properties-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">list_all_reactive_properties</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.list_all_reactive_properties-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.list_all_reactive_properties"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.list_all_reactive_properties-1747"><a href="#GenIce3.list_all_reactive_properties-1747"><span class="linenos">1747</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_all_reactive_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.list_all_reactive_properties-1748"><a href="#GenIce3.list_all_reactive_properties-1748"><span class="linenos">1748</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GenIce3.list_all_reactive_properties-1749"><a href="#GenIce3.list_all_reactive_properties-1749"><span class="linenos">1749</span></a><span class="sd">        すべてのリアクティブプロパティ（DependencyEngineに登録されたタスク）を列挙する。</span>
+</span><span id="GenIce3.list_all_reactive_properties-1750"><a href="#GenIce3.list_all_reactive_properties-1750"><span class="linenos">1750</span></a>
+</span><span id="GenIce3.list_all_reactive_properties-1751"><a href="#GenIce3.list_all_reactive_properties-1751"><span class="linenos">1751</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.list_all_reactive_properties-1752"><a href="#GenIce3.list_all_reactive_properties-1752"><span class="linenos">1752</span></a><span class="sd">            dict: property名をキー、タスク関数を値とする辞書</span>
+</span><span id="GenIce3.list_all_reactive_properties-1753"><a href="#GenIce3.list_all_reactive_properties-1753"><span class="linenos">1753</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.list_all_reactive_properties-1754"><a href="#GenIce3.list_all_reactive_properties-1754"><span class="linenos">1754</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">registry</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>すべてのリアクティブプロパティ（DependencyEngineに登録されたタスク）を列挙する。</p>
+
+<p>Returns:
+    dict: property名をキー、タスク関数を値とする辞書</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.list_public_reactive_properties" class="classattr">
+                                        <input id="GenIce3.list_public_reactive_properties-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">list_public_reactive_properties</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.list_public_reactive_properties-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.list_public_reactive_properties"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.list_public_reactive_properties-1756"><a href="#GenIce3.list_public_reactive_properties-1756"><span class="linenos">1756</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_public_reactive_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="GenIce3.list_public_reactive_properties-1757"><a href="#GenIce3.list_public_reactive_properties-1757"><span class="linenos">1757</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="GenIce3.list_public_reactive_properties-1758"><a href="#GenIce3.list_public_reactive_properties-1758"><span class="linenos">1758</span></a><span class="sd">        ユーザー向けAPIとして公開されているリアクティブプロパティのみを列挙する。</span>
+</span><span id="GenIce3.list_public_reactive_properties-1759"><a href="#GenIce3.list_public_reactive_properties-1759"><span class="linenos">1759</span></a>
+</span><span id="GenIce3.list_public_reactive_properties-1760"><a href="#GenIce3.list_public_reactive_properties-1760"><span class="linenos">1760</span></a><span class="sd">        Returns:</span>
+</span><span id="GenIce3.list_public_reactive_properties-1761"><a href="#GenIce3.list_public_reactive_properties-1761"><span class="linenos">1761</span></a><span class="sd">            dict: property名をキー、タスク関数を値とする辞書</span>
+</span><span id="GenIce3.list_public_reactive_properties-1762"><a href="#GenIce3.list_public_reactive_properties-1762"><span class="linenos">1762</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="GenIce3.list_public_reactive_properties-1763"><a href="#GenIce3.list_public_reactive_properties-1763"><span class="linenos">1763</span></a>        <span class="n">all_reactive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_all_reactive_properties</span><span class="p">()</span>
+</span><span id="GenIce3.list_public_reactive_properties-1764"><a href="#GenIce3.list_public_reactive_properties-1764"><span class="linenos">1764</span></a>        <span class="n">public_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span><span class="p">)</span>
+</span><span id="GenIce3.list_public_reactive_properties-1765"><a href="#GenIce3.list_public_reactive_properties-1765"><span class="linenos">1765</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3.list_public_reactive_properties-1766"><a href="#GenIce3.list_public_reactive_properties-1766"><span class="linenos">1766</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">func</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">all_reactive</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">public_names</span>
+</span><span id="GenIce3.list_public_reactive_properties-1767"><a href="#GenIce3.list_public_reactive_properties-1767"><span class="linenos">1767</span></a>        <span class="p">}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>ユーザー向けAPIとして公開されているリアクティブプロパティのみを列挙する。</p>
+
+<p>Returns:
+    dict: property名をキー、タスク関数を値とする辞書</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.list_settable_reactive_properties" class="classattr">
+                                        <input id="GenIce3.list_settable_reactive_properties-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-classmethod">@classmethod</div>
+
+        <span class="def">def</span>
+        <span class="name">list_settable_reactive_properties</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">cls</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.list_settable_reactive_properties-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.list_settable_reactive_properties"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.list_settable_reactive_properties-1769"><a href="#GenIce3.list_settable_reactive_properties-1769"><span class="linenos">1769</span></a>    <span class="nd">@classmethod</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1770"><a href="#GenIce3.list_settable_reactive_properties-1770"><span class="linenos">1770</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_settable_reactive_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1771"><a href="#GenIce3.list_settable_reactive_properties-1771"><span class="linenos">1771</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;setterを持つリアクティブな変数を列挙する&quot;&quot;&quot;</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1772"><a href="#GenIce3.list_settable_reactive_properties-1772"><span class="linenos">1772</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1773"><a href="#GenIce3.list_settable_reactive_properties-1773"><span class="linenos">1773</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">prop</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1774"><a href="#GenIce3.list_settable_reactive_properties-1774"><span class="linenos">1774</span></a>            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1775"><a href="#GenIce3.list_settable_reactive_properties-1775"><span class="linenos">1775</span></a>                <span class="bp">cls</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">property</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="o">.</span><span class="n">fset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1776"><a href="#GenIce3.list_settable_reactive_properties-1776"><span class="linenos">1776</span></a>            <span class="p">)</span>
+</span><span id="GenIce3.list_settable_reactive_properties-1777"><a href="#GenIce3.list_settable_reactive_properties-1777"><span class="linenos">1777</span></a>        <span class="p">}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>setterを持つリアクティブな変数を列挙する</p>
+</div>
+
+
+                            </div>
+                            <div id="GenIce3.list_public_settable_reactive_properties" class="classattr">
+                                        <input id="GenIce3.list_public_settable_reactive_properties-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+                    <div class="decorator decorator-classmethod">@classmethod</div>
+
+        <span class="def">def</span>
+        <span class="name">list_public_settable_reactive_properties</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">cls</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="GenIce3.list_public_settable_reactive_properties-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#GenIce3.list_public_settable_reactive_properties"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="GenIce3.list_public_settable_reactive_properties-1779"><a href="#GenIce3.list_public_settable_reactive_properties-1779"><span class="linenos">1779</span></a>    <span class="nd">@classmethod</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1780"><a href="#GenIce3.list_public_settable_reactive_properties-1780"><span class="linenos">1780</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">list_public_settable_reactive_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1781"><a href="#GenIce3.list_public_settable_reactive_properties-1781"><span class="linenos">1781</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;公開APIのうち、setter を持つリアクティブプロパティのみを列挙する。&quot;&quot;&quot;</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1782"><a href="#GenIce3.list_public_settable_reactive_properties-1782"><span class="linenos">1782</span></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1783"><a href="#GenIce3.list_public_settable_reactive_properties-1783"><span class="linenos">1783</span></a>            <span class="n">name</span><span class="p">:</span> <span class="n">prop</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1784"><a href="#GenIce3.list_public_settable_reactive_properties-1784"><span class="linenos">1784</span></a>            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">list_settable_reactive_properties</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1785"><a href="#GenIce3.list_public_settable_reactive_properties-1785"><span class="linenos">1785</span></a>            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">PUBLIC_API_PROPERTIES</span>
+</span><span id="GenIce3.list_public_settable_reactive_properties-1786"><a href="#GenIce3.list_public_settable_reactive_properties-1786"><span class="linenos">1786</span></a>        <span class="p">}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>公開APIのうち、setter を持つリアクティブプロパティのみを列挙する。</p>
+</div>
+
+
+                            </div>
+                </section>
+    </main>
+<script>
+    function escapeHTML(html) {
+        return document.createElement('div').appendChild(document.createTextNode(html)).parentNode.innerHTML;
+    }
+
+    const originalContent = document.querySelector("main.pdoc");
+    let currentContent = originalContent;
+
+    function setContent(innerHTML) {
+        let elem;
+        if (innerHTML) {
+            elem = document.createElement("main");
+            elem.classList.add("pdoc");
+            elem.innerHTML = innerHTML;
+        } else {
+            elem = originalContent;
+        }
+        if (currentContent !== elem) {
+            currentContent.replaceWith(elem);
+            currentContent = elem;
+        }
+    }
+
+    function getSearchTerm() {
+        return (new URL(window.location)).searchParams.get("search");
+    }
+
+    const searchBox = document.querySelector(".pdoc input[type=search]");
+    searchBox.addEventListener("input", function () {
+        let url = new URL(window.location);
+        if (searchBox.value.trim()) {
+            url.hash = "";
+            url.searchParams.set("search", searchBox.value);
+        } else {
+            url.searchParams.delete("search");
+        }
+        history.replaceState("", "", url.toString());
+        onInput();
+    });
+    window.addEventListener("popstate", onInput);
+
+
+    let search, searchErr;
+
+    async function initialize() {
+        try {
+            search = await new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.type = "text/javascript";
+                script.async = true;
+                script.onload = () => resolve(window.pdocSearch);
+                script.onerror = (e) => reject(e);
+                script.src = "../search.js";
+                document.getElementsByTagName("head")[0].appendChild(script);
+            });
+        } catch (e) {
+            console.error("Cannot fetch pdoc search index");
+            searchErr = "Cannot fetch search index.";
+        }
+        onInput();
+
+        document.querySelector("nav.pdoc").addEventListener("click", e => {
+            if (e.target.hash) {
+                searchBox.value = "";
+                searchBox.dispatchEvent(new Event("input"));
+            }
+        });
+    }
+
+    function onInput() {
+        setContent((() => {
+            const term = getSearchTerm();
+            if (!term) {
+                return null
+            }
+            if (searchErr) {
+                return `<h3>Error: ${searchErr}</h3>`
+            }
+            if (!search) {
+                return "<h3>Searching...</h3>"
+            }
+
+            window.scrollTo({top: 0, left: 0, behavior: 'auto'});
+
+            const results = search(term);
+
+            let html;
+            if (results.length === 0) {
+                html = `No search results for '${escapeHTML(term)}'.`
+            } else {
+                html = `<h4>${results.length} search result${results.length > 1 ? "s" : ""} for '${escapeHTML(term)}'.</h4>`;
+            }
+            for (let result of results.slice(0, 10)) {
+                let doc = result.doc;
+                let url = `../${doc.modulename.replaceAll(".", "/")}.html`;
+                if (doc.qualname) {
+                    url += `#${doc.qualname}`;
+                }
+
+                let heading;
+                switch (result.doc.kind) {
+                    case "function":
+                        if (doc.fullname.endsWith(".__init__")) {
+                            heading = `<span class="name">${doc.fullname.replace(/\.__init__$/, "")}</span>${doc.signature}`;
+                        } else {
+                            heading = `<span class="def">${doc.funcdef}</span> <span class="name">${doc.fullname}</span>${doc.signature}`;
+                        }
+                        break;
+                    case "class":
+                        heading = `<span class="def">class</span> <span class="name">${doc.fullname}</span>`;
+                        if (doc.bases)
+                            heading += `<wbr>(<span class="base">${doc.bases}</span>)`;
+                        heading += `:`;
+                        break;
+                    case "variable":
+                        heading = `<span class="name">${doc.fullname}</span>`;
+                        if (doc.annotation)
+                            heading += `<span class="annotation">${doc.annotation}</span>`;
+                        if (doc.default_value)
+                            heading += `<span class="default_value"> = ${doc.default_value}</span>`;
+                        break;
+                    default:
+                        heading = `<span class="name">${doc.fullname}</span>`;
+                        break;
+                }
+                html += `
+                        <section class="search-result">
+                        <a href="${url}" class="attr ${doc.kind}">${heading}</a>
+                        <div class="docstring">${doc.doc}</div>
+                        </section>
+                    `;
+
+            }
+            return html;
+        })());
+    }
+
+    if (getSearchTerm()) {
+        initialize();
+        searchBox.value = getSearchTerm();
+        onInput();
+    } else {
+        searchBox.addEventListener("focus", initialize, {once: true});
+    }
+
+    searchBox.addEventListener("keydown", e => {
+        if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
+            let focused = currentContent.querySelector(".search-result.focused");
+            if (!focused) {
+                currentContent.querySelector(".search-result").classList.add("focused");
+            } else if (
+                e.key === "ArrowDown"
+                && focused.nextElementSibling
+                && focused.nextElementSibling.classList.contains("search-result")
+            ) {
+                focused.classList.remove("focused");
+                focused.nextElementSibling.classList.add("focused");
+                focused.nextElementSibling.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                    inline: "nearest"
+                });
+            } else if (
+                e.key === "ArrowUp"
+                && focused.previousElementSibling
+                && focused.previousElementSibling.classList.contains("search-result")
+            ) {
+                focused.classList.remove("focused");
+                focused.previousElementSibling.classList.add("focused");
+                focused.previousElementSibling.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                    inline: "nearest"
+                });
+            } else if (
+                e.key === "Enter"
+            ) {
+                focused.querySelector("a").click();
+            }
+        }
+    });
+</script>
+pre{line-height:125%;}span.linenos{color:inherit; background-color:transparent; padding-left:5px; padding-right:20px;}.pdoc-code .hll{background-color:#ffffcc}.pdoc-code{background:#f8f8f8;}.pdoc-code .c{color:#3D7B7B; font-style:italic}.pdoc-code .err{border:1px solid #FF0000}.pdoc-code .k{color:#008000; font-weight:bold}.pdoc-code .o{color:#666666}.pdoc-code .ch{color:#3D7B7B; font-style:italic}.pdoc-code .cm{color:#3D7B7B; font-style:italic}.pdoc-code .cp{color:#9C6500}.pdoc-code .cpf{color:#3D7B7B; font-style:italic}.pdoc-code .c1{color:#3D7B7B; font-style:italic}.pdoc-code .cs{color:#3D7B7B; font-style:italic}.pdoc-code .gd{color:#A00000}.pdoc-code .ge{font-style:italic}.pdoc-code .gr{color:#E40000}.pdoc-code .gh{color:#000080; font-weight:bold}.pdoc-code .gi{color:#008400}.pdoc-code .go{color:#717171}.pdoc-code .gp{color:#000080; font-weight:bold}.pdoc-code .gs{font-weight:bold}.pdoc-code .gu{color:#800080; font-weight:bold}.pdoc-code .gt{color:#0044DD}.pdoc-code .kc{color:#008000; font-weight:bold}.pdoc-code .kd{color:#008000; font-weight:bold}.pdoc-code .kn{color:#008000; font-weight:bold}.pdoc-code .kp{color:#008000}.pdoc-code .kr{color:#008000; font-weight:bold}.pdoc-code .kt{color:#B00040}.pdoc-code .m{color:#666666}.pdoc-code .s{color:#BA2121}.pdoc-code .na{color:#687822}.pdoc-code .nb{color:#008000}.pdoc-code .nc{color:#0000FF; font-weight:bold}.pdoc-code .no{color:#880000}.pdoc-code .nd{color:#AA22FF}.pdoc-code .ni{color:#717171; font-weight:bold}.pdoc-code .ne{color:#CB3F38; font-weight:bold}.pdoc-code .nf{color:#0000FF}.pdoc-code .nl{color:#767600}.pdoc-code .nn{color:#0000FF; font-weight:bold}.pdoc-code .nt{color:#008000; font-weight:bold}.pdoc-code .nv{color:#19177C}.pdoc-code .ow{color:#AA22FF; font-weight:bold}.pdoc-code .w{color:#bbbbbb}.pdoc-code .mb{color:#666666}.pdoc-code .mf{color:#666666}.pdoc-code .mh{color:#666666}.pdoc-code .mi{color:#666666}.pdoc-code .mo{color:#666666}.pdoc-code .sa{color:#BA2121}.pdoc-code .sb{color:#BA2121}.pdoc-code .sc{color:#BA2121}.pdoc-code .dl{color:#BA2121}.pdoc-code .sd{color:#BA2121; font-style:italic}.pdoc-code .s2{color:#BA2121}.pdoc-code .se{color:#AA5D1F; font-weight:bold}.pdoc-code .sh{color:#BA2121}.pdoc-code .si{color:#A45A77; font-weight:bold}.pdoc-code .sx{color:#008000}.pdoc-code .sr{color:#A45A77}.pdoc-code .s1{color:#BA2121}.pdoc-code .ss{color:#19177C}.pdoc-code .bp{color:#008000}.pdoc-code .fm{color:#0000FF}.pdoc-code .vc{color:#19177C}.pdoc-code .vg{color:#19177C}.pdoc-code .vi{color:#19177C}.pdoc-code .vm{color:#19177C}.pdoc-code .il{color:#666666}:root{--pdoc-background:#fff;}.pdoc{--text:#212529;--muted:#6c757d;--link:#3660a5;--link-hover:#1659c5;--code:#f8f8f8;--active:#fff598;--accent:#eee;--accent2:#c1c1c1;--nav-hover:rgba(255, 255, 255, 0.5);--name:#0066BB;--def:#008800;--annotation:#007020;}.pdoc{color:var(--text);box-sizing:border-box;line-height:1.5;background:none;}.pdoc .pdoc-button{cursor:pointer;display:inline-block;border:solid black 1px;border-radius:2px;font-size:.75rem;padding:calc(0.5em - 1px) 1em;transition:100ms all;}.pdoc .alert{padding:1rem 1rem 1rem calc(1.5rem + 24px);border:1px solid transparent;border-radius:.25rem;background-repeat:no-repeat;background-position:.75rem center;margin-bottom:1rem;}.pdoc .alert > em{display:none;}.pdoc .alert > *:last-child{margin-bottom:0;}.pdoc .alert.note{color:#084298;background-color:#cfe2ff;border-color:#b6d4fe;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23084298%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M8%2016A8%208%200%201%200%208%200a8%208%200%200%200%200%2016zm.93-9.412-1%204.705c-.07.34.029.533.304.533.194%200%20.487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703%200-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381%202.29-.287zM8%205.5a1%201%200%201%201%200-2%201%201%200%200%201%200%202z%22/%3E%3C/svg%3E");}.pdoc .alert.tip{color:#0a3622;background-color:#d1e7dd;border-color:#a3cfbb;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%230a3622%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M2%206a6%206%200%201%201%2010.174%204.31c-.203.196-.359.4-.453.619l-.762%201.769A.5.5%200%200%201%2010.5%2013a.5.5%200%200%201%200%201%20.5.5%200%200%201%200%201l-.224.447a1%201%200%200%201-.894.553H6.618a1%201%200%200%201-.894-.553L5.5%2015a.5.5%200%200%201%200-1%20.5.5%200%200%201%200-1%20.5.5%200%200%201-.46-.302l-.761-1.77a2%202%200%200%200-.453-.618A5.98%205.98%200%200%201%202%206m6-5a5%205%200%200%200-3.479%208.592c.263.254.514.564.676.941L5.83%2012h4.342l.632-1.467c.162-.377.413-.687.676-.941A5%205%200%200%200%208%201%22/%3E%3C/svg%3E");}.pdoc .alert.important{color:#055160;background-color:#cff4fc;border-color:#9eeaf9;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23055160%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M2%200a2%202%200%200%200-2%202v12a2%202%200%200%200%202%202h12a2%202%200%200%200%202-2V2a2%202%200%200%200-2-2zm6%204c.535%200%20.954.462.9.995l-.35%203.507a.552.552%200%200%201-1.1%200L7.1%204.995A.905.905%200%200%201%208%204m.002%206a1%201%200%201%201%200%202%201%201%200%200%201%200-2%22/%3E%3C/svg%3E");}.pdoc .alert.warning{color:#664d03;background-color:#fff3cd;border-color:#ffecb5;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23664d03%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M8.982%201.566a1.13%201.13%200%200%200-1.96%200L.165%2013.233c-.457.778.091%201.767.98%201.767h13.713c.889%200%201.438-.99.98-1.767L8.982%201.566zM8%205c.535%200%20.954.462.9.995l-.35%203.507a.552.552%200%200%201-1.1%200L7.1%205.995A.905.905%200%200%201%208%205zm.002%206a1%201%200%201%201%200%202%201%201%200%200%201%200-2z%22/%3E%3C/svg%3E");}.pdoc .alert.caution{color:#842029;background-color:#f8d7da;border-color:#f5c2c7;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23842029%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M11.46.146A.5.5%200%200%200%2011.107%200H4.893a.5.5%200%200%200-.353.146L.146%204.54A.5.5%200%200%200%200%204.893v6.214a.5.5%200%200%200%20.146.353l4.394%204.394a.5.5%200%200%200%20.353.146h6.214a.5.5%200%200%200%20.353-.146l4.394-4.394a.5.5%200%200%200%20.146-.353V4.893a.5.5%200%200%200-.146-.353zM8%204c.535%200%20.954.462.9.995l-.35%203.507a.552.552%200%200%201-1.1%200L7.1%204.995A.905.905%200%200%201%208%204m.002%206a1%201%200%201%201%200%202%201%201%200%200%201%200-2%22/%3E%3C/svg%3E");}.pdoc .alert.danger{color:#842029;background-color:#f8d7da;border-color:#f5c2c7;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23842029%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M5.52.359A.5.5%200%200%201%206%200h4a.5.5%200%200%201%20.474.658L8.694%206H12.5a.5.5%200%200%201%20.395.807l-7%209a.5.5%200%200%201-.873-.454L6.823%209.5H3.5a.5.5%200%200%201-.48-.641l2.5-8.5z%22/%3E%3C/svg%3E");}.pdoc .visually-hidden{position:absolute !important;width:1px !important;height:1px !important;padding:0 !important;margin:-1px !important;overflow:hidden !important;clip:rect(0, 0, 0, 0) !important;white-space:nowrap !important;border:0 !important;}.pdoc h1, .pdoc h2, .pdoc h3{font-weight:300;margin:.3em 0;padding:.2em 0;}.pdoc > section:not(.module-info) h1{font-size:1.5rem;font-weight:500;}.pdoc > section:not(.module-info) h2{font-size:1.4rem;font-weight:500;}.pdoc > section:not(.module-info) h3{font-size:1.3rem;font-weight:500;}.pdoc > section:not(.module-info) h4{font-size:1.2rem;}.pdoc > section:not(.module-info) h5{font-size:1.1rem;}.pdoc a{text-decoration:none;color:var(--link);}.pdoc a:hover{color:var(--link-hover);}.pdoc blockquote{margin-left:2rem;}.pdoc pre{border-top:1px solid var(--accent2);border-bottom:1px solid var(--accent2);margin-top:0;margin-bottom:1em;padding:.5rem 0 .5rem .5rem;overflow-x:auto;background-color:var(--code);}.pdoc code{color:var(--text);padding:.2em .4em;margin:0;font-size:85%;background-color:var(--accent);border-radius:6px;}.pdoc a > code{color:inherit;}.pdoc pre > code{display:inline-block;font-size:inherit;background:none;border:none;padding:0;}.pdoc > section:not(.module-info){margin-bottom:1.5rem;}.pdoc .modulename{margin-top:0;font-weight:bold;}.pdoc .modulename a{color:var(--link);transition:100ms all;}.pdoc .git-button{float:right;border:solid var(--link) 1px;}.pdoc .git-button:hover{background-color:var(--link);color:var(--pdoc-background);}.view-source-toggle-state,.view-source-toggle-state ~ .pdoc-code{display:none;}.view-source-toggle-state:checked ~ .pdoc-code{display:block;}.view-source-button{display:inline-block;float:right;font-size:.75rem;line-height:1.5rem;color:var(--muted);padding:0 .4rem 0 1.3rem;cursor:pointer;text-indent:-2px;}.view-source-button > span{visibility:hidden;}.module-info .view-source-button{float:none;display:flex;justify-content:flex-end;margin:-1.2rem .4rem -.2rem 0;}.view-source-button::before{position:absolute;content:"View Source";display:list-item;list-style-type:disclosure-closed;}.view-source-toggle-state:checked ~ .attr .view-source-button::before,.view-source-toggle-state:checked ~ .view-source-button::before{list-style-type:disclosure-open;}.pdoc .docstring{margin-bottom:1.5rem;}.pdoc section:not(.module-info) .docstring{margin-left:clamp(0rem, 5vw - 2rem, 1rem);}.pdoc .docstring .pdoc-code{margin-left:1em;margin-right:1em;}.pdoc h1:target,.pdoc h2:target,.pdoc h3:target,.pdoc h4:target,.pdoc h5:target,.pdoc h6:target,.pdoc .pdoc-code > pre > span:target{background-color:var(--active);box-shadow:-1rem 0 0 0 var(--active);}.pdoc .pdoc-code > pre > span:target{display:block;}.pdoc div:target > .attr,.pdoc section:target > .attr,.pdoc dd:target > a{background-color:var(--active);}.pdoc *{scroll-margin:2rem;}.pdoc .pdoc-code .linenos{user-select:none;}.pdoc .attr:hover{filter:contrast(0.95);}.pdoc section, .pdoc .classattr{position:relative;}.pdoc .headerlink{--width:clamp(1rem, 3vw, 2rem);position:absolute;top:0;left:calc(0rem - var(--width));transition:all 100ms ease-in-out;opacity:0;}.pdoc .headerlink::before{content:"#";display:block;text-align:center;width:var(--width);height:2.3rem;line-height:2.3rem;font-size:1.5rem;}.pdoc .attr:hover ~ .headerlink,.pdoc *:target > .headerlink,.pdoc .headerlink:hover{opacity:1;}.pdoc .attr{display:block;margin:.5rem 0 .5rem;padding:.4rem .4rem .4rem 1rem;background-color:var(--accent);overflow-x:auto;}.pdoc .classattr{margin-left:2rem;}.pdoc .decorator-deprecated{color:#842029;}.pdoc .decorator-deprecated ~ span{filter:grayscale(1) opacity(0.8);}.pdoc .name{color:var(--name);font-weight:bold;}.pdoc .def{color:var(--def);font-weight:bold;}.pdoc .signature{background-color:transparent;}.pdoc .param, .pdoc .return-annotation{white-space:pre;}.pdoc .signature.multiline .param{display:block;}.pdoc .signature.condensed .param{display:inline-block;}.pdoc .annotation{color:var(--annotation);}.pdoc .view-value-toggle-state,.pdoc .view-value-toggle-state ~ .default_value{display:none;}.pdoc .view-value-toggle-state:checked ~ .default_value{display:inherit;}.pdoc .view-value-button{font-size:.5rem;vertical-align:middle;border-style:dashed;margin-top:-0.1rem;}.pdoc .view-value-button:hover{background:white;}.pdoc .view-value-button::before{content:"show";text-align:center;width:2.2em;display:inline-block;}.pdoc .view-value-toggle-state:checked ~ .view-value-button::before{content:"hide";}.pdoc .inherited{margin-left:2rem;}.pdoc .inherited dt{font-weight:700;}.pdoc .inherited dt, .pdoc .inherited dd{display:inline;margin-left:0;margin-bottom:.5rem;}.pdoc .inherited dd:not(:last-child):after{content:", ";}.pdoc .inherited .class:before{content:"class ";}.pdoc .inherited .function a:after{content:"()";}.pdoc .search-result .docstring{overflow:auto;max-height:25vh;}.pdoc .search-result.focused > .attr{background-color:var(--active);}.pdoc .attribution{margin-top:2rem;display:block;opacity:0.5;transition:all 200ms;filter:grayscale(100%);}.pdoc .attribution:hover{opacity:1;filter:grayscale(0%);}.pdoc .attribution img{margin-left:5px;height:27px;vertical-align:bottom;width:50px;transition:all 200ms;}.pdoc table{display:block;width:max-content;max-width:100%;overflow:auto;margin-bottom:1rem;}.pdoc table th{font-weight:600;}.pdoc table th, .pdoc table td{padding:6px 13px;border:1px solid var(--accent2);}

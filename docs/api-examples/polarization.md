@@ -20,7 +20,7 @@
     from logging import basicConfig, INFO
     import numpy as np
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter
+    from genice3.plugin import Exporter
     
     basicConfig(level=INFO)
     
@@ -30,7 +30,7 @@
         replication_matrix=np.diag([2, 2, 2]),
         target_pol=np.array([4.0, 0.0, 0.0]),
     )
-    genice.unitcell = UnitCell("1h")
+    genice.set_unitcell("1h")
     
     Exporter("_pol").dump(genice)
     ```

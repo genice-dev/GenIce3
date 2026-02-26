@@ -21,14 +21,14 @@
 
     ```python
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter
+    from genice3.plugin import Exporter
     from logging import basicConfig, INFO
     
     # corresponding command:
     # genice3 'CIF[file=cif/MEP.cif, osite=T]' --exporter gromacs
     basicConfig(level=INFO)
     genice = GenIce3()
-    genice.unitcell = UnitCell("CIF", file="cif/MEP.cif", osite="T")
+    genice.set_unitcell("CIF", file="cif/MEP.cif", osite="T")
     Exporter("gromacs").dump(genice)
     ```
 
@@ -63,14 +63,14 @@
 
     ```python
     from genice3.genice import GenIce3
-    from genice3.plugin import UnitCell, Exporter
+    from genice3.plugin import Exporter
     from logging import basicConfig, INFO
     
     # corresponding command:
     # genice3 A15 -e cif
     basicConfig(level=INFO)
     genice = GenIce3()
-    genice.unitcell = UnitCell("A15")
+    genice.set_unitcell("A15")
     Exporter("cif").dump(genice)
     ```
 
