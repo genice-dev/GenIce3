@@ -1,7 +1,7 @@
 from logging import basicConfig, INFO
 import numpy as np
 from genice3.genice import GenIce3
-from genice3.plugin import UnitCell, Exporter
+from genice3.plugin import Exporter
 
 # corresponding command:
 # genice3 A15 --cation 0=N :group 1=methyl 6=methyl 3=methyl 4=methyl \
@@ -15,7 +15,7 @@ genice = GenIce3(
 )
 
 # 単位胞内の anion/cation と cation_groups（カチオンの腕の group 指定）
-genice.unitcell = UnitCell(
+genice.set_unitcell(
     "A15",
     anion={2: "Cl"},
     cation={0: "N"},

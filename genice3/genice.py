@@ -3,7 +3,7 @@
 from genice3 import ConfigurationError
 from genice3.group import Group
 from genice3.molecule import Molecule
-from genice3.plugin import safe_import
+from genice3.plugin import UnitCell as UnitCellPlugin, safe_import
 from genice3.util import (
     replicate_positions,
     grandcell_wrap,
@@ -1369,6 +1369,22 @@ class GenIce3:
         # キャッシュをクリア（unitcellに依存するすべてのタスクを再計算させる）
         self.engine.cache.clear()
 
+    def set_unitcell(self, unitcell_or_name, **kwargs):
+        """基本単位胞を設定する（リアクティブプロパティ用のラッパー）。
+
+        代入（genice.unitcell = ...）の代わりにこのメソッドを使うと、
+        単位胞がリアクティブな設定であることが明確になります。
+
+        Args:
+            unitcell_or_name: 基本単位胞オブジェクト、または単位胞名（文字列）。
+                文字列の場合は UnitCell(name, **kwargs) として内部で生成します。
+            **kwargs: unitcell_or_name が文字列の場合に UnitCell(...) に渡すオプション。
+        """
+        if isinstance(unitcell_or_name, UnitCell):
+            self.unitcell = unitcell_or_name
+        else:
+            self.unitcell = UnitCellPlugin(unitcell_or_name, **kwargs)
+
     @property
     def replication_matrix(self):
         """単位胞を複製するための3x3整数行列。
@@ -1398,6 +1414,17 @@ class GenIce3:
         self.logger.debug(f"    {k=}")
         # キャッシュをクリア（replication_matrixに依存するすべてのタスクを再計算させる）
         self.engine.cache.clear()
+
+    def set_replication_matrix(self, replication_matrix):
+        """単位胞複製行列を設定する（リアクティブプロパティ用のラッパー）。
+
+        代入（genice.replication_matrix = ...）の代わりにこのメソッドを使うと、
+        複製行列がリアクティブな設定であることが明確になります。
+
+        Args:
+            replication_matrix: 3x3整数行列（リストのリストまたは ndarray）
+        """
+        self.replication_matrix = replication_matrix
 
     def _get_inputs(self) -> Dict[str, Any]:
         """engine.resolve()に渡すinputs辞書を取得"""

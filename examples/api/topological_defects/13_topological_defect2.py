@@ -9,7 +9,7 @@ from logging import basicConfig, INFO
 import numpy as np
 
 from genice3.genice import GenIce3
-from genice3.plugin import UnitCell, Exporter
+from genice3.plugin import Exporter
 from genice3.util import find_nearest_edges_pbc
 
 # -----------------------------------------------------------------------------
@@ -21,7 +21,7 @@ basicConfig(level=INFO)
 genice = GenIce3(
     replication_matrix=np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]]),
 )
-genice.unitcell = UnitCell("A15")
+genice.set_unitcell("A15")
 
 # 欠陥を置きたい位置を分数座標で指定（各 2 点ずつ）セル座標に変換して。
 celli = np.linalg.inv(genice.cell)

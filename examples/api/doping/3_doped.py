@@ -1,7 +1,7 @@
 from logging import basicConfig, DEBUG, INFO
 import numpy as np
 from genice3.genice import GenIce3
-from genice3.plugin import UnitCell, Exporter, Molecule
+from genice3.plugin import Exporter, Molecule
 
 # corresponding command:
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
@@ -38,7 +38,7 @@ genice = GenIce3(
 # cation: 単位胞内の格子サイトをカチオンで置換（サイトインデックス: イオン名）。CLI は -c / --cation
 # density: 密度（g/cm³）
 # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
-genice.unitcell = UnitCell(
+genice.set_unitcell(
     "A15",
     shift=(0.1, 0.1, 0.1),
     anion={15: "Cl"},
