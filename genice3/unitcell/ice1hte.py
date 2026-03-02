@@ -5,7 +5,6 @@ Usage: genice3 ice1hte
 from logging import getLogger
 import numpy as np
 from genice3.util import (
-    cellvectors,
     atomdic,
     symmetry_operators,
     waters_and_pairs,
@@ -14,6 +13,7 @@ from genice3.util import (
 )
 import genice3.unitcell
 import networkx as nx
+from cif2ice import cellvectors
 
 desc = {
     "ref": {"C0": "Teeratchanan 2015"},
@@ -69,13 +69,13 @@ class UnitCell(genice3.unitcell.UnitCell):
         atomd = atomdic(atoms)
         atoms = fullatoms(atomd, symmetry_operators(symops))
 
-        cagetype = []
-        cagepos = []
-        for name, pos in pick_atoms(atoms, ("Ne1",), repeat=(2, 1, 1)):
-            cagetype.append(name)
-            cagepos.append(pos)
+        # cagetype = []
+        # cagepos = []
+        # for name, pos in pick_atoms(atoms, ("Ne1",), repeat=(2, 1, 1)):
+        #     cagetype.append(name)
+        #     cagepos.append(pos)
 
-        waters, pairs = waters_and_pairs(
+        waters, _ = waters_and_pairs(
             cell, atomd, symmetry_operators(symops), rep=(2, 1, 1)
         )
 

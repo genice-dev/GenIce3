@@ -102,10 +102,10 @@ def _make_cage_expression(ring_ids: list, ringlist: list) -> str:
     return index
 
 
-def assess_cages(
-    graph: nx.Graph, node_frac: np.ndarray
-) -> CageSpecs:
+def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
     """水素結合グラフとノードの分数座標からケージを検出・分類し、CageSpecs を返す。
+
+    ここでいうケージとは、水素結合の環で囲まれた擬多面体(quasipolyhedron)である。[Matsumoto 2007]
 
     Args:
         graph: 水素結合ネットワーク（無向グラフ）。
@@ -122,7 +122,6 @@ def assess_cages(
         [int(x) for x in ring]
         for ring in cycles_iter(nx.Graph(graph), 8, pos=node_frac)
     ]
-
     MaxCageSize = 22
     cage_fracs = []
     # data storage of the found cages
@@ -135,7 +134,7 @@ def assess_cages(
     cage_graphs = [cage_to_graph(cage, ringlist) for cage in cages]
     cage_fracs = [center_of_graph(g, node_frac) for g in cage_graphs]
     if len(cage_fracs) == 0:
-        logger.info("    No cages detected.")
+        logger.info("  No cages detected.")
 
     cagespecs = []
     for cage, g in zip(cages, cage_graphs):

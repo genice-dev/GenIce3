@@ -1,4 +1,6 @@
 """
+NOTE: Ice R is a partial plastic ice not obeying the ice rules. Some exporter plugins may not support it.
+
 Data Source
 
 [Methane A] Maynard-Casely, H. E. et al. The distorted close-packed crystal structure of methane A. J. Chem. Phys. 133, 064504 (2010).
@@ -7,7 +9,7 @@ Data Source
 
 desc = {
     "ref": {"Methane A": "Maynard-Casely 2010", "R": "Mochizuki 2014"},
-    "brief": "Hypothetical ice R.",
+    "brief": "Hypothetical ice R. (Partial plastic ice)",
     "test": ({"options": "--depol=optimal"},),
 }
 

@@ -1,10 +1,13 @@
 """
-Command line: genice3 4 -f reshape[1,1,1,1,-1,0,1,1,-2]
-Reshaping the unit cell.
-  i:[1 1 1]
-  j:[ 1 -1  0]
-  k:[ 1  1 -2]
+2026-03-02: We no longer serve 4R as an official unitcell plugin.
+Prepare the plugin by yourself with the following command:
 
+genice3 4 --replication_matrix 1 1 1 1 -1 0 1 1 -2 -e python > 4R.py
+
+The matrix to reshape the rhombic cell into an orthogonal unit cell is:
+[1 1 1] (x+y+z)
+[ 1 -1  0] (x-y)
+[ 1  1 -2] (x+y-2z)
 """
 
 desc = {

@@ -430,7 +430,7 @@ def graph(
         replica_vector_index=replica_vector_labels,
         reshape=replication_matrix,
     )
-    getLogger(__name__).info("graph: %s", _graph_degree_stats(g))
+    getLogger(__name__).info("  graph: %s", _graph_degree_stats(g))
     return g
 
 
@@ -798,6 +798,8 @@ def cages(
 
     基本単位胞内で定義されたゲスト分子を配置するためのケージ（空隙）の
     位置とタイプを、拡大単位胞全体に複製する。
+
+    ここでいうケージとは、水素結合の環で囲まれた擬多面体(quasipolyhedron)である。[Matsumoto 2007]
 
     Args:
         unitcell: 基本単位胞オブジェクト。
@@ -1362,10 +1364,15 @@ class GenIce3:
         self.logger.debug(f"  {unitcell.graph=}")
         self.logger.debug(f"  {unitcell.fixed=}")
 
+        # info the cell dimensions
         a, b, c, A, B, C = cellshape(self.replication_matrix @ self.unitcell.cell)
-        self.logger.debug("  Reshaped cell:")
-        self.logger.debug(f"    {a=:.4f}, {b=:.4f}, {c=:.4f}")
-        self.logger.debug(f"    {A=:.3f}, {B=:.3f}, {C=:.3f}")
+        self.logger.info(f"Expanded cell dimensions:")
+        self.logger.info(f"  a= {a:.4f} nm")
+        self.logger.info(f"  b= {b:.4f} nm")
+        self.logger.info(f"  c= {c:.4f} nm")
+        self.logger.info(f"  A= {A:.3f} deg")
+        self.logger.info(f"  B= {B:.3f} deg")
+        self.logger.info(f"  C= {C:.3f} deg")
         # キャッシュをクリア（unitcellに依存するすべてのタスクを再計算させる）
         self.engine.cache.clear()
 

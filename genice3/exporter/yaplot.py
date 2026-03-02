@@ -5,6 +5,7 @@ import sys
 from collections import defaultdict
 from logging import getLogger
 from io import TextIOWrapper
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import yaplotlib as yp
@@ -12,6 +13,31 @@ import yaplotlib as yp
 from genice3.genice import GenIce3
 from genice3.exporter import parse_water_model_option
 from genice3.util import serialize
+
+
+def _scalar(v: Any) -> Any:
+    """ネストしたリスト1要素ならスカラーに。"""
+    while isinstance(v, (list, tuple)) and len(v) == 1:
+        v = v[0]
+    return v
+
+
+def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    yaplot 固有: H（水素の表示半径係数）, water_model。
+    残りは unprocessed として返す。
+    """
+    processed: Dict[str, Any] = {}
+    unprocessed = options.copy()
+    if "H" in unprocessed:
+        raw = _scalar(unprocessed.pop("H"))
+        processed["H"] = float(raw)
+    if "water_model" in unprocessed:
+        processed["water_model"] = _scalar(unprocessed.pop("water_model"))
+    if "water" in unprocessed and "water_model" not in processed:
+        processed["water_model"] = _scalar(unprocessed.pop("water"))
+    return processed, unprocessed
+
 
 desc = {
     "ref": {"Codes": "https://github.com/vitroid/Yaplot"},
@@ -70,106 +96,109 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
             O2 = O1 + d
             s += yp.Line(O1 @ genice.cell, O2 @ genice.cell)
 
-    # waterとwater_modelの両方をサポート（後方互換性のため）
-    water_model_name = options.get("water_model") or options.get("water", "4site")
-    water_model = parse_water_model_option(water_model_name)
+    else:
+        # waterとwater_modelの両方をサポート（後方互換性のため）
+        water_model_name = options.get("water_model") or options.get("water", "4site")
+        water_model = parse_water_model_option(water_model_name)
 
-    waters = genice.water_molecules(water_model=water_model)
-    guests = genice.guest_molecules()
-    ions = genice.substitutional_ions()
+        waters = genice.water_molecules(water_model=water_model)
+        guests = genice.guest_molecules()
+        ions = genice.substitutional_ions()
 
-    atoms = serialize(list(waters.values()))
+        atoms = serialize(list(waters.values()))
 
-    logger.info("  Total number of atoms: {0}".format(len(atoms)))
+        logger.info("  Total number of atoms: {0}".format(len(atoms)))
 
-    # prepare the reverse dict
-    water_sites = defaultdict(dict)
-    for water_index, water in waters.items():
-        for atom_name, position in zip(water.labels, water.sites):
-            if "O" in atom_name:
-                water_sites[water_index]["O"] = position
-            elif "H" in atom_name:
-                if "H0" not in water_sites[water_index]:
-                    water_sites[water_index]["H0"] = position
-                else:
-                    water_sites[water_index]["H1"] = position
-    s += yp.Color(3)
-    for water_index, water in water_sites.items():
-        O = water["O"]
-        H0 = water["H0"]
-        H1 = water["H1"]
-        s += yp.Layer(4)
+        # prepare the reverse dict
+        water_sites = defaultdict(dict)
+        for water_index, water in waters.items():
+            for atom_name, position in zip(water.labels, water.sites):
+                if "O" in atom_name:
+                    water_sites[water_index]["O"] = position
+                elif "H" in atom_name:
+                    if "H0" not in water_sites[water_index]:
+                        water_sites[water_index]["H0"] = position
+                    else:
+                        water_sites[water_index]["H1"] = position
         s += yp.Color(3)
-        s += yp.Size(size_O)
-        s += yp.Circle(O)
-
-        s += yp.Line(O, H0)
-        s += yp.Line(O, H1)
-
-        s += yp.Size(size_H)
-        s += yp.Circle(H0)
-        s += yp.Circle(H1)
-
-        s += yp.Color(2)
-        s += yp.Layer(1)
-        s += yp.Text(O, f"{water_index}")
-
-    s += yp.Layer(3)
-    s += yp.Color(4)
-    s += yp.ArrowType(1)
-    s += yp.Size(size_O)
-    for i, j in genice.digraph.edges(data=False):
-        if i in waters and j in waters:  # edge may connect to the dopant
-            O = water_sites[j]["O"]
-            H0 = water_sites[i]["H0"]
-            H1 = water_sites[i]["H1"]
-            d0 = H0 - O
-            d1 = H1 - O
-            rr0 = d0 @ d0
-            rr1 = d1 @ d1
-            if rr0 < rr1 and rr0 < 0.245**2:
-                s += yp.Arrow(H0, O)
-            if rr1 < rr0 and rr1 < 0.245**2:
-                s += yp.Arrow(H1, O)
-
-    gatoms = serialize(guests) + serialize(list(ions.values()))
-    palettes = dict()
-
-    s += yp.Layer(4)
-    s += yp.ArrowType(1)
-    H = []
-    O = ""
-    for molecule_name, atom_name, position in gatoms:
-        if atom_name in palettes:
-            pal = palettes[atom_name]
-        else:
-            pal = 4 + len(palettes)
-            palettes[atom_name] = pal
-        s += yp.Color(pal)
-        if atom_name[0] == "H":
-            s += yp.Size(size_H)
-        else:
+        for water_index, water in water_sites.items():
+            O = water["O"]
+            H0 = water["H0"]
+            H1 = water["H1"]
+            s += yp.Layer(4)
+            s += yp.Color(3)
             s += yp.Size(size_O)
-        s += yp.Circle(position)
-    for a, b in it.combinations(gatoms, 2):
-        resname, atomname, position1 = a
-        resname, atomname, position2 = b
-        d = position1 - position2
-        if d @ d < 0.16**2:
-            s += yp.Line(position1, position2)
+            s += yp.Circle(O)
 
-    cagespecs = genice.cages
+            s += yp.Line(O, H0)
+            s += yp.Line(O, H1)
 
-    s += yp.Layer(6)
-    s += yp.Size(size_O * 3)
-    for i, (cagespec, position) in enumerate(zip(cagespecs.specs, cagespecs.positions)):
-        s += yp.Color(5)
-        s += yp.Circle(position @ genice.cell)
-        s += yp.Color(2)
-        s += yp.Text(position @ genice.cell, f"{i}")
+            s += yp.Size(size_H)
+            s += yp.Circle(H0)
+            s += yp.Circle(H1)
 
-        # for atom in cagespec.graph:
-        #     s += yp.Line(position, atom)
+            s += yp.Color(2)
+            s += yp.Layer(1)
+            s += yp.Text(O, f"{water_index}")
+
+        s += yp.Layer(3)
+        s += yp.Color(4)
+        s += yp.ArrowType(1)
+        s += yp.Size(size_O)
+        for i, j in genice.digraph.edges(data=False):
+            if i in waters and j in waters:  # edge may connect to the dopant
+                O = water_sites[j]["O"]
+                H0 = water_sites[i]["H0"]
+                H1 = water_sites[i]["H1"]
+                d0 = H0 - O
+                d1 = H1 - O
+                rr0 = d0 @ d0
+                rr1 = d1 @ d1
+                if rr0 < rr1 and rr0 < 0.245**2:
+                    s += yp.Arrow(H0, O)
+                if rr1 < rr0 and rr1 < 0.245**2:
+                    s += yp.Arrow(H1, O)
+
+        gatoms = serialize(guests) + serialize(list(ions.values()))
+        palettes = dict()
+
+        s += yp.Layer(4)
+        s += yp.ArrowType(1)
+        H = []
+        O = ""
+        for molecule_name, atom_name, position in gatoms:
+            if atom_name in palettes:
+                pal = palettes[atom_name]
+            else:
+                pal = 4 + len(palettes)
+                palettes[atom_name] = pal
+            s += yp.Color(pal)
+            if atom_name[0] == "H":
+                s += yp.Size(size_H)
+            else:
+                s += yp.Size(size_O)
+            s += yp.Circle(position)
+        for a, b in it.combinations(gatoms, 2):
+            resname, atomname, position1 = a
+            resname, atomname, position2 = b
+            d = position1 - position2
+            if d @ d < 0.16**2:
+                s += yp.Line(position1, position2)
+
+        cagespecs = genice.cages
+
+        s += yp.Layer(6)
+        s += yp.Size(size_O * 3)
+        for i, (cagespec, position) in enumerate(
+            zip(cagespecs.specs, cagespecs.positions)
+        ):
+            s += yp.Color(5)
+            s += yp.Circle(position @ genice.cell)
+            s += yp.Color(2)
+            s += yp.Text(position @ genice.cell, f"{i}")
+
+            # for atom in cagespec.graph:
+            #     s += yp.Line(position, atom)
 
     s += "#" + "\n#Command line: " + " ".join(sys.argv) + "\n"
     s += yp.NewPage()

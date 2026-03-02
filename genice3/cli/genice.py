@@ -1,4 +1,4 @@
-from logging import getLogger, basicConfig, DEBUG, INFO
+from logging import getLogger, DEBUG, INFO, StreamHandler, Formatter
 import sys
 from importlib.metadata import version, PackageNotFoundError
 
@@ -48,6 +48,31 @@ def _wrap_desc(text: str, width: int) -> list[str]:
     if current:
         lines.append(" ".join(current))
     return lines
+
+
+def _setup_logging(debug: bool) -> None:
+    """ルートロガーの設定を統一する。
+
+    debug=False: ユーザー向け。シンプルな `LEVEL: message` 表示（ロガー名は出さない）。
+    debug=True: 開発者向け。`LEVEL logger:lineno: message` 形式で詳細情報を含める。
+    """
+    root = getLogger()
+
+    # 既存のハンドラをすべて外す（basicConfig 等の影響を消す）
+    for handler in root.handlers[:]:
+        root.removeHandler(handler)
+
+    handler = StreamHandler(sys.stderr)
+    if debug:
+        root.setLevel(DEBUG)
+        handler.setLevel(DEBUG)
+        fmt = "%(levelname)s %(name)s:%(lineno)d: %(message)s"
+    else:
+        root.setLevel(INFO)
+        handler.setLevel(INFO)
+        fmt = "%(levelname)s: %(message)s"
+    handler.setFormatter(Formatter(fmt))
+    root.addHandler(handler)
 
 
 def _opt_line(option: str, description: str) -> list[str]:
@@ -128,8 +153,8 @@ def main() -> None:
         print(f"genice3 {get_version()}")
         sys.exit(0)
 
-    # ロギングを初期化（デフォルトはINFOレベル）
-    basicConfig(level=INFO)
+    # まずは通常ユーザー向けのシンプルなログ設定
+    _setup_logging(debug=False)
     logger = getLogger()
 
     try:
@@ -161,10 +186,11 @@ def main() -> None:
         sys.exit(1)
 
     base_options = result["base_options"]
+
+    # -D / --debug が有効なら、以降は詳細ログフォーマットに切り替え
     if base_options.get("debug"):
-        logger.setLevel(DEBUG)
-        for handler in logger.handlers:
-            handler.setLevel(DEBUG)
+        _setup_logging(debug=True)
+        logger = getLogger()
 
     try:
         validate_parsed_options(base_options)
@@ -179,6 +205,18 @@ def main() -> None:
     unitcell_processed = result["unitcell"]["processed"]
     exporter_name = result["exporter"]["name"] or "gromacs"
     exporter_processed = result["exporter"]["processed"]
+
+    if unitcell_processed:
+        logger.info("unitcell %s options: %s", unitcell_name, unitcell_processed)
+    molecule_related = {
+        k: genice_kwargs.get(k)
+        for k in ("guests", "spot_guests", "spot_anions", "spot_cations")
+        if genice_kwargs.get(k)
+    }
+    if molecule_related:
+        logger.info("molecule-related options: %s", molecule_related)
+    if exporter_processed:
+        logger.info("exporter %s options: %s", exporter_name, exporter_processed)
 
     genice = GenIce3(**genice_kwargs)
 

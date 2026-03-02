@@ -163,10 +163,11 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
     base_options = base_options_from_new_structure(merged)
 
     # unitcell に渡すオプション（新構造のまま）
+    # --H は yaplot 等の exporter 用のため unitcell には渡さない
     unitcell_options = {
         k: merged[k]
         for k in merged
-        if k not in _BASE_KEYS and k not in ("unitcell", "exporter")
+        if k not in _BASE_KEYS and k not in ("unitcell", "exporter") and k != "H"
     }
 
     # unitcell プラグインの parse_options（新構造を受け取る）
@@ -206,6 +207,9 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
 
     # exporter
     exporter_name, exporter_subopts = _get_exporter_name_and_options(merged)
+    # --H は yaplot の水素表示半径用。exporter に渡す。
+    if "H" in merged:
+        exporter_subopts = {**exporter_subopts, "H": merged["H"]}
     exporter_processed: Dict[str, Any] = {}
     exporter_unprocessed: Dict[str, Any] = {}
     try:

@@ -1,4 +1,5 @@
 from logging import getLogger
+from typing import Any, Dict, Tuple
 
 import genice3.unitcell
 import numpy as np
@@ -6,10 +7,43 @@ from genice3.util import operations, waters_and_pairs, density_in_g_cm3
 from cif2ice import cellvectors
 import networkx as nx
 
+
+def _scalar(v: Any) -> Any:
+    """ネストしたリスト1要素ならスカラーに（option_parser の [["3"]] 等に対応）。"""
+    while isinstance(v, (list, tuple)) and len(v) == 1:
+        v = v[0]
+    return v
+
+
+def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    11i 固有: type（Table 1 の構造番号 1–16）。
+    残りは基底 UnitCell.parse_options に渡す。
+    """
+    processed: Dict[str, Any] = {}
+    unprocessed = options.copy()
+    if "type" in unprocessed:
+        raw = _scalar(unprocessed.pop("type"))
+        processed["type"] = int(raw)
+    base_processed, base_unprocessed = genice3.unitcell.UnitCell.parse_options(
+        unprocessed
+    )
+    processed.update(base_processed)
+    return processed, base_unprocessed
+
+
 desc = {
     "ref": {"11i": "Hirsch 2004"},
     "usage": "genice3 11i[num]\n\n'num' specifies the structure in Table 1 of the Ref. [Hirsch 2004]",
     "brief": "Sixteen candidates for Ice XI.",
+    "options": [
+        {
+            "name": "type",
+            "help": "Structure number 1–16 (Table 1 of Ref. [Hirsch 2004]).",
+            "required": False,
+            "example": 1,
+        },
+    ],
     "test": (
         {"args": "1", "options": "--depol=none"},
         {"args": "2", "options": "--depol=none"},
@@ -249,7 +283,7 @@ class UnitCell(genice3.unitcell.UnitCell):
             if len(cols) == 0:
                 if spaceg is not None:
                     names = ["OHH"[x % 3] + f"{x}" for x in range(len(atoms))]
-                    atomd = {name: pos for name, pos in zip(names, atoms)}
+                    atomd = dict(zip(names, atoms))
                     cur = {
                         "spaceg": spaceg,
                         "atomd": atomd,
@@ -268,16 +302,13 @@ class UnitCell(genice3.unitcell.UnitCell):
 
         # The default is ferroelectric #1
         typ = 1
-
-        # parse options
-        if len(kwargs) == 1:
-            if "type" in kwargs:
-                typ = int(kwargs["type"])
-            else:
-                for k, v in kwargs.items():
-                    if v is True:
-                        typ = int(k)
-                        break
+        if "type" in kwargs:
+            typ = int(kwargs["type"])
+        elif len(kwargs) == 1:
+            for k, v in kwargs.items():
+                if v is True:
+                    typ = int(k)
+                    break
 
         data = elevens[typ]
         spaceg = data["spaceg"]

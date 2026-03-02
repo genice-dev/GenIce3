@@ -4,6 +4,7 @@
 ゴールから逆算して必要なタスクだけを実行する。
 将来的に別パッケージとして切り出す可能性あり。
 """
+
 import inspect
 from logging import getLogger
 import time
@@ -71,7 +72,7 @@ class DependencyEngine:
         now = time.time()
         result = func(**dependencies)
         delta = time.time() - now
-        self.logger.info(f"{delta:.4f} sec for {target}")
+        self.logger.info(f"  {delta:.4f} sec for {target}")
         self.cache[target] = result
         return result
 

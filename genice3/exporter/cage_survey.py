@@ -33,10 +33,10 @@ def _brief_report(genice: GenIce3) -> None:
     for idx, spec in enumerate(cages.specs):
         by_type[spec.cage_type].append(idx)
     cage_types = sorted(by_type.keys())
-    logger.info("Cage types: %s", cage_types)
+    logger.info("  Cage types: %s", cage_types)
     for ct in cage_types:
         indices = by_type[ct]
-        logger.info("Cage type %s: %s", ct, set(indices))
+        logger.info("  Cage type %s: %s", ct, set(indices))
 
 
 def dumps(genice: GenIce3, **options) -> str:

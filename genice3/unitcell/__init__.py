@@ -7,8 +7,11 @@ from genice3.util import shortest_distance, density_in_g_cm3
 from genice3.cage import assess_cages
 from typing import Dict, Any, Tuple, Union
 from genice3.molecule.one import Molecule
+from cif2ice import cellshape
+
 # unitcell 共通オプション: shift, density, anion, cation, cation_groups
 # option_parser の新構造（リスト of スカラー or {arg: subopts}）を __init__ 用に変換する。
+
 
 def _parse_cation_groups(raw: Dict[str, Union[str, dict]]) -> Dict[int, Dict[int, str]]:
     """
@@ -44,7 +47,7 @@ def _option_parser_list_to_ion_dicts(
     lst = items if isinstance(items, (list, tuple)) else [items]
     for item in lst:
         if isinstance(item, dict):
-            (arg, subopts), = item.items()
+            ((arg, subopts),) = item.items()
             k, v = str(arg).split("=", 1)
             ions[k.strip()] = v.strip()
             if subopts and "group" in subopts:
@@ -228,6 +231,16 @@ class UnitCell:
             self.logger.info(f"{scale=}")
             self.cell /= scale
 
+        # info the cell dimensions
+        a, b, c, A, B, C = cellshape(self.cell)
+        self.logger.info(f"Unit cell dimensions (adjusted for density):")
+        self.logger.info(f"  a= {a:.4f} nm")
+        self.logger.info(f"  b= {b:.4f} nm")
+        self.logger.info(f"  c= {c:.4f} nm")
+        self.logger.info(f"  A= {A:.3f} deg")
+        self.logger.info(f"  B= {B:.3f} deg")
+        self.logger.info(f"  C= {C:.3f} deg")
+
         self.fixed = fixed
         if not _is_subgraph(self.graph, fixed):
             raise ConfigurationError(
@@ -253,7 +266,9 @@ class UnitCell:
             )
         self.anions = anion
         self.cations = cation
-        self.cation_groups = cation_groups  # サイト -> {ケージID -> group名}（単位胞内カチオン用）
+        self.cation_groups = (
+            cation_groups  # サイト -> {ケージID -> group名}（単位胞内カチオン用）
+        )
         # ionは水素結合の向きを固定する。
         for label in anion:
             for nei in self.graph[label]:
