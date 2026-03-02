@@ -8,6 +8,7 @@ a GenIce3 unitcell with rep=1x1x1 to reproduce the same structure.
 import sys
 from io import TextIOWrapper
 from typing import Any, Dict
+import types
 
 import numpy as np
 import networkx as nx
@@ -136,7 +137,43 @@ def dumps(genice: GenIce3, name: str = "exported", **kwargs: Any) -> str:
     return "\n".join(lines)
 
 
+def supercell_as_unitcell(
+    genice: GenIce3, name: str = "exported", **kwargs: Any
+) -> Any:
+    """
+    現在の拡大胞をそのまま単位胞とする UnitCell インスタンスを生成して返す。
+
+    ファイルには書き出さず、python exporter が生成するソースコードを
+    メモリ上のモジュールとして exec し、その中の UnitCell クラスを
+    使ってインスタンスを返す。
+
+    例::
+
+        from genice3.genice import GenIce3
+        from genice3.plugin import safe_import
+
+        unitcell = safe_import("unitcell", "A15").UnitCell()
+        genice = GenIce3(unitcell=unitcell)
+        genice.set_replication_matrix([[1, 1, 0], [-1, 1, 0], [0, 0, 1]])
+        reshaped = supercell_as_unitcell(genice, name="A15e")
+    """
+    # 既存の dumps をそのまま利用してソースコードを得る
+    src = dumps(genice, name=name, **kwargs)
+
+    # メモリ上のモジュールを作り、その中で exec する
+    module_name = f"_genice3_exported_{name}"
+    mod = types.ModuleType(module_name)
+    exec(src, mod.__dict__)
+
+    if not hasattr(mod, "UnitCell"):
+        raise RuntimeError("Generated plugin does not define UnitCell.")
+
+    # 生成された UnitCell をインスタンスとして返す（GenIce3(unitcell=...) で利用可能）
+    return mod.UnitCell()
+
+
 def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options: Any) -> None:
     """Write the unitcell plugin source to file."""
     name = options.get("name", "exported")
     file.write(dumps(genice, name=name, **options))
+
