@@ -34,7 +34,7 @@
 
 <span id="fan-2010"></span>
 
-- **[Fan 2010]**: Xiaofeng Fan, Dan Bing, Jingyun Zhang, Zexiang Shen, Jer-Lai Kuo,  Computational Materials Science 49 (2010) S170–S175.
+- **[Fan 2010](https://doi.org/10.1016/j.commatsci.2010.04.004)**: Xiaofeng Fan, Dan Bing, Jingyun Zhang, Zexiang Shen, Jer-Lai Kuo,  Computational Materials Science 49 (2010) S170–S175.
 
 <span id="fennell-2005"></span>
 
@@ -143,6 +143,10 @@
 <span id="matsui-2019"></span>
 
 - **[Matsui 2019](https://doi.org/10.1063/1.5083021)**: MATSUI, Takahiro, YAGASAKI, Takuma, MATSUMOTO, Masakazu and TANAKA, Hideki, 2019, Phase diagram of ice polymorphs under negative pressure considering the limits of mechanical stability. The Journal of Chemical Physics [online]. 28 January 2019. Vol. 150, no. 4, p. 041102. DOI 10.1063/1.5083021. Available from: http://dx.doi.org/10.1063/1.5083021
+
+<span id="matsumoto-2007"></span>
+
+- **[Matsumoto 2007](https://doi.org/10.1063/1.2772627)**: MATSUMOTO, M., BABA, A. and OHMINE, I., 2007. Topological building blocks of hydrogen bond network in water. The Journal of Chemical Physics. Online. 4 October 2007. Vol. 127, no. 13. DOI 10.1063/1.2772627.
 
 <span id="matsumoto-2019"></span>
 

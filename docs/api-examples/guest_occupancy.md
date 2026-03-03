@@ -110,7 +110,7 @@
 === "8_cage_survey.py"
 
     ```python
-    """DOH 構造で cage_survey を使う例（Python API）"""
+    """Example of using ``cage_survey`` for the DOH structure (Python API)."""
     from genice3.genice import GenIce3
     from genice3.plugin import Exporter
     from logging import basicConfig, INFO

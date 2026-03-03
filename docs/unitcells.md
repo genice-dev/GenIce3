@@ -10,6 +10,7 @@ List of unit cell names (symbols) specified as the first argument. Structures wi
 | 11, XI, ice11 | A candidate for an antiferroelectric Ice XI #19. | [[Jackson 1997](references.md#jackson-1997), [Fan 2010](references.md#fan-2010)] |
 | 115_2_114, 12_1_11, 144_2_7301, 151_2_4949650, 153_2_155471, 176_2_5256, 207_1_4435, 2_2_623457, ACO, CS4, DDR, IWV, LTA, MAR, NON, PCOD8007225, PCOD8036144, PCOD8204698, PCOD8301974, PCOD8321499, PCOD8324623, SGT, SOD, engel01, engel03, engel04, engel17, engel20, engel23, engel24, engel26, engel29, engel30, engel31, engel34, sVII | Hypothetical zeolitic ice | [[Jeffrey 1984](references.md#jeffrey-1984), [Kosyakov 1999](references.md#kosyakov-1999), [Engel 2018](references.md#engel-2018), [IZA Database](references.md#iza-database)] |
 | 11alt | A layered ferroelectric Ice XI. |  |
+| 11i | Sixteen candidates for Ice XI. | [[Hirsch 2004](references.md#hirsch-2004)] |
 | 12, XII, ice12 | Metastable high-pressure ice XII. | [[Lobban 1998](references.md#lobban-1998), [Koza 2000](references.md#koza-2000)] |
 | 13, XIII, ice13 | Ice XIII, a hydrogen-ordered counterpart of ice V. | [[Salzmann 2006](references.md#salzmann-2006)] |
 | 14, ice14 | Ice XIV, a partially hydrogen-ordered counterpart of ice XII. Note that it does not reproduce the occupancies (probability of occupation) of the possible hydrogen sites. | [[Salzmann 2006](references.md#salzmann-2006)] |
@@ -50,10 +51,13 @@ List of unit cell names (symbols) specified as the first argument. Structures wi
 | aeroice | Aeroice (alias of xFAU). | [[Matsui 2017](references.md#matsui-2017)] |
 | c0te | Filled ice C0 by Teeratchanan (Hydrogen-disordered.) (Positions of guests are supplied.) | [[Teeratchanan 2015](references.md#teeratchanan-2015)] |
 | c1te | Hydrogen-ordered hydrogen hydrate C1 by Teeratchanan. (Positions of guests are supplied.) | [[Teeratchanan 2015](references.md#teeratchanan-2015)] |
+| c2te | Filled ice C2 (cubic ice) by Teeratchanan (Hydrogen disordered). (Positions of guests are supplied.) | [[Teeratchanan 2015](references.md#teeratchanan-2015)] |
 | eleven | Ice XI w/ stacking faults. |  |
 | i | Hypothetical ice "i". | [[Fennell 2005](references.md#fennell-2005)] |
+| ice1hte | Filled ice Ih by Teeratchanan (Hydrogen disordered). (Positions of guests are supplied.) | [[Teeratchanan 2015](references.md#teeratchanan-2015)] |
 | iceL | The hypothetical Ice L | [[Lei 2025](references.md#lei-2025)] |
 | iceMd | A hydrogen-disordered counterpart of ice M. | [[Mochizuki 2024](references.md#mochizuki-2024)] |
+| iceR | Hypothetical ice R. (Partial plastic ice) | [[Maynard-Casely 2010](references.md#maynard-casely-2010), [Mochizuki 2014](references.md#mochizuki-2014)] |
 | iceT | Hypothetical ice T. | [[Hirata 2017](references.md#hirata-2017)] |
 | iceT2 | Hypothetical ice T2. | [[Yagasaki 2018](references.md#yagasaki-2018)] |
 | one | Ice I w/ stacking disorder. |  |
@@ -73,6 +77,35 @@ The following unit cells require additional options (e.g. file path, IZA code).
 - **CLI:** `--option value` (e.g. `genice3 CIF --file MEP.cif`)
 - **YAML:** Under `unitcell:` set `name` and option keys (examples below).
 - Run `genice3 SYMBOL?` to show plugin usage.
+
+### 11i
+
+Sixteen candidates for Ice XI.
+
+**CLI:**
+
+```
+genice3 11i --type 1
+  --type: Structure number 1–16 (Table 1 of Ref. [Hirsch 2004]).
+```
+
+**API:**
+
+```python
+UnitCell("11i", type=1)
+```
+
+**YAML:**
+
+```yaml
+unitcell:
+  name: 11i
+  type: 1
+```
+
+| CLI option | Description |
+| ---------- | ----------- |
+| `--type` | Structure number 1–16 (Table 1 of Ref. [Hirsch 2004]). |
 
 ### CIF
 

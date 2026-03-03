@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-拡大胞を新たに単位胞とする unitcell プラグインを出力する例。
+Example that outputs a unitcell plugin whose unit cell is a reshaped supercell.
 
-対応する CLI: examples/api/10_extend_unitcell.sh
-対応する YAML: examples/api/10_extend_unitcell.yaml
+Corresponding CLI: examples/api/10_extend_unitcell.sh
+Corresponding YAML: examples/api/10_extend_unitcell.yaml
 
-生成された A15e.py は、rep=1 1 1 で同じ構造を再現する unitcell プラグインです。
+The generated ``A15e.py`` is a unitcell plugin that reproduces the same structure
+with ``rep=1 1 1``.
 """
 
 from genice3.genice import GenIce3

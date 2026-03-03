@@ -1,6 +1,6 @@
 **Ionic substitution and group (cation group) doping**.
 
-CLI: unitcell のイオンは **-a / --anion**, **-c / --cation**。スポット置換は **-A / --spot_anion**, **-C / --spot_cation**。
+CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation**. Spot substitutions use **-A / --spot_anion** and **-C / --spot_cation**.
 
 - `3_doped.py`  
   - Basic usage of anion/cation substitutional doping (unitcell + spot).

@@ -16,7 +16,10 @@ from graphstat import GraphStat
 
 @dataclass
 class CageSpec:
-    """ケージの仕様。cage_type は "A12" などのケージ種別を表す文字列。"""
+    """Specification of a cage.
+
+    ``cage_type`` is a string such as "A12" that represents the cage type.
+    """
 
     cage_type: str  # A12, 1b, etc.
     faces: str  # 5^12 6^2, etc.
@@ -42,25 +45,28 @@ class CageSpec:
 
 @dataclass
 class CageSpecs:
-    """拡大単位胞内の全ケージの位置と仕様。
+    """Positions and specifications of all cages in the expanded unit cell.
 
-    specs: 各ケージの CageSpec（cage_type, faces, graph）。
-    positions: 分数座標の配列（Nx3）。specs と同順。
-    node_to_cage_indices: __post_init__ で生成。ノード番号 → そのノードを含むケージのインデックスリスト。
+    specs: A list of ``CageSpec`` (cage_type, faces, graph) for each cage.
+    positions: Array of fractional coordinates (Nx3), in the same order as ``specs``.
+    node_to_cage_indices: Mapping generated in ``__post_init__``; node index -> list of cage indices that contain the node.
     """
 
     specs: list[CageSpec]
     positions: np.ndarray  # in fractional coordinates
 
     def __post_init__(self) -> None:
-        """ノード番号 → ケージ番号の逆引き辞書を生成。"""
+        """Build a reverse lookup dictionary from node index to cage indices."""
         self.node_to_cage_indices: dict[int, list[int]] = {}
         for cage_idx, spec in enumerate(self.specs):
             for node in spec.graph:
                 self.node_to_cage_indices.setdefault(int(node), []).append(cage_idx)
 
     def to_json_capable_data(self) -> dict:
-        """JSON シリアライズ用の辞書を返す。キーはケージインデックス、値は frac_pos と specs。"""
+        """Return a dict suitable for JSON serialization.
+
+        Keys are cage indices; values contain ``frac_pos`` and ``specs``.
+        """
         data = []
         for position, specs in zip(self.positions, self.specs):
             data.append(
@@ -79,7 +85,7 @@ class CageSpecs:
 
 
 def _assign_cage_type(basename: int, existing_types: set[str]) -> str:
-    """未使用のケージタイプ名（A12, A12a など）を生成する。"""
+    """Generate an unused cage type name (e.g., A12, A12a)."""
     enum = 0
     cage_type = f"A{basename}"
     while cage_type in existing_types:
@@ -90,7 +96,10 @@ def _assign_cage_type(basename: int, existing_types: set[str]) -> str:
 
 
 def _make_cage_expression(ring_ids: list, ringlist: list) -> str:
-    """ケージを構成するリングのサイズから "5^12 6^2" のような面表現文字列を生成する。"""
+    """Generate a face-expression string such as "5^12 6^2".
+
+    The expression is built from the sizes of the rings that form the cage.
+    """
     ringcount = [0 for i in range(9)]
     for ring in ring_ids:
         ringcount[len(ringlist[ring])] += 1
@@ -103,16 +112,19 @@ def _make_cage_expression(ring_ids: list, ringlist: list) -> str:
 
 
 def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
-    """水素結合グラフとノードの分数座標からケージを検出・分類し、CageSpecs を返す。
+    """Detect and classify cages from a hydrogen-bond graph.
 
-    ここでいうケージとは、水素結合の環で囲まれた擬多面体(quasipolyhedron)である。[Matsumoto 2007]
+    Cages are defined here as quasipolyhedra surrounded by cycles of
+    hydrogen bonds [Matsumoto 2007].
 
     Args:
-        graph: 水素結合ネットワーク（無向グラフ）。
-        node_frac: ノードの分数座標（Nx3）。
+        graph: Undirected graph representing the hydrogen-bond network.
+        node_frac: Fractional coordinates of nodes (Nx3).
 
     Returns:
-        検出されたケージの位置（分数座標）と仕様（CageSpec のリスト）。
+        A ``CageSpecs`` object containing the positions (fractional
+        coordinates) and specifications (list of ``CageSpec``) of the
+        detected cages.
     """
     logger = getLogger()
 

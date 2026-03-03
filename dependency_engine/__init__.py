@@ -1,8 +1,8 @@
 """
-依存関係解決エンジン（リアクティブパイプライン用）。
+Dependency-resolution engine for reactive pipelines.
 
-ゴールから逆算して必要なタスクだけを実行する。
-将来的に別パッケージとして切り出す可能性あり。
+Executes only the tasks needed to reach a given goal, working backwards
+from the target. May be split into a separate package in the future.
 """
 
 import inspect
@@ -15,25 +15,25 @@ _REACTIVE_REGISTRY = []
 
 
 def reactive(func):
-    """DependencyEngine タスクであることを示すマーカー。
+    """Marker decorator to register a function as a DependencyEngine task.
 
-    デコレートした関数の名前がそのまま reactive プロパティ名になる
-    (例: genice.cages)。名前は名詞にすること。
+    The decorated function name becomes the reactive property name
+    (for example, ``genice.cages``). Names should be nouns.
 
-    副作用: この関数を _REACTIVE_REGISTRY に登録する。
-    get_reactive_tasks(module_name) で同一モジュールのタスク一覧を取得できる。
+    Side effect: the function is registered in ``_REACTIVE_REGISTRY``.
+    Use ``get_reactive_tasks(module_name)`` to obtain the task list for a module.
     """
     _REACTIVE_REGISTRY.append((func.__module__, func))
     return func
 
 
 def get_reactive_tasks(module_name: str):
-    """指定モジュールで @reactive を付けた関数のリストを返す。"""
+    """Return functions decorated with ``@reactive`` in the given module."""
     return [f for mod, f in _REACTIVE_REGISTRY if mod == module_name]
 
 
 class DependencyEngine:
-    """ゴール(target)から依存を逆算して必要なタスクのみ実行するエンジン。"""
+    """Engine that back-solves dependencies and runs only needed tasks."""
 
     logger = getLogger("dependency_engine")
 
@@ -42,12 +42,12 @@ class DependencyEngine:
         self.cache = {}
 
     def task(self, func):
-        """デコレータ: 関数名 = 生成される変数名 として登録"""
+        """Decorator to register a task with ``func.__name__`` as its output name."""
         self.registry[func.__name__] = func
         return func
 
     def resolve(self, target: str, inputs: dict):
-        """ゴール(target)から逆算して計算する"""
+        """Resolve ``target`` by recursively computing its dependencies."""
 
         # 1. 既に計算済み or 入力として与えられているならそれを返す
         if target in inputs:
@@ -78,7 +78,7 @@ class DependencyEngine:
 
 
 def _demo():
-    """パッケージ単体テスト用デモ（python -m dependency_engine で実行可能）"""
+    """Package self-test demo (run with ``python -m dependency_engine``)."""
     engine = DependencyEngine()
 
     @engine.task

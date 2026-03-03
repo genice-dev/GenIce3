@@ -25,7 +25,11 @@ from genice3.unitcell import UnitCell
 
 
 def _graph_degree_stats(g: nx.Graph) -> str:
-    """グラフの次数分布（0,1,2,3,4,>4 のノード数と割合）を文字列で返す。"""
+    """Return a string that summarizes the degree distribution of a graph.
+
+    The summary includes the number and fraction of nodes with degrees
+    0, 1, 2, 3, 4, and >4.
+    """
     n = g.number_of_nodes()
     if n == 0:
         return "nodes=0"
@@ -41,10 +45,10 @@ def _graph_degree_stats(g: nx.Graph) -> str:
 
 
 class ShowUsageError(Exception):
-    """Usage表示を要求する例外
+    """Exception raised to request that usage information be shown.
 
     Args:
-        flag_name: フラグ名（例: "?", "help?", "cage?"）
+        flag_name: Flag name (for example: "?", "help?", "cage?").
     """
 
     def __init__(self, flag_name: str, message: str = ""):
@@ -62,9 +66,7 @@ class MoleculeType(Enum):
 
 @dataclass
 class GuestSpec:
-    """
-    ゲストの情報を表すデータクラス。
-    """
+    """Dataclass that stores information about a guest molecule."""
 
     molecule: Molecule
     occupancy: float
@@ -78,9 +80,9 @@ class GuestSpec:
 
 @dataclass
 class AtomicStructure:
-    """
-    原子構造データを統合的に保持するデータクラス。
-    exporterプラグインが使用するための統一インターフェース。
+    """Dataclass that holds atomic-structure data in an integrated form.
+
+    Provides a unified interface to be used by exporter plugins.
     """
 
     waters: Dict[int, Molecule]
@@ -100,18 +102,19 @@ class AtomicStructure:
 def _assume_water_orientations(
     coord: np.ndarray, digraph: nx.DiGraph, cellmat: np.ndarray, dopants: Dict[int, str]
 ) -> np.ndarray:
-    """有向グラフと座標から各水分子の配向行列（Nx3x3）を計算する。
+    """Compute orientation matrices (Nx3x3) for each water molecule.
 
-    2本のOHが一直線上にある場合は正しく動作しない。
+    The computation uses the directed hydrogen-bond graph and the node
+    coordinates. It does not work correctly when two OH bonds are collinear.
 
     Args:
-        coord: 各ノードの分数座標（Nx3）。
-        digraph: 水素結合の向きが決まった有向グラフ。
-        cellmat: セル行列（分数→直交変換に使用）。
-        dopants: ドーパントが占めるサイト（ノード番号→イオン名）。
+        coord: Fractional coordinates of each node (Nx3).
+        digraph: Directed graph whose edges give the directions of hydrogen bonds.
+        cellmat: Cell matrix used to convert fractional to Cartesian coordinates.
+        dopants: Mapping from node index to ion name for dopant sites.
 
     Returns:
-        各水分子の配向行列（Nx3x3）。直交座標系での回転行列。
+        Orientation matrices (Nx3x3) as rotation matrices in Cartesian coordinates.
     """
 
     logger = getLogger()
@@ -196,15 +199,17 @@ def _assume_water_orientations(
 def _replicate_lattice_node(
     lattice_site_node: int, nmol: int, replication_matrix: np.ndarray
 ) -> Generator[int, None, None]:
-    """1つの格子サイトを拡大単位胞内で複製したときのノード番号を列挙する。
+    """Yield node indices for replicas of a lattice site in the expanded cell.
 
     Args:
-        lattice_site_node: 複製前の単位胞内での格子サイト（ノード）番号。
-        nmol: 単位胞内の水分子数（ノード数）。
-        replication_matrix: 拡大倍率（行列式）の計算に用いる3x3行列。通常は replication_matrix を渡す。
+        lattice_site_node: Node index of the lattice site in the original unit cell.
+        nmol: Number of water molecules (nodes) in the unit cell.
+        replication_matrix: 3x3 integer matrix whose determinant gives the
+            replication factor. Normally the replication matrix itself.
 
     Yields:
-        拡大単位胞内でのノード番号（lattice_site_node + nmol * i for i in 0..倍率-1）。
+        Node indices in the expanded unit cell
+        (``lattice_site_node + nmol * i`` for ``i`` in ``0..factor-1``).
     """
     multiple = int(np.floor(np.linalg.det(replication_matrix) + 0.5))
     for i in range(multiple):
@@ -219,21 +224,21 @@ def _replicate_graph(
     reshape: np.ndarray,
 ) -> nx.Graph:
     """
-    指定されたレプリカベクトルと形状に基づいてグラフを複製する。
+    Replicate a graph according to the given replica vectors and shape.
 
-    2つの座標系がいりみだれているので注意。
-    cell1frac: 複製前の単位胞における小数座標
-    grandfrac: 複製後の大きな単位胞における小数座標
+    Two coordinate systems are involved:
+    ``cell1frac`` for fractional coordinates in the original unit cell, and
+    ``grandfrac`` for fractional coordinates in the expanded cell.
 
     Args:
-      graph1: 元のグラフ。
-      cell1frac_coords: 元のグラフ内の節点の分数座標 (Nx3)。
-      replica_vectors: レプリカベクトルの配列。
-      replica_vector_index: レプリカベクトル座標タプル → 一意のインデックス。
-      reshape: 拡大単位胞の積み重ね方を表す行列。
+        graph1: Original graph.
+        cell1frac_coords: Fractional coordinates of nodes in the original graph (Nx3).
+        replica_vectors: Array of replica vectors.
+        replica_vector_index: Mapping from replica-vector coordinate tuple to unique index.
+        reshape: Matrix that describes how unit cells are stacked to form the expanded cell.
 
     Returns:
-      複製された無向グラフ。fixed の複製は行わない。
+        Replicated undirected graph. Fixed edges are not replicated here.
     """
     # repgraph = dg.IceGraph()
     repgraph = nx.Graph()
@@ -269,15 +274,15 @@ def _replicate_graph(
 def _replicate_fixed_edges(
     repgraph: nx.Graph, fixed: nx.DiGraph, nmol: int
 ) -> nx.DiGraph:
-    """単位胞の固定エッジを拡大単位胞のグラフ上に複製した有向グラフを返す。
+    """Replicate fixed edges from the unit cell onto the expanded-cell graph.
 
     Args:
-        repgraph: 拡大単位胞全体の無向グラフ。
-        fixed: 単位胞内の固定エッジ（有向グラフ）。
-        nmol: 単位胞内のノード数。
+        repgraph: Undirected graph for the whole expanded unit cell.
+        fixed: Directed graph of fixed edges in the unit cell.
+        nmol: Number of nodes in the unit cell.
 
     Returns:
-        拡大単位胞全体での固定エッジを表す有向グラフ。
+        Directed graph representing fixed edges over the entire expanded unit cell.
     """
     logger = getLogger("replicate_fixed_edges")
     rep_fixed_edges = nx.DiGraph()
@@ -296,15 +301,15 @@ def _replicate_fixed_edges(
 def replicate_subgraph(
     repgraph: nx.Graph, subgraph: nx.Graph, nmol: int
 ) -> Generator[nx.Graph, None, None]:
-    """単位胞内の subgraph の各レプリカを repgraph から取り出して yield する。
+    """Yield each replica of a unit-cell subgraph from the expanded-cell graph.
 
     Args:
-        repgraph: 拡大単位胞全体の無向グラフ。
-        subgraph: 単位胞内の部分グラフ（例: 1ケージを構成するノードと辺）。
-        nmol: 単位胞内のノード数。
+        repgraph: Undirected graph for the whole expanded unit cell.
+        subgraph: Subgraph within the unit cell (e.g., nodes and edges forming one cage).
+        nmol: Number of nodes in the unit cell.
 
     Yields:
-        拡大単位胞内の各レプリカに対応する部分グラフ（nx.Graph）。
+        For each replica, an ``nx.Graph`` corresponding to that replica in the expanded cell.
     """
     origin = list(subgraph.nodes())[0]
     nrep = len(repgraph) // nmol  # number of replicas
@@ -336,23 +341,24 @@ _genice3_logger = getLogger("GenIce3")
 
 @reactive
 def cell(unitcell: UnitCell, replication_matrix: np.ndarray) -> np.ndarray:
-    """拡大単位胞のセル行列"""
+    """Cell matrix of the expanded unit cell."""
     return unitcell.cell @ replication_matrix
 
 
 @reactive
 def replica_vectors(replication_matrix: np.ndarray) -> np.ndarray:
-    """レプリカベクトルを計算する。
+    """Compute replica vectors from a replication matrix.
 
-    拡大単位胞を構成するために必要な、元の単位胞のグリッド位置を表す
-    整数ベクトルのリストを生成します。各ベクトルは、拡大単位胞内での
-    単位胞の相対位置を表します。
+    These vectors represent the grid positions of original unit cells needed
+    to construct the expanded unit cell. Each vector gives the relative
+    position of a unit cell within the expanded cell.
 
     Args:
-        replication_matrix: 単位胞を複製するための3x3整数行列
+        replication_matrix: 3x3 integer matrix used to replicate the unit cell.
 
     Returns:
-        np.ndarray: レプリカベクトルの配列（Nx3配列、Nは拡大単位胞内の単位胞数）
+        np.ndarray: Array of replica vectors (Nx3, where N is the number of
+        unit cells in the expanded cell).
     """
     i, j, k = np.array(replication_matrix)
     corners = np.array(
@@ -388,15 +394,16 @@ def replica_vectors(replication_matrix: np.ndarray) -> np.ndarray:
 
 @reactive
 def replica_vector_labels(replica_vectors: np.ndarray) -> Dict[Tuple[int, ...], int]:
-    """レプリカベクトル座標タプル → 一意のインデックス の辞書を返す。
+    """Return a mapping from replica-vector coordinate tuples to indices.
 
-    拡大単位胞内での単位胞の位置を、グラフ複製などで参照するために使う。
+    This mapping is used to refer to unit-cell positions in the expanded
+    unit cell, for example when replicating graphs.
 
     Args:
-        replica_vectors: レプリカベクトルの配列（Nx3）。
+        replica_vectors: Array of replica vectors (Nx3).
 
     Returns:
-        座標タプル (a, b, c) を 0..N-1 のインデックスにマッピングする辞書。
+        Dict that maps coordinate tuples ``(a, b, c)`` to indices ``0..N-1``.
     """
     return {tuple(xyz): i for i, xyz in enumerate(replica_vectors)}
 
@@ -408,20 +415,21 @@ def graph(
     replica_vector_labels: Dict[Tuple[int, ...], int],
     replication_matrix: np.ndarray,
 ) -> nx.Graph:
-    """拡大単位胞に対応するグラフを生成する。
+    """Generate the graph corresponding to the expanded unit cell.
 
-    基本単位胞のグラフ（水分子間の水素結合ネットワーク）を、
-    拡大単位胞全体に複製して統合したグラフを生成します。
-    このグラフは、拡大単位胞内のすべての水分子間の接続関係を表します。
+    The graph of the basic unit cell (hydrogen-bond network between water
+    molecules) is replicated over the expanded unit cell and merged into a
+    single graph that represents all connectivity.
 
     Args:
-        unitcell: 基本単位胞オブジェクト
-        replica_vectors: レプリカベクトルの配列
-        replica_vector_labels: レプリカベクトル座標タプル→インデックスの辞書（replica_vector_labels タスクの戻り値）
-        replication_matrix: 単位胞を複製するための3x3整数行列
+        unitcell: Basic unit-cell object.
+        replica_vectors: Array of replica vectors.
+        replica_vector_labels: Mapping from replica-vector coordinate tuples
+            to indices (returned by ``replica_vector_labels``).
+        replication_matrix: 3x3 integer matrix used to replicate the unit cell.
 
     Returns:
-        nx.Graph: 拡大単位胞全体の水素結合ネットワークを表す無向グラフ
+        ``nx.Graph`` representing the hydrogen-bond network over the whole expanded unit cell.
     """
     g = _replicate_graph(
         unitcell.graph,
@@ -440,18 +448,20 @@ def lattice_sites(
     replica_vectors: np.ndarray,
     replication_matrix: np.ndarray,
 ) -> np.ndarray:
-    """格子サイト位置を拡大単位胞全体に複製する。
+    """Replicate lattice-site positions over the expanded unit cell.
 
-    基本単位胞内の水分子の座標を、拡大単位胞全体に複製します。
-    各水分子の位置は、単位胞の周期境界条件に従って配置されます。
+    The coordinates of water molecules in the basic unit cell are
+    replicated over the entire expanded cell. Each water molecule is
+    placed according to periodic boundary conditions.
 
     Args:
-        unitcell: 基本単位胞オブジェクト
-        replica_vectors: レプリカベクトルの配列
-        replication_matrix: 単位胞を複製するための3x3整数行列
+        unitcell: Basic unit-cell object.
+        replica_vectors: Array of replica vectors.
+        replication_matrix: 3x3 integer matrix used to replicate the unit cell.
 
     Returns:
-        np.ndarray: 拡大単位胞内のすべての水分子の座標（Nx3配列、Nは水分子数）
+        np.ndarray: All water-molecule coordinates in the expanded cell
+        (Nx3 array, where N is the number of molecules).
     """
     return replicate_positions(
         unitcell.lattice_sites, replica_vectors, replication_matrix
@@ -462,18 +472,20 @@ def lattice_sites(
 def anions(
     unitcell: UnitCell, replica_vectors: np.ndarray, spot_anions: Dict[int, str]
 ) -> Dict[int, str]:
-    """アニオンイオンの配置情報を拡大単位胞全体に複製する。
+    """Replicate anion placement information over the expanded unit cell.
 
-    基本単位胞内で定義されたアニオンイオンと、spot_anionsで指定された
-    特定位置のアニオンを統合し、拡大単位胞全体でのアニオン配置を返します。
+    Anions defined in the basic unit cell and those specified by
+    ``spot_anions`` are combined to produce the full anion configuration
+    in the expanded cell.
 
     Args:
-        unitcell: 基本単位胞オブジェクト
-        replica_vectors: レプリカベクトルの配列
-        spot_anions: 特定の格子サイト位置に配置するアニオンの辞書（サイトインデックス -> イオン名）
+        unitcell: Basic unit-cell object.
+        replica_vectors: Array of replica vectors.
+        spot_anions: Mapping from lattice-site index to anion name.
 
     Returns:
-        Dict[int, str]: 拡大単位胞全体でのアニオン配置（サイトインデックス -> イオン名）
+        Dict[int, str]: Anion configuration over the expanded unit cell
+        (site index -> ion name).
     """
     anion_dict: Dict[int, str] = {}
     Z = len(unitcell.lattice_sites)
@@ -490,18 +502,20 @@ def anions(
 def cations(
     unitcell: UnitCell, replica_vectors: np.ndarray, spot_cations: Dict[int, str]
 ) -> Dict[int, str]:
-    """カチオンイオンの配置情報を拡大単位胞全体に複製する。
+    """Replicate cation placement information over the expanded unit cell.
 
-    基本単位胞内で定義されたカチオンイオンと、spot_cationsで指定された
-    特定位置のカチオンを統合し、拡大単位胞全体でのカチオン配置を返します。
+    Cations defined in the basic unit cell and those specified by
+    ``spot_cations`` are combined to produce the full cation configuration
+    in the expanded cell.
 
     Args:
-        unitcell: 基本単位胞オブジェクト
-        replica_vectors: レプリカベクトルの配列
-        spot_cations: 特定の格子サイト位置に配置するカチオンの辞書（サイトインデックス -> イオン名）
+        unitcell: Basic unit-cell object.
+        replica_vectors: Array of replica vectors.
+        spot_cations: Mapping from lattice-site index to cation name.
 
     Returns:
-        Dict[int, str]: 拡大単位胞全体でのカチオン配置（サイトインデックス -> イオン名）
+        Dict[int, str]: Cation configuration over the expanded unit cell
+        (site index -> ion name).
     """
     cation_dict: Dict[int, str] = {}
     Z = len(unitcell.lattice_sites)
@@ -522,20 +536,20 @@ def site_occupants(
     spot_hydroxides: List[int],
     lattice_sites: np.ndarray,
 ) -> List[str]:
-    """各格子サイトの占有種（水分子・イオン・H3O+・OH-）のリストを生成する。
+    """Generate the list of occupants at each lattice site.
 
-    各格子サイトが水分子、アニオン、カチオン、H3O+、OH- のいずれで占有されているかを
-    判定し、サイトインデックス順にリストとして返します。
+    Each lattice site is classified as water, anion, cation, H3O+, or OH-,
+    and the occupant type is returned in site-index order.
 
     Args:
-        anions: アニオン配置の辞書
-        cations: カチオン配置の辞書
-        spot_hydroniums: H3O+ を置くサイトのリスト
-        spot_hydroxides: OH- を置くサイトのリスト
-        lattice_sites: 格子サイト位置の配列
+        anions: Anion configuration dictionary.
+        cations: Cation configuration dictionary.
+        spot_hydroniums: List of sites with H3O+.
+        spot_hydroxides: List of sites with OH-.
+        lattice_sites: Array of lattice-site positions.
 
     Returns:
-        List[str]: 各サイトの占有種のリスト（"water" またはイオン名）
+        List[str]: Occupant type for each site (``"water"`` or ion name).
     """
     occupants = ["water"] * len(lattice_sites)
     for site, ion_name in anions.items():
@@ -560,25 +574,28 @@ def fixed_edges(
     bjerrum_L_edges: List[Tuple[int, int]],
     bjerrum_D_edges: List[Tuple[int, int]],
 ) -> nx.DiGraph:
-    """固定エッジ（水素結合の方向が固定されたエッジ）を拡大単位胞全体に複製する。
+    """Replicate fixed edges (hydrogen-bond directions) over the expanded unit cell.
 
-    基本単位胞で定義された固定エッジと、spot_anions/spot_cations/spot_hydroniums/
-    spot_hydroxides で指定されたイオン・置換種に基づく固定エッジを統合し、
-    拡大単位胞全体での固定エッジを返します。
-    - アニオン: 4本受け入れ。カチオン: 4本供与。
-    - H3O+ (spot_hydroniums): 1本受け入れ・3本供与。
-    - OH- (spot_hydroxides): 3本受け入れ・1本供与。
+    Fixed edges defined in the unit cell and those implied by
+    ``spot_anions`` / ``spot_cations`` / ``spot_hydroniums`` /
+    ``spot_hydroxides`` are combined into a directed graph of fixed
+    edges over the whole expanded unit cell.
+
+    - Anions: accept 4 bonds.
+    - Cations: donate 4 bonds.
+    - H3O+ (``spot_hydroniums``): accept 1 bond and donate 3.
+    - OH- (``spot_hydroxides``): accept 3 bonds and donate 1.
 
     Args:
-        graph: 拡大単位胞全体のグラフ
-        unitcell: 基本単位胞オブジェクト
-        spot_anions: 特定位置のアニオン配置
-        spot_cations: 特定位置のカチオン配置
-        spot_hydroniums: H3O+ を置くサイトのリスト（1受容・3供与）
-        spot_hydroxides: OH- を置くサイトのリスト（3受容・1供与）
+        graph: Graph of the whole expanded unit cell.
+        unitcell: Basic unit-cell object.
+        spot_anions: Explicit anion configuration.
+        spot_cations: Explicit cation configuration.
+        spot_hydroniums: List of sites with H3O+ (1 acceptor, 3 donors).
+        spot_hydroxides: List of sites with OH- (3 acceptors, 1 donor).
 
     Returns:
-        nx.DiGraph: 拡大単位胞全体での固定エッジを表す有向グラフ
+        ``nx.DiGraph`` representing fixed edges over the expanded unit cell.
     """
     if (
         spot_anions
@@ -705,21 +722,22 @@ def digraph(
     bjerrum_L_edges: List[Tuple[int, int]],
     bjerrum_D_edges: List[Tuple[int, int]],
 ) -> nx.DiGraph:
-    """水素結合ネットワークの有向グラフを生成する。
+    """Generate the directed hydrogen-bond network.
 
-    無向グラフ（水素結合ネットワーク）から、各水素結合の方向（プロトンの向き）
-    を決定して有向グラフを生成します。固定エッジで指定された方向は維持され、
-    それ以外のエッジは双極子最適化アルゴリズムにより方向が決定されます。
+    Starting from the undirected hydrogen-bond graph, this function
+    determines the direction (proton orientation) of each bond to build
+    a directed graph. Directions specified by fixed edges are preserved,
+    while the rest are decided by a dipole-optimization algorithm.
 
     Args:
-        graph: 拡大単位胞全体の無向グラフ
-        depol_loop: 双極子最適化の反復回数
-        lattice_sites: 格子サイト位置の配列
-        fixed_edges: 拡大単位胞全体での固定エッジの有向グラフ
-        target_pol: 分極の目標値
+        graph: Undirected graph over the expanded unit cell.
+        depol_loop: Number of iterations in the dipole-optimization algorithm.
+        lattice_sites: Array of lattice-site positions.
+        fixed_edges: Directed graph of fixed edges over the expanded cell.
+        target_pol: Target polarization vector.
 
     Returns:
-        nx.DiGraph: 水素結合の方向が決定された有向グラフ
+        ``nx.DiGraph`` whose edges give the directions of hydrogen bonds.
     """
     for edge in fixed_edges.edges():
         _genice3_logger.debug(f"+ {edge=}")
@@ -761,23 +779,23 @@ def orientations(
     spot_hydroniums: List[int],
     spot_hydroxides: List[int],
 ) -> np.ndarray:
-    """各水分子の配向行列を計算する。
+    """Compute orientation matrices for all water molecules.
 
-    有向グラフで決定された水素結合の方向に基づいて、各水分子の
-    配向（回転行列）を計算します。水分子のOHベクトルの方向から
-    分子全体の配向を決定します。
+    The orientations (rotation matrices) are computed from the directions
+    of hydrogen bonds in the directed graph. The OH vectors determine the
+    molecular orientation.
 
     Args:
-        lattice_sites: 格子サイト位置の配列
-        digraph: 水素結合の方向が決定された有向グラフ
-        cell: 拡大単位胞のセル行列
-        anions: アニオン配置の辞書
-        cations: カチオン配置の辞書
-        spot_hydroniums: H3O+ を置くサイトのリスト
-        spot_hydroxides: OH- を置くサイトのリスト
+        lattice_sites: Array of lattice-site positions.
+        digraph: Directed hydrogen-bond network.
+        cell: Cell matrix of the expanded unit cell.
+        anions: Anion configuration dictionary.
+        cations: Cation configuration dictionary.
+        spot_hydroniums: List of sites with H3O+.
+        spot_hydroxides: List of sites with OH-.
 
     Returns:
-        np.ndarray: 各水分子の配向行列（Nx3x3配列、Nは水分子数）
+        np.ndarray: Orientation matrices (Nx3x3, where N is the number of molecules).
     """
     return _assume_water_orientations(
         lattice_sites,
@@ -794,22 +812,22 @@ def cages(
     replication_matrix: np.ndarray,
     graph: nx.Graph,
 ) -> CageSpecs | None:
-    """ケージ位置とタイプを拡大単位胞全体に複製する。
+    """Replicate cage positions and types over the expanded unit cell.
 
-    基本単位胞内で定義されたゲスト分子を配置するためのケージ（空隙）の
-    位置とタイプを、拡大単位胞全体に複製する。
-
-    ここでいうケージとは、水素結合の環で囲まれた擬多面体(quasipolyhedron)である。[Matsumoto 2007]
+    Cages (voids) defined in the basic unit cell for placing guest
+    molecules are replicated over the entire expanded unit cell.
+    Here, a cage means a quasipolyhedron surrounded by cycles of
+    hydrogen bonds [Matsumoto 2007].
 
     Args:
-        unitcell: 基本単位胞オブジェクト。
-        replica_vectors: レプリカベクトルの配列。
-        replication_matrix: 単位胞を複製するための3x3整数行列。
-        graph: 拡大単位胞全体の無向グラフ（サブグラフ複製に使用）。
+        unitcell: Basic unit-cell object.
+        replica_vectors: Array of replica vectors.
+        replication_matrix: 3x3 integer matrix used to replicate the unit cell.
+        graph: Undirected graph over the expanded unit cell (used to replicate subgraphs).
 
     Returns:
-        CageSpecs: 拡大単位胞全体でのケージ位置とタイプ。
-        unitcell.cages が None の場合は None。
+        ``CageSpecs`` describing cage positions and types in the expanded unit cell,
+        or ``None`` if ``unitcell.cages`` is ``None``.
     """
     if unitcell.cages is None:
         return None
@@ -840,11 +858,12 @@ def place_groups_on_lattice(
     spot_cation_groups: Dict[int, Dict[int, str]],
 ) -> None:
     """
-    格子点に group を配置する。
+    Place group plugins on lattice sites.
 
     Args:
-        genice: GenIce3 インスタンス
-        spot_cation_groups: サイト -> {ケージID -> group名} の辞書
+        genice: ``GenIce3`` instance.
+        spot_cation_groups: Mapping from site index to
+            {cage ID -> group name}.
     """
     _genice3_logger.info(
         f"place_groups_on_lattice: dummy implementation (group assignment not yet applied) {spot_cation_groups=}"
@@ -852,7 +871,7 @@ def place_groups_on_lattice(
 
 
 def log_spot_cation_cages(genice: "GenIce3") -> None:
-    """spot_cation ごとに属するケージのID・cage_type・facesをログ表示する。"""
+    """Log cage IDs, cage_type, and faces for each ``spot_cation``."""
     if not genice.spot_cations or genice.cages is None or len(genice.cages.specs) == 0:
         return
     num_replicas = int(np.round(np.linalg.det(genice.replication_matrix)))
@@ -867,7 +886,7 @@ def log_spot_cation_cages(genice: "GenIce3") -> None:
 
 
 def log_cation_cages(genice: "GenIce3") -> None:
-    """単位胞内のカチオンごとに、属するケージのID・cage_type・faces をログ表示する。"""
+    """Log cage IDs, cage_type, and faces for each cation in the unit cell."""
     if (
         not genice.cations
         or genice.unitcell.cages is None
@@ -884,18 +903,19 @@ def log_cation_cages(genice: "GenIce3") -> None:
 
 
 def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group:
-    """指定方向・結合長で group プラグインを読み込み、配置した Group を返す。
+    """Load a group plugin, place it in the given direction, and return the ``Group``.
 
-    置換イオンから group のアンカー原子までが direction 方向に bondlen の長さで並ぶ。
-    TODO: 将来は2個以上のアンカーを持つ group を扱う可能性がある。
+    The anchor atom of the group is placed at a distance ``bondlen`` from
+    the substitutional ion along ``direction``. In the future, groups with
+    multiple anchors may be supported.
 
     Args:
-        direction: 配置方向（直交座標、正規化される）。
-        bondlen: アンカーまでの結合長。
-        group_name: group プラグイン名（例: "ammonia"）。
+        direction: Placement direction in Cartesian coordinates (will be normalized).
+        bondlen: Bond length from the substitutional ion to the group anchor.
+        group_name: Group plugin name (for example, ``"ammonia"``).
 
     Returns:
-        回転・並進を適用した Group インスタンス。
+        ``Group`` instance after rotation and translation.
     """
     # logger = getLogger("GenIce3")
     group = safe_import("group", group_name).Group()
@@ -923,83 +943,78 @@ def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group
 
 
 class GenIce3:
-    """GenIce3のメインクラス：リアクティブプロパティによる氷構造生成システム
+    """Main GenIce3 class: ice-structure generator based on reactive properties.
 
-    GenIce3は、依存関係エンジン（DependencyEngine）を使用して、必要な時に
-    自動的に計算されるリアクティブプロパティを提供します。これにより、ユーザーは
-    必要なプロパティにアクセスするだけで、そのプロパティに依存するすべての
-    計算が自動的に実行されます。
+    GenIce3 uses a dependency engine (``DependencyEngine``) to provide
+    reactive properties that are computed automatically on demand. By
+    accessing a property, the user triggers all computations that the
+    property depends on.
 
-    リアクティブプロパティの仕組み:
-        - 各プロパティ（digraph, graph, lattice_sitesなど）は、アクセス時に
-          必要に応じて自動的に計算されます
-        - 依存関係は関数の引数名から自動的に推論されます
-        - 一度計算されたプロパティはキャッシュされ、依存する入力が変更されるまで
-          再利用されます
-        - 入力プロパティ（unitcell, replication_matrix, depol_loopなど）が
-          変更されると、それに依存するすべてのプロパティのキャッシュが自動的に
-          クリアされます
+    How reactive properties work:
+        - Each property (``digraph``, ``graph``, ``lattice_sites``, etc.) is
+          computed lazily when accessed.
+        - Dependencies are inferred automatically from function argument names.
+        - Once computed, properties are cached and reused until their inputs change.
+        - When an input property (``unitcell``, ``replication_matrix``,
+          ``depol_loop``, etc.) is modified, the cache of all dependent
+          properties is automatically cleared.
 
-    使用例:
+    Example:
         >>> genice = GenIce3(unitcell=my_unitcell)
-        >>> digraph = genice.digraph  # 自動的に必要な計算が実行される
-        >>> orientations = genice.orientations  # digraphに依存するため、digraphが先に計算される
+        >>> digraph = genice.digraph  # required computations are executed automatically
+        >>> orientations = genice.orientations  # depends on digraph, so digraph is computed first
 
     Attributes:
-        digraph (nx.DiGraph): 水素結合の方向が決定された有向グラフ。
-            無向グラフから双極子最適化アルゴリズムにより各水素結合の方向を決定した
-            有向グラフです。固定エッジで指定された方向は維持され、それ以外のエッジは
-            最適化により決定されます。このプロパティにアクセスすると、必要な依存関係
-            （graph, lattice_sites, fixed_edges など）が自動的に計算されます。
+        digraph (nx.DiGraph): Directed hydrogen-bond network.
+            Created from the undirected graph by a dipole-optimization
+            algorithm, while preserving fixed edges. Accessing this property
+            automatically computes all required dependencies (``graph``,
+            ``lattice_sites``, ``fixed_edges``, etc.).
 
-        graph (nx.Graph): 水素結合ネットワークの無向グラフ。
-            拡大単位胞全体の水分子間の水素結合ネットワークを表す無向グラフです。
-            基本単位胞のグラフを拡大単位胞全体に複製して統合したものです。
+        graph (nx.Graph): Undirected hydrogen-bond network over the expanded unit cell.
+            Obtained by replicating the basic-unit-cell graph over the whole supercell.
 
-        lattice_sites (np.ndarray): 格子サイト位置の配列。
-            拡大単位胞内のすべての水分子の座標を表すNx3配列です（Nは水分子数）。
-            基本単位胞内の水分子の座標を、単位胞の周期境界条件に従って拡大単位胞全体に
-            複製したものです。
+        lattice_sites (np.ndarray): Array of lattice-site positions.
+            Nx3 array (N is the number of water molecules) giving coordinates
+            of all molecules in the expanded unit cell.
 
-        orientations (np.ndarray): 各水分子の配向行列。
-            各水分子の配向（回転行列）を表すNx3x3配列です（Nは水分子数）。
-            有向グラフで決定された水素結合の方向に基づいて、各水分子のOHベクトルの
-            方向から分子全体の配向を決定します。
+        orientations (np.ndarray): Orientation matrices for each water molecule.
+            Nx3x3 array whose elements are rotation matrices derived from the
+            directed graph and OH vectors.
 
-        unitcell (UnitCell): 基本単位胞オブジェクト。
-            氷構造の基本単位胞を表すオブジェクトです。格子構造、水分子の配置、
-            水素結合ネットワーク、固定エッジなどの情報を含みます。
+        unitcell (UnitCell): Basic unit-cell object describing the ice structure.
+            Includes lattice, water positions, hydrogen-bond network, and fixed edges.
 
-        replication_matrix (np.ndarray): 単位胞複製行列。
-            基本単位胞をどのように積み重ねて拡大単位胞を作成するかを指定する3x3整数行列です。
-            単位行列の場合は基本単位胞のみを使用します。
+        replication_matrix (np.ndarray): 3x3 integer matrix specifying how the
+            basic unit cell is stacked to construct the expanded unit cell.
+            If it is the identity matrix, only the basic unit cell is used.
 
-        depol_loop (int): 双極子最適化の反復回数。
-            有向グラフを生成する際の双極子最適化アルゴリズムの反復回数です。
-            値が大きいほどより最適化された構造が得られますが、計算時間も増加します。
+        depol_loop (int): Number of iterations in the dipole-optimization algorithm
+            used to construct the directed graph. Larger values provide better
+            optimization but increase computation time.
 
-        seed (int): 乱数シード。
-            乱数生成器のシード値です。digraphの生成などで使用される乱数の初期化に使用されます。
-            このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-            キャッシュが自動的にクリアされます。
+        seed (int): Random seed.
+            Used for operations such as directed-graph generation. Changing this
+            property clears the cache of all dependent reactive properties.
 
-        spot_anions (Dict[int, str]): 特定の格子サイト位置に配置するアニオンイオンの辞書。
-            サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、
-            それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。
+        spot_anions (Dict[int, str]): Mapping from lattice-site index to anion name.
+            Changing this property clears the cache of dependent reactive properties.
 
-        spot_cations (Dict[int, str]): 特定の格子サイト位置に配置するカチオンイオンの辞書。
-            サイトインデックスからイオン名へのマッピングです。このプロパティを変更すると、
-            それに依存するすべてのリアクティブプロパティのキャッシュが自動的にクリアされます。
+        spot_cations (Dict[int, str]): Mapping from lattice-site index to cation name.
+            Changing this property clears the cache of dependent reactive properties.
 
-        spot_hydroniums (List[int]): H3O+ を置くサイトのリスト（1受容・3供与）。
+        spot_hydroniums (List[int]): List of sites that host H3O+ (1 acceptor, 3 donors).
 
-        spot_hydroxides (List[int]): OH- を置くサイトのリスト（3受容・1供与）。
+        spot_hydroxides (List[int]): List of sites that host OH- (3 acceptors, 1 donor).
 
-        cages (CageSpecs): 拡大単位胞全体でのケージ位置・タイプ。
-            単位胞のケージを replica_vectors に従って複製したもので、ゲスト配置や cage_survey 出力に利用します。
+        cages (CageSpecs): Cage positions and types in the expanded unit cell.
+            Obtained by replicating unit-cell cages according to the replica
+            vectors; used for guest placement and ``cage_survey`` output.
 
-        fixed_edges (nx.DiGraph): 拡大単位胞全体での固定エッジの有向グラフ。
-            単位胞の固定エッジと spot_anion/spot_cation/spot_hydronium/spot_hydroxide に基づく固定を統合したもので、digraph の生成に利用します。
+        fixed_edges (nx.DiGraph): Directed graph of fixed edges over the expanded unit cell.
+            Combines unit-cell fixed edges with those implied by
+            ``spot_anion`` / ``spot_cation`` / ``spot_hydronium`` /
+            ``spot_hydroxide`` and is used when generating ``digraph``.
     """
 
     # Class名でlog表示したい。
@@ -1040,24 +1055,26 @@ class GenIce3:
         spot_cation_groups: Dict[int, Dict[int, str]] = None,
         **kwargs: Any,
     ) -> None:
-        """GenIce3インスタンスを初期化する。
+        """Initialize a ``GenIce3`` instance.
 
         Args:
-            depol_loop: 双極子最適化の反復回数（デフォルト: 1000）
-            replication_matrix: 単位胞複製行列（デフォルト: 単位行列）
-            target_pol: 分極の目標値（デフォルト: [0, 0, 0]）
-            seed: 乱数シード（デフォルト: 1）
-            spot_anions: 特定位置のアニオン配置（デフォルト: {}）
-            spot_cations: 特定位置のカチオン配置（デフォルト: {}）
-            spot_hydroniums: H3O+ を置くサイトのリスト（デフォルト: []）
-            spot_hydroxides: OH- を置くサイトのリスト（デフォルト: []）
-            guests: ケージタイプごとのゲスト分子指定（デフォルト: {}）
-            spot_guests: 特定ケージ位置へのゲスト分子指定（デフォルト: {}）
-            spot_cation_groups: spot_cation の --group 指定（サイト -> {ケージID -> group名}）（デフォルト: {}）
-            **kwargs: その他のリアクティブプロパティ（unitcellなど）
+            depol_loop: Number of iterations in the dipole-optimization algorithm
+                (default: 1000).
+            replication_matrix: Unit-cell replication matrix (default: identity).
+            target_pol: Target polarization vector (default: ``[0, 0, 0]``).
+            seed: Random seed (default: 1).
+            spot_anions: Explicit anion configuration (default: ``{}``).
+            spot_cations: Explicit cation configuration (default: ``{}``).
+            spot_hydroniums: List of sites hosting H3O+ (default: ``[]``).
+            spot_hydroxides: List of sites hosting OH- (default: ``[]``).
+            guests: Guest specification per cage type (default: ``{}``).
+            spot_guests: Guest specification per specific cage index (default: ``{}``).
+            spot_cation_groups: ``--group`` specification for spot cations
+                (site -> {cage ID -> group name}) (default: ``{}``).
+            **kwargs: Other reactive properties (such as ``unitcell``).
 
         Raises:
-            ConfigurationError: 無効なキーワード引数が指定された場合
+            ConfigurationError: If unknown keyword arguments are given.
         """
         # DependencyEngineインスタンスを作成
         self.engine = DependencyEngine()
@@ -1092,17 +1109,17 @@ class GenIce3:
             raise ConfigurationError(f"Invalid keyword arguments: {kwargs}.")
 
     def _register_tasks(self):
-        """DependencyEngine に @reactive を付けたタスク関数を登録する"""
+        """Register ``@reactive`` task functions in the ``DependencyEngine``."""
         for func in get_reactive_tasks(__name__):
             self.engine.task(func)
 
     # spot_anions
     @property
     def spot_anions(self):
-        """特定の格子サイト位置に配置するアニオンイオンの辞書。
+        """Dictionary of anions placed at specific lattice sites.
 
         Returns:
-            Dict[int, str]: サイトインデックスからイオン名へのマッピング
+            Dict[int, str]: Mapping from site index to ion name.
         """
         if not hasattr(self, "_spot_anions"):
             self._spot_anions = {}
@@ -1110,13 +1127,12 @@ class GenIce3:
 
     @spot_anions.setter
     def spot_anions(self, spot_anions):
-        """特定の格子サイト位置に配置するアニオンイオンを設定する。
+        """Set the anion configuration at specific lattice sites.
 
-        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-        キャッシュが自動的にクリアされます。
+        Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            spot_anions: サイトインデックスからイオン名へのマッピング
+            spot_anions: Mapping from site index to ion name.
         """
         self._spot_anions = spot_anions
         self.logger.debug(f"  {spot_anions=}")
@@ -1125,10 +1141,10 @@ class GenIce3:
     # spot_cations
     @property
     def spot_cations(self):
-        """特定の格子サイト位置に配置するカチオンイオンの辞書。
+        """Dictionary of cations placed at specific lattice sites.
 
         Returns:
-            Dict[int, str]: サイトインデックスからイオン名へのマッピング
+            Dict[int, str]: Mapping from site index to ion name.
         """
         if not hasattr(self, "_spot_cations"):
             self._spot_cations = {}
@@ -1136,13 +1152,12 @@ class GenIce3:
 
     @spot_cations.setter
     def spot_cations(self, spot_cations):
-        """特定の格子サイト位置に配置するカチオンイオンを設定する。
+        """Set the cation configuration at specific lattice sites.
 
-        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-        キャッシュが自動的にクリアされます。
+        Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            spot_cations: サイトインデックスからイオン名へのマッピング
+            spot_cations: Mapping from site index to ion name.
         """
         self._spot_cations = spot_cations
         self.logger.debug(f"  {spot_cations=}")
@@ -1151,10 +1166,10 @@ class GenIce3:
     # spot_hydroniums (H3O+: 1受容・3供与)
     @property
     def spot_hydroniums(self):
-        """H3O+ を置くサイトのリスト。1本受け入れ・3本供与。
+        """List of sites that host H3O+ (1 acceptor, 3 donors).
 
         Returns:
-            List[int]: サイトインデックスのリスト
+            List[int]: List of site indices.
         """
         if not hasattr(self, "_spot_hydroniums"):
             self._spot_hydroniums = []
@@ -1171,10 +1186,10 @@ class GenIce3:
     # spot_hydroxides (OH-: 3受容・1供与)
     @property
     def spot_hydroxides(self):
-        """OH- を置くサイトのリスト。3本受け入れ・1本供与。
+        """List of sites that host OH- (3 acceptors, 1 donor).
 
         Returns:
-            List[int]: サイトインデックスのリスト
+            List[int]: List of site indices.
         """
         if not hasattr(self, "_spot_hydroxides"):
             self._spot_hydroxides = []
@@ -1215,10 +1230,10 @@ class GenIce3:
         self.engine.cache.clear()
 
     def add_spot_hydronium(self, sites):
-        """H3O+ を置くサイトを追加登録するヘルパー。
+        """Helper to add sites that host H3O+.
 
         Args:
-            sites: サイトインデックス（int）またはその反復可能オブジェクト。
+            sites: Site index (int) or an iterable of indices.
         """
         if sites is None:
             return
@@ -1231,10 +1246,10 @@ class GenIce3:
         self.spot_hydroniums = list(self.spot_hydroniums) + new_sites
 
     def add_spot_hydroxide(self, sites):
-        """OH- を置くサイトを追加登録するヘルパー。
+        """Helper to add sites that host OH-.
 
         Args:
-            sites: サイトインデックス（int）またはその反復可能オブジェクト。
+            sites: Site index (int) or an iterable of indices.
         """
         if sites is None:
             return
@@ -1245,10 +1260,10 @@ class GenIce3:
         self.spot_hydroxides = list(self.spot_hydroxides) + new_sites
 
     def add_bjerrum_L(self, edges):
-        """Bjerrum L 欠陥を追加登録するヘルパー。
+        """Helper to add Bjerrum L defects.
 
         Args:
-            edges: (i, j) のタプル、またはその反復可能オブジェクト。
+            edges: Single ``(i, j)`` tuple or an iterable of such tuples.
         """
         if edges is None:
             return
@@ -1260,10 +1275,10 @@ class GenIce3:
         self.bjerrum_L_edges = list(self.bjerrum_L_edges) + new_edges
 
     def add_bjerrum_D(self, edges):
-        """Bjerrum D 欠陥を追加登録するヘルパー。
+        """Helper to add Bjerrum D defects.
 
         Args:
-            edges: (i, j) のタプル、またはその反復可能オブジェクト。
+            edges: Single ``(i, j)`` tuple or an iterable of such tuples.
         """
         if edges is None:
             return
@@ -1275,22 +1290,21 @@ class GenIce3:
 
     @property
     def seed(self):
-        """乱数シード。
+        """Random seed.
 
         Returns:
-            int: 乱数シード値
+            int: Seed value.
         """
         return self._seed
 
     @seed.setter
     def seed(self, seed):
-        """乱数シードを設定する。
+        """Set the random seed.
 
-        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-        キャッシュが自動的にクリアされます。
+        Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            seed: 乱数シード値
+            seed: Seed value.
         """
         self._seed = seed
         np.random.seed(seed)
@@ -1300,22 +1314,21 @@ class GenIce3:
 
     @property
     def depol_loop(self):
-        """双極子最適化の反復回数。
+        """Number of iterations in the dipole-optimization algorithm.
 
         Returns:
-            int: 双極子最適化アルゴリズムの反復回数
+            int: Number of iterations.
         """
         return self._depol_loop
 
     @depol_loop.setter
     def depol_loop(self, depol_loop):
-        """双極子最適化の反復回数を設定する。
+        """Set the number of iterations in the dipole-optimization algorithm.
 
-        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-        キャッシュが自動的にクリアされます。
+        Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            depol_loop: 双極子最適化アルゴリズムの反復回数
+            depol_loop: Number of iterations.
         """
         self._depol_loop = depol_loop
         self.logger.debug(f"  {depol_loop=}")
@@ -1324,25 +1337,25 @@ class GenIce3:
 
     @property
     def target_pol(self):
-        """分極の目標値（3要素のベクトル）。"""
+        """Target polarization vector (3 elements)."""
         return self._target_pol
 
     @target_pol.setter
     def target_pol(self, target_pol):
-        """分極の目標値を設定する。変更時は依存するキャッシュをクリアする。"""
+        """Set the target polarization vector and clear dependent caches."""
         self._target_pol = np.asarray(target_pol, dtype=float).reshape(3)
         self.logger.debug(f"  {target_pol=}")
         self.engine.cache.clear()
 
     @property
     def unitcell(self):
-        """基本単位胞オブジェクト。
+        """Basic unit-cell object.
 
         Returns:
-            UnitCell: 基本単位胞オブジェクト
+            UnitCell: Basic unit cell.
 
         Raises:
-            ConfigurationError: 単位胞が設定されていない場合
+            ConfigurationError: If the unit cell has not been set.
         """
         if not hasattr(self, "_unitcell") or self._unitcell is None:
             raise ConfigurationError("Unitcell is not set.")
@@ -1350,13 +1363,12 @@ class GenIce3:
 
     @unitcell.setter
     def unitcell(self, unitcell):
-        """基本単位胞オブジェクトを設定する。
+        """Set the basic unit-cell object.
 
-        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-        キャッシュが自動的にクリアされます。
+        Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            unitcell: 基本単位胞オブジェクト
+            unitcell: Basic unit-cell object.
         """
         self._unitcell = unitcell
         self.logger.debug(f"  {unitcell=}")
@@ -1377,15 +1389,15 @@ class GenIce3:
         self.engine.cache.clear()
 
     def set_unitcell(self, unitcell_or_name, **kwargs):
-        """基本単位胞を設定する（リアクティブプロパティ用のラッパー）。
+        """Set the basic unit cell (reactive-property-friendly wrapper).
 
-        代入（genice.unitcell = ...）の代わりにこのメソッドを使うと、
-        単位胞がリアクティブな設定であることが明確になります。
+        Using this method instead of assignment (``genice.unitcell = ...``)
+        makes it explicit that the unit cell is a reactive configuration.
 
         Args:
-            unitcell_or_name: 基本単位胞オブジェクト、または単位胞名（文字列）。
-                文字列の場合は UnitCell(name, **kwargs) として内部で生成します。
-            **kwargs: unitcell_or_name が文字列の場合に UnitCell(...) に渡すオプション。
+            unitcell_or_name: A ``UnitCell`` instance or unit-cell name (string).
+                If a string is given, ``UnitCell(name, **kwargs)`` is created.
+            **kwargs: Options forwarded to ``UnitCell(...)`` when a name is given.
         """
         if isinstance(unitcell_or_name, UnitCell):
             self.unitcell = unitcell_or_name
@@ -1394,25 +1406,24 @@ class GenIce3:
 
     @property
     def replication_matrix(self):
-        """単位胞を複製するための3x3整数行列。
+        """3x3 integer matrix used to replicate the unit cell.
 
-        この行列により、基本単位胞をどのように積み重ねて拡大単位胞を
-        作成するかを指定します。
+        This matrix specifies how the basic unit cell is stacked to form
+        the expanded unit cell.
 
         Returns:
-            np.ndarray: 3x3整数行列
+            np.ndarray: 3x3 integer matrix.
         """
         return self._replication_matrix
 
     @replication_matrix.setter
     def replication_matrix(self, replication_matrix):
-        """単位胞複製行列を設定する。
+        """Set the unit-cell replication matrix.
 
-        このプロパティを変更すると、それに依存するすべてのリアクティブプロパティの
-        キャッシュが自動的にクリアされます。
+        Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            replication_matrix: 3x3整数行列
+            replication_matrix: 3x3 integer matrix.
         """
         self._replication_matrix = np.array(replication_matrix).reshape(3, 3)
         i, j, k = self._replication_matrix
@@ -1423,18 +1434,19 @@ class GenIce3:
         self.engine.cache.clear()
 
     def set_replication_matrix(self, replication_matrix):
-        """単位胞複製行列を設定する（リアクティブプロパティ用のラッパー）。
+        """Set the replication matrix (reactive-property-friendly wrapper).
 
-        代入（genice.replication_matrix = ...）の代わりにこのメソッドを使うと、
-        複製行列がリアクティブな設定であることが明確になります。
+        Using this method instead of assignment (``genice.replication_matrix = ...``)
+        makes it explicit that the replication matrix is part of the reactive
+        configuration.
 
         Args:
-            replication_matrix: 3x3整数行列（リストのリストまたは ndarray）
+            replication_matrix: 3x3 integer matrix (list-of-lists or ``ndarray``).
         """
         self.replication_matrix = replication_matrix
 
     def _get_inputs(self) -> Dict[str, Any]:
-        """engine.resolve()に渡すinputs辞書を取得"""
+        """Return the ``inputs`` dictionary passed to ``engine.resolve()``."""
         return {
             "unitcell": self.unitcell,
             "replication_matrix": self.replication_matrix,
@@ -1449,25 +1461,25 @@ class GenIce3:
         }
 
     def __getattr__(self, name: str):
-        """リアクティブプロパティへのアクセスを自動解決する。
+        """Resolve access to reactive properties automatically.
 
-        このメソッドにより、DependencyEngineに登録されたタスク関数が
-        プロパティとしてアクセス可能になります。プロパティにアクセスすると、
-        依存関係が自動的に解決され、必要な計算が実行されます。
+        This method exposes task functions registered in ``DependencyEngine``
+        as properties. Accessing such a property automatically resolves its
+        dependencies and executes the required computations.
 
-        例:
+        Example:
             >>> genice = GenIce3(unitcell=my_unitcell)
-            >>> digraph = genice.digraph  # この時点でdigraphとその依存関係が計算される
+            >>> digraph = genice.digraph  # digraph and its dependencies are computed here
 
         Args:
-            name: アクセスするプロパティ名（タスク関数名）
+            name: Property name (task-function name) to access.
 
         Returns:
-            計算されたプロパティの値
+            Computed value of the requested property.
 
         Raises:
-            AttributeError: 指定された名前のプロパティが存在しない場合
-            ConfigurationError: 必要な入力が設定されていない場合
+            AttributeError: If the requested property does not exist.
+            ConfigurationError: If required inputs are not configured.
         """
         # DependencyEngineに登録されているタスクかチェック
         if name in self.engine.registry:
@@ -1479,13 +1491,14 @@ class GenIce3:
         )
 
     def water_molecules(self, water_model: Molecule) -> Dict[int, Molecule]:
-        """格子サイトが水のサイトについて、配向・位置を適用した水分子の辞書を返す。
+        """Return oriented and positioned water molecules for water-like sites.
 
         Args:
-            water_model: 水分子のテンプレート（sites, labels など）。
+            water_model: Template water molecule (sites, labels, etc.).
 
         Returns:
-            サイト番号（ノード番号）→ Molecule の辞書。イオンサイトは含まない。
+            Dict[int, Molecule]: Mapping from site index (node index) to
+            ``Molecule``. Ion sites are not included.
         """
         mols = {}
         for site in range(len(self.lattice_sites)):
@@ -1506,7 +1519,7 @@ class GenIce3:
         return mols
 
     def guest_molecules(self) -> List[Molecule]:
-        """GenIce3に設定されたguestsとspot_guestsからゲスト分子リストを生成する。"""
+        """Generate the list of guest molecules from ``guests`` and ``spot_guests``."""
         # 通常の氷（ゲストなし）ではケージ不要 → assess_cages を呼ばない
         if not self.guests and not self.spot_guests:
             return []
@@ -1562,15 +1575,15 @@ class GenIce3:
         molecule: str,
         groups: Dict[int, str] | None = None,
     ) -> Molecule:
-        """サイト site_index（格子サイトのノード番号）に分子イオン（および spot cation 用の修飾 group）を構築する。
+        """Build a molecular ion (and optional modifier groups) at a given lattice site.
 
         Args:
-            site_index: 格子サイトのノード番号。
-            molecule: 分子イオンのプラグイン名（例: "ammonium"）。
-            groups: 当該サイトに隣接するケージID → group名。spot cation の修飾用。
+            site_index: Lattice-site node index.
+            molecule: Name of the molecular-ion plugin (for example, ``"ammonium"``).
+            groups: Mapping from adjacent cage ID to group name (for spot-cation modifiers).
 
         Returns:
-            直交座標で配置された Molecule（原子名は labels）。
+            ``Molecule`` placed in Cartesian coordinates (atom names are in ``labels``).
         """
         groups = groups or {}
         ion_center = self.lattice_sites[site_index] @ self.cell
@@ -1603,7 +1616,11 @@ class GenIce3:
         )
 
     def _effective_spot_cation_groups(self) -> Dict[int, Dict[int, str]]:
-        """spot_cation_groups に単位胞由来の cation_groups を展開してマージした辞書を返す（on-demand）。"""
+        """Return the merged spot-cation group mapping (on demand).
+
+        Expands unit-cell ``cation_groups`` to the supercell and merges them
+        with ``spot_cation_groups`` provided via CLI/API.
+        """
         # ベースは CLI/API で指定された spot_cation_groups
         effective: Dict[int, Dict[int, str]] = {
             k: dict(v) for k, v in self.spot_cation_groups.items()
@@ -1629,7 +1646,7 @@ class GenIce3:
         return effective
 
     def build_hydronium(self, site_index: int) -> Molecule:
-        """H3O+ を構築する。"""
+        """Build an H3O+ molecule at the given site."""
         sites = []
         labels = ["Cn", "Hn", "Hn", "Hn"]
         OH = 0.1
@@ -1651,7 +1668,7 @@ class GenIce3:
         )
 
     def build_hydroxide(self, site_index: int) -> Molecule:
-        """OH- を構築する。"""
+        """Build an OH- molecule at the given site."""
         sites = []
         labels = ["Nx", "Hx"]
         OH = 0.1
@@ -1672,7 +1689,7 @@ class GenIce3:
         )
 
     def substitutional_ions(self) -> Dict[int, Molecule]:
-        """単位胞・spot 由来のイオンを統合し、サイト番号→分子の辞書を返す。"""
+        """Merge unit-cell and spot ions into a site-index -> molecule mapping."""
         # 単位胞由来の group 指定も含めた「実効的な」spot_cation_groups をここで on-demand に組み立てて使う
 
         # 前提条件: anions, cations, hydroniums, hydroxidesのサイトに重複がないこと。
@@ -1703,12 +1720,12 @@ class GenIce3:
         return ions
 
     def dope_anions(self, anions: Dict[int, Molecule]) -> None:
-        """サイト番号→分子の辞書でアニオン配置を上書きする（主に API/テスト用）。"""
+        """Overwrite anion configuration with a site-index -> molecule mapping (API/test use)."""
         for site_index, molecule in anions.items():
             self.anions[site_index] = molecule
 
     def dope_cations(self, cations: Dict[int, Molecule]) -> None:
-        """サイト番号→分子の辞書でカチオン配置を上書きする（主に API/テスト用）。"""
+        """Overwrite cation configuration with a site-index -> molecule mapping (API/test use)."""
         for site_index, molecule in cations.items():
             self.cations[site_index] = molecule
 
@@ -1742,29 +1759,26 @@ class GenIce3:
 
     @classmethod
     def get_public_api_properties(cls):
-        """
-        ユーザー向けAPIとして公開されているpropertyのリストを返す。
+        """Return the list of properties exposed as public API.
 
         Returns:
-            list: 公開API property名のリスト
+            list: List of public API property names.
         """
         return cls.PUBLIC_API_PROPERTIES.copy()
 
     def list_all_reactive_properties(self):
-        """
-        すべてのリアクティブプロパティ（DependencyEngineに登録されたタスク）を列挙する。
+        """List all reactive properties (tasks registered in ``DependencyEngine``).
 
         Returns:
-            dict: property名をキー、タスク関数を値とする辞書
+            dict: Mapping from property name to task function.
         """
         return self.engine.registry.copy()
 
     def list_public_reactive_properties(self):
-        """
-        ユーザー向けAPIとして公開されているリアクティブプロパティのみを列挙する。
+        """List only reactive properties that are part of the public API.
 
         Returns:
-            dict: property名をキー、タスク関数を値とする辞書
+            dict: Mapping from property name to task function.
         """
         all_reactive = self.list_all_reactive_properties()
         public_names = set(self.PUBLIC_API_PROPERTIES)
@@ -1774,7 +1788,7 @@ class GenIce3:
 
     @classmethod
     def list_settable_reactive_properties(cls):
-        """setterを持つリアクティブな変数を列挙する"""
+        """List reactive properties that have a setter."""
         return {
             name: prop
             for name, prop in inspect.getmembers(
@@ -1784,7 +1798,7 @@ class GenIce3:
 
     @classmethod
     def list_public_settable_reactive_properties(cls):
-        """公開APIのうち、setter を持つリアクティブプロパティのみを列挙する。"""
+        """List public reactive properties that have a setter."""
         return {
             name: prop
             for name, prop in cls.list_settable_reactive_properties().items()

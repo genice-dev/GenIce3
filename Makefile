@@ -3,7 +3,7 @@ GITNAME=GenIce
 # Use Poetry venv Python so it works on any machine (override with make PYTHON=...)
 PYTHON ?= poetry run python
 
-all: README.md
+all: README.md docs api-notebook update-citations 
 	echo Hello.
 
 # docs/references.md is generated from citations.yaml by "make docs" (replacer --docs)
