@@ -14,8 +14,10 @@ genice3:
   # 乱数シード（ゲスト配置などで使用）。整数。
   seed: 42
 
-  # 分極ループの反復回数。整数。デフォルト 1000。
-  depol_loop: 2000
+  # 分極収束 第1段階の最大反復回数。整数。デフォルト 1000。
+  pol_loop_1: 2000
+  # 分極収束 第2段階の最大反復回数。0 で無効。第1段階で収束すれば実行されない。
+  # pol_loop_2: 0
 
   # 単位セルの複製係数 [a, b, c]。3つの整数。--rep と同義。
   replication_factors: [2, 2, 2]
@@ -112,7 +114,7 @@ spot_cation:
 # -----------------------------------------------------------------------------
 # オプション一覧まとめ（コメント）
 # -----------------------------------------------------------------------------
-# genice3:  debug, seed, depol_loop, target_polarization, replication_matrix,
+# genice3:  debug, seed, pol_loop_1, pol_loop_2, target_polarization, replication_matrix,
 #           replication_factors, assess_cages, anion, cation, spot_anion,
 #           spot_cation, exporter, guest, spot_guest, config
 # unitcell: name（必須）, shift, density, file, osite, anion, cation, cation_groups

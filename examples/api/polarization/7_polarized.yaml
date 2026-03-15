@@ -8,7 +8,7 @@ rep:
 - 2
 exporter: _pol
 seed: 114
-depol_loop: 1000
+pol_loop_1: 1000
 target_polarization:
 - 4
 - 0

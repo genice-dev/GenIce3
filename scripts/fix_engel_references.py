@@ -1,3 +1,7 @@
+"""
+One-off script: fix engel* unitcell references (swap alias vs implementation).
+Run from repo root: python scripts/fix_engel_references.py
+"""
 import os
 import pathlib
 
@@ -66,4 +70,5 @@ def fix_engel_references(root_dir):
 
 
 if __name__ == "__main__":
-    fix_engel_references(".")
+    root = pathlib.Path(__file__).resolve().parent.parent
+    fix_engel_references(str(root))

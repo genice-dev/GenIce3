@@ -37,7 +37,7 @@ update-citations:
 unitcell-test: $(patsubst genice3/unitcell/%.py, %.unitcell-test, $(wildcard genice3/unitcell/[0-9A-Za-z]*.py))
 
 %.unitcell-test:
-	$(PYTHON) -m genice3.unitcell._test.lattice_vs_unitcell $*
+	$(PYTHON) -m tests.unitcell_legacy.lattice_vs_unitcell $*
 	touch $@
 
 

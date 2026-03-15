@@ -1,7 +1,11 @@
-# Archived docs (formerly `docs/`)
+# Archived docs and design notes
 
-This directory contains the **previous** documentation: Jekyll-related config and Cursor-generated design/notes. The GenIce3 project no longer uses Jekyll here.
+このディレクトリは、**本筋のドキュメント・コードから外した**参照用のアーカイブです。
 
-The **current manual** is built with **MkDocs (Material)** from the `docs/` directory at the repo root. The site is published to GitHub Pages from the `gh-pages` branch (see `.github/workflows/mkdocs.yml`).
+- **旧ドキュメント**: 以前の Jekyll 用設定や Cursor 生成の設計メモ。現在のマニュアルはリポジトリ直下の `docs/` を MkDocs (Material) でビルドし、GitHub Pages に公開しています（`.github/workflows/mkdocs.yml` 参照）。
+- **設計・検討メモ**（ルートから移動したもの）:
+  - `option_handling_considerations.md` — オプション／YAML 構造の検討
+  - `MEMO_bjerrum_defect.md` — Bjerrum 欠陥導入の設計メモ
+- **試作コード**: `prototype_option_parser/` — プールベースオプションパーサーの試作（本番は `genice3/cli/` と `tests/test_option_parser/`）。
 
-You can keep this archive for reference or remove it if not needed.
+参照用に残してあり、削除してもビルド・本番コードには影響しません。

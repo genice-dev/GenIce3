@@ -10,7 +10,7 @@ basicConfig(level=INFO)
 
 genice = GenIce3(
     seed=114,
-    depol_loop=1000,
+    pol_loop_1=1000,
     replication_matrix=np.diag([2, 2, 2]),
     target_pol=np.array([4.0, 0.0, 0.0]),
 )

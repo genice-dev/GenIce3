@@ -1,6 +1,6 @@
 # Basics
 
-The program generates various hydrogen-disordered ice structures without defects. The total dipole moment is set to zero unless you change the depolarization behavior with `--depol_loop` or `--target_polarization`. The minimal structure (with `--rep 1 1 1`) is not always a single unit cell, because handling the hydrogen-bond network topology of very small lattices under periodic boundary conditions is difficult. Note that the generated structure is **not** optimized for potential energy.
+The program generates various hydrogen-disordered ice structures without defects. The total dipole moment is set to zero unless you change the polarization behavior with `--pol_loop_1`, `--pol_loop_2`, or `--target_polarization`. The minimal structure (with `--rep 1 1 1`) is not always a single unit cell, because handling the hydrogen-bond network topology of very small lattices under periodic boundary conditions is difficult. Note that the generated structure is **not** optimized for potential energy.
 
 - To generate a large supercell of ice Ih in CIF format:
 

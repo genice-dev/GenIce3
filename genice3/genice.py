@@ -715,7 +715,8 @@ def fixed_edges(
 @reactive
 def digraph(
     graph: nx.Graph,
-    depol_loop: int,
+    pol_loop_1: int,
+    pol_loop_2: int,
     lattice_sites: np.ndarray,
     fixed_edges: nx.DiGraph,
     target_pol: np.ndarray,
@@ -727,11 +728,13 @@ def digraph(
     Starting from the undirected hydrogen-bond graph, this function
     determines the direction (proton orientation) of each bond to build
     a directed graph. Directions specified by fixed edges are preserved,
-    while the rest are decided by a dipole-optimization algorithm.
+    while the rest are decided by a polarization-convergence algorithm
+    (stage 1 then stage 2 if needed).
 
     Args:
         graph: Undirected graph over the expanded unit cell.
-        depol_loop: Number of iterations in the dipole-optimization algorithm.
+        pol_loop_1: Max iterations for polarization convergence stage 1.
+        pol_loop_2: Max iterations for polarization convergence stage 2.
         lattice_sites: Array of lattice-site positions.
         fixed_edges: Directed graph of fixed edges over the expanded cell.
         target_pol: Target polarization vector.
@@ -745,7 +748,8 @@ def digraph(
         graph,
         vertex_positions=lattice_sites,
         is_periodic_boundary=True,
-        dipole_optimization_cycles=depol_loop,
+        dipole_optimization_cycles=pol_loop_1,
+        dipole_optimization_cycles2=pol_loop_2,
         fixed_edges=fixed_edges,
         pairing_attempts=1000,
         target_pol=target_pol,
@@ -956,7 +960,7 @@ class GenIce3:
         - Dependencies are inferred automatically from function argument names.
         - Once computed, properties are cached and reused until their inputs change.
         - When an input property (``unitcell``, ``replication_matrix``,
-          ``depol_loop``, etc.) is modified, the cache of all dependent
+          ``pol_loop_1``, ``pol_loop_2``, etc.) is modified, the cache of all dependent
           properties is automatically cleared.
 
     Example:
@@ -989,9 +993,8 @@ class GenIce3:
             basic unit cell is stacked to construct the expanded unit cell.
             If it is the identity matrix, only the basic unit cell is used.
 
-        depol_loop (int): Number of iterations in the dipole-optimization algorithm
-            used to construct the directed graph. Larger values provide better
-            optimization but increase computation time.
+        pol_loop_1 (int): Max iterations for polarization convergence stage 1.
+        pol_loop_2 (int): Max iterations for polarization convergence stage 2 (0 = disabled).
 
         seed (int): Random seed.
             Used for operations such as directed-graph generation. Changing this
@@ -1029,7 +1032,8 @@ class GenIce3:
         "orientations",
         "unitcell",
         "replication_matrix",
-        "depol_loop",
+        "pol_loop_1",
+        "pol_loop_2",
         "target_pol",
         "seed",
         "spot_anions",
@@ -1040,7 +1044,8 @@ class GenIce3:
 
     def __init__(
         self,
-        depol_loop: int = 1000,
+        pol_loop_1: int = 1000,
+        pol_loop_2: int = 0,
         replication_matrix: np.ndarray = np.eye(3, dtype=int),
         target_pol: np.ndarray = np.array([0.0, 0.0, 0.0]),
         seed: int = 1,
@@ -1058,8 +1063,10 @@ class GenIce3:
         """Initialize a ``GenIce3`` instance.
 
         Args:
-            depol_loop: Number of iterations in the dipole-optimization algorithm
+            pol_loop_1: Max iterations for polarization convergence stage 1
                 (default: 1000).
+            pol_loop_2: Max iterations for polarization convergence stage 2
+                (default: 0, disabled).
             replication_matrix: Unit-cell replication matrix (default: identity).
             target_pol: Target polarization vector (default: ``[0, 0, 0]``).
             seed: Random seed (default: 1).
@@ -1083,7 +1090,8 @@ class GenIce3:
         self.seed = (
             seed  # reactive propertyとして設定（setterでnp.random.seed()も実行される）
         )
-        self.depol_loop = depol_loop
+        self.pol_loop_1 = pol_loop_1
+        self.pol_loop_2 = pol_loop_2
         self.replication_matrix = replication_matrix
         self.target_pol = target_pol
         self.spot_anions = spot_anions
@@ -1313,26 +1321,47 @@ class GenIce3:
         self.engine.cache.clear()
 
     @property
-    def depol_loop(self):
-        """Number of iterations in the dipole-optimization algorithm.
+    def pol_loop_1(self):
+        """Max iterations for polarization convergence (stage 1).
 
         Returns:
             int: Number of iterations.
         """
-        return self._depol_loop
+        return self._pol_loop_1
 
-    @depol_loop.setter
-    def depol_loop(self, depol_loop):
-        """Set the number of iterations in the dipole-optimization algorithm.
+    @pol_loop_1.setter
+    def pol_loop_1(self, pol_loop_1):
+        """Set max iterations for polarization convergence stage 1.
 
         Changing this property clears the cache of all dependent reactive properties.
 
         Args:
-            depol_loop: Number of iterations.
+            pol_loop_1: Number of iterations.
         """
-        self._depol_loop = depol_loop
-        self.logger.debug(f"  {depol_loop=}")
-        # キャッシュをクリア（depol_loopに依存するすべてのタスクを再計算させる）
+        self._pol_loop_1 = pol_loop_1
+        self.logger.debug(f"  {pol_loop_1=}")
+        self.engine.cache.clear()
+
+    @property
+    def pol_loop_2(self):
+        """Max iterations for polarization convergence (stage 2).
+
+        Returns:
+            int: Number of iterations (0 = disabled).
+        """
+        return self._pol_loop_2
+
+    @pol_loop_2.setter
+    def pol_loop_2(self, pol_loop_2):
+        """Set max iterations for polarization convergence stage 2.
+
+        Changing this property clears the cache of all dependent reactive properties.
+
+        Args:
+            pol_loop_2: Number of iterations (0 = disabled).
+        """
+        self._pol_loop_2 = pol_loop_2
+        self.logger.debug(f"  {pol_loop_2=}")
         self.engine.cache.clear()
 
     @property
@@ -1450,7 +1479,8 @@ class GenIce3:
         return {
             "unitcell": self.unitcell,
             "replication_matrix": self.replication_matrix,
-            "depol_loop": self.depol_loop,
+            "pol_loop_1": self.pol_loop_1,
+            "pol_loop_2": self.pol_loop_2,
             "target_pol": self.target_pol,
             "spot_anions": self.spot_anions,
             "spot_cations": self.spot_cations,

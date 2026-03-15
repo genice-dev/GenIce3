@@ -8,8 +8,8 @@ genice3:
   # 乱数シード
   seed: 42
 
-  # 分極ループの反復回数
-  depol_loop: 2000
+  # 分極収束 第1段階の最大反復回数
+  pol_loop_1: 2000
 
   # 単位セルの複製係数（a, b, c軸方向）
   replication_factors: [2, 2, 2]

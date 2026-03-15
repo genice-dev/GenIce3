@@ -9,10 +9,13 @@ Options:
   -h, --help               Show this message and exit.
   -V, --version            Show the version and exit.
   -D, --debug              Enable debug mode.
-  --depol_loop INTEGER     Number of iterations for the depolarization
-                           optimization loop. Larger values may improve
-                           the quality of the hydrogen bond network.
+  --pol_loop_1 INTEGER     Max iterations for polarization convergence
+                           (stage 1). Satisfies ice rules while reducing
+                           polarization; very cheap but limited range.
                            Default is 1000.
+  --pol_loop_2 INTEGER     Max iterations for polarization convergence
+                           (stage 2). More forceful, reliable convergence;
+                           skipped if stage 1 converges. Default is 0.
   --target_polarization FLOAT FLOAT FLOAT
                            Target polarization vector (three floats: Px
                            Py Pz). The dipole optimization will aim to

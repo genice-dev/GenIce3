@@ -68,6 +68,8 @@ class PoolBasedParser:
         "replication_factors",
         "replication_matrix",
         "seed",
+        "pol_loop_1",
+        "pol_loop_2",
         "depol_loop",
         "debug",
         "spot_anion",

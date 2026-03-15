@@ -4,6 +4,8 @@ Abascal 2005:
     \ The Journal of Chemical Physics. Online. 15 June 2005. Vol. 122, no. 23. DOI 10.1063/1.1931662.\
     \ \n"
   doi: 10.1063/1.1931662
+Abascal 2005B:
+  doi: 10.1063/1.2121687
 Avogadro:
   description: Avogadro https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif
   url: https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif

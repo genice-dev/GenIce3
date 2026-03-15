@@ -9,4 +9,4 @@ python3 -m genice3.cli.genice A15 \
   --spot_guest 0=4site \
   --exporter gromacs :water_model 4site \
   --seed 42 \
-  --depol_loop 2000
+  --pol_loop_1 2000

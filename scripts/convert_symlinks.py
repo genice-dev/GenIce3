@@ -1,3 +1,7 @@
+"""
+One-off script: convert .py symlinks under genice3 to alias files (from .X import *).
+Run from repo root: python scripts/convert_symlinks.py
+"""
 import os
 import pathlib
 
@@ -26,4 +30,5 @@ def convert_symlinks(root_dir):
 
 
 if __name__ == "__main__":
-    convert_symlinks("genice3")
+    root = pathlib.Path(__file__).resolve().parent.parent
+    convert_symlinks(root / "genice3")

@@ -54,4 +54,3 @@ edge (i,j) について。
     - `find_nearest_edges_pbc`（仮）で `(i, j)` を決定し、
     - `genice.add_bjerrum_L(edges)` を呼ぶ、
     という流れを想定。
-

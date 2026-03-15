@@ -53,8 +53,22 @@ def validate_replication_factors(value: Any) -> None:
             ) from e
 
 
+def validate_pol_loop(value: Any, option_name: str = "pol_loop") -> None:
+    """pol_loop_1 / pol_loop_2 は非負整数であること（0 でその段階をスキップ）。"""
+    if value is None:
+        return
+    try:
+        n = int(value)
+        if n < 0:
+            raise ValueError(f"--{option_name} must be non-negative, got: {n}")
+    except (TypeError, ValueError) as e:
+        if isinstance(e, ValueError) and "non-negative" in str(e):
+            raise
+        raise ValueError(f"--{option_name} must be an integer, got: {value}") from e
+
+
 def validate_depol_loop(value: Any) -> None:
-    """depol_loop は正の整数であること"""
+    """depol_loop は正の整数であること（後方互換: pol_loop_1 として解釈される）。"""
     if value is None:
         return
     try:

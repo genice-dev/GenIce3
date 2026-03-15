@@ -1,7 +1,7 @@
 **Polarization and dipole optimization**.
 
 - `7_polarized.py`  
-  - Generate a structure with a specified polarization using `target_pol` and `depol_loop`.
+  - Generate a structure with a specified polarization using `target_pol` and `pol_loop_1` (and optionally `pol_loop_2`).
 
 ---
 
@@ -26,7 +26,7 @@
     
     genice = GenIce3(
         seed=114,
-        depol_loop=1000,
+        pol_loop_1=1000,
         replication_matrix=np.diag([2, 2, 2]),
         target_pol=np.array([4.0, 0.0, 0.0]),
     )
@@ -45,7 +45,7 @@
       --rep 2 2 2 \
       --exporter _pol \
       --seed 114 \
-      --depol_loop 1000 \
+      --pol_loop_1 1000 \
       --target_polarization 4 0 0
     ```
 
@@ -62,7 +62,7 @@
     - 2
     exporter: _pol
     seed: 114
-    depol_loop: 1000
+    pol_loop_1: 1000
     target_polarization:
     - 4
     - 0

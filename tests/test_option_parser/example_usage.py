@@ -22,7 +22,7 @@ def example_command_line():
         "gromacs",
         "--seed",
         "42",
-        "--depol_loop",
+        "--pol_loop_1",
         "2000",
         "--spot_anion",
         "1=Cl",

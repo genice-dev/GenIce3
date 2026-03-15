@@ -1,7 +1,7 @@
 # テスト用YAML設定ファイル
 genice3:
   seed: 42
-  depol_loop: 2000
+  pol_loop_1: 2000
   replication_factors: [2, 2, 2]
   assess_cages: false
   spot_anion:

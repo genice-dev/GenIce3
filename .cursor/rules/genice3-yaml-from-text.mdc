@@ -9,7 +9,7 @@ globs: ["**/*.yaml", "**/config*.yaml", "**/genice*.yaml"]
 
 ## 必須の3セクション
 
-- **genice3**: seed, depol_loop, replication_factors, replication_matrix, target_polarization, assess_cages, debug, spot_anion, spot_cation
+- **genice3**: seed, pol_loop_1, pol_loop_2, replication_factors, replication_matrix, target_polarization, assess_cages, debug, spot_anion, spot_cation
 - **unitcell**: name（必須）, shift, density, file（CIF時）, anion, cation
 - **exporter**: name（必須）, guest, spot_guest, water_model, shift
 

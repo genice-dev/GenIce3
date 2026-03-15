@@ -9,4 +9,4 @@ python3 -m genice3.cli.genice A15 \
   --spot_cation 51=N :group 12=methyl 48=methyl 49=methyl 50=methyl \
   --exporter yaplot \
   --seed 42 \
-  --depol_loop 2000
+  --pol_loop_1 2000

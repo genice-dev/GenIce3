@@ -9,7 +9,7 @@ from genice3.cli.options import parse_guest_option, parse_spot_guest_option
 #   --rep 2 2 2 \
 #   --guest A12=me --guest A14=et --spot_guest 0=4site \
 #   --exporter gromacs :water_model 4site \
-#   --seed 42 --depol_loop 2000 -D
+#   --seed 42 --pol_loop_1 2000 -D
 
 basicConfig(level=INFO)
 
@@ -18,7 +18,7 @@ basicConfig(level=INFO)
 # spot_guests: 特定ケージへのゲスト分子指定（parse_spot_guest_optionで raw dict を変換）
 genice = GenIce3(
     seed=42,
-    depol_loop=2000,
+    pol_loop_1=2000,
     replication_matrix=np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]]),
     guests=parse_guest_option({"A12": "me", "A14": "et"}),
     spot_guests=parse_spot_guest_option({0: "4site"}),

@@ -33,6 +33,8 @@ _BASE_KEYS = frozenset(
         "rep",
         "replication_factors",
         "replication_matrix",
+        "pol_loop_1",
+        "pol_loop_2",
         "depol_loop",
         "target_polarization",
         "config",

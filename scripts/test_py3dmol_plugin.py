@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Test script to check if genice3-py3dmol plugin is visible to GenIce3.
+Run from repo root: python scripts/test_py3dmol_plugin.py
 """
 
 import sys
@@ -109,9 +110,3 @@ except ImportError as e:
     print(f"   ✗ Failed to import Exporter: {e}")
 
 print("\n" + "=" * 60)
-
-
-
-
-
-

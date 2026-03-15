@@ -23,6 +23,7 @@ from genice3.cli.validator import (
     validate_seed,
     validate_replication_factors,
     validate_depol_loop,
+    validate_pol_loop,
     validate_target_polarization,
     validate_replication_matrix,
     validate_spot_ion_dict,
@@ -40,9 +41,18 @@ from genice3.molecule import Molecule
 
 _HELP_VERSION = "Show the version and exit."
 _HELP_DEBUG = "Enable debug mode."
+_HELP_POL_LOOP_1 = (
+    "Max iterations for polarization convergence (stage 1). "
+    "Satisfies ice rules while reducing polarization; very cheap but limited adjustment range. "
+    "Default is 1000."
+)
+_HELP_POL_LOOP_2 = (
+    "Max iterations for polarization convergence (stage 2). "
+    "More forceful method, slightly heavier cost, reliable convergence. "
+    "Skipped if stage 1 already converges. Default is 0 (disabled)."
+)
 _HELP_DEPOL_LOOP = (
-    "Number of iterations for the depolarization optimization loop. "
-    "Larger values may improve the quality of the hydrogen bond network. Default is 1000."
+    "Deprecated alias for --pol_loop_1. Use --pol_loop_1 instead."
 )
 _HELP_TARGET_POLARIZATION = (
     "Target polarization vector (three floats: Px Py Pz). "
@@ -223,6 +233,22 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         parse_validator=validate_replication_matrix,
     ),
     OptionDef(
+        "pol_loop_1",
+        level="base",
+        parse_type=OPTION_TYPE_STRING,
+        metavar="INTEGER",
+        help_text=_HELP_POL_LOOP_1,
+        parse_validator=lambda v: validate_pol_loop(v, "pol_loop_1"),
+    ),
+    OptionDef(
+        "pol_loop_2",
+        level="base",
+        parse_type=OPTION_TYPE_STRING,
+        metavar="INTEGER",
+        help_text=_HELP_POL_LOOP_2,
+        parse_validator=lambda v: validate_pol_loop(v, "pol_loop_2"),
+    ),
+    OptionDef(
         "depol_loop",
         level="base",
         parse_type=OPTION_TYPE_STRING,
@@ -244,8 +270,10 @@ BASE_HELP_ORDER: Tuple[str, ...] = (
     "help",
     "version",
     "debug",
-    "depol_loop",
+    "pol_loop_1",
+    "pol_loop_2",
     "target_polarization",
+    "depol_loop",
     "replication_matrix",
     "replication_factors",
     "seed",
@@ -517,10 +545,21 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
             return np.array([float(v) for v in x])
         raise ValueError(f"target_polarization must be 3 numbers, got: {x}")
 
-    for key in ("seed", "depol_loop"):
+    for key in ("seed",):
         if key in options:
             processed[key] = to_int(_normalize_single(options[key]))
             unprocessed.pop(key, None)
+    # pol_loop_1, pol_loop_2: 非負整数。depol_loop は後方互換で pol_loop_1 にマップ
+    if "pol_loop_1" in options:
+        processed["pol_loop_1"] = to_int(_normalize_single(options["pol_loop_1"]))
+        unprocessed.pop("pol_loop_1", None)
+    if "depol_loop" in options:
+        if "pol_loop_1" not in processed:
+            processed["pol_loop_1"] = to_int(_normalize_single(options["depol_loop"]))
+        unprocessed.pop("depol_loop", None)
+    if "pol_loop_2" in options:
+        processed["pol_loop_2"] = to_int(_normalize_single(options["pol_loop_2"]))
+        unprocessed.pop("pol_loop_2", None)
     if "replication_factors" in options:
         processed["replication_factors"] = to_int_tuple(
             _normalize_single(options["replication_factors"])
@@ -580,10 +619,11 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
         base_options: parse_base_options 済みの基底オプション辞書（result["base_options"]）
 
     Returns:
-        GenIce3 に渡す kwargs（depol_loop, replication_matrix, target_pol, seed, spot_anions, spot_cations, guests, spot_guests）
+        GenIce3 に渡す kwargs（pol_loop_1, pol_loop_2, replication_matrix, target_pol, seed, ...）
     """
     seed = base_options.get("seed", 1)
-    depol_loop = base_options.get("depol_loop", 1000)
+    pol_loop_1 = base_options.get("pol_loop_1", 1000)
+    pol_loop_2 = base_options.get("pol_loop_2", 0)
     target_polarization = base_options.get("target_polarization")
     if target_polarization is None:
         target_polarization = np.array([0.0, 0.0, 0.0])
@@ -609,7 +649,8 @@ def extract_genice_args(base_options: Dict[str, Any]) -> Dict[str, Any]:
     spot_cation_groups = base_options.get("spot_cation_groups", {}) or {}
 
     return {
-        "depol_loop": depol_loop,
+        "pol_loop_1": pol_loop_1,
+        "pol_loop_2": pol_loop_2,
         "replication_matrix": replication_matrix,
         "target_pol": target_polarization,
         "seed": seed,

@@ -90,7 +90,7 @@ class TestPoolBasedParser:
             "gromacs",
             "--seed",
             "42",
-            "--depol_loop",
+            "--pol_loop_1",
             "2000",
             "--spot_anion",
             "1=Cl",
@@ -123,7 +123,7 @@ class TestPoolBasedParser:
         assert result["unitcell"]["name"] == "A15"
         assert result["base_options"]["replication_factors"] == ("2", "2", "2")
         assert result["base_options"]["seed"] == "42"
-        assert result["base_options"]["depol_loop"] == "2000"
+        assert result["base_options"]["pol_loop_1"] == "2000"
 
         # unitcellオプション
         assert result["unitcell"]["options"]["shift"] == ("0.1", "0.1", "0.1")
@@ -147,7 +147,7 @@ class TestPoolBasedParser:
         yaml_content = """
 genice3:
   seed: 42
-  depol_loop: 2000
+  pol_loop_1: 2000
   replication_factors: [2, 2, 2]
   spot_anion:
     "1": Cl
@@ -182,7 +182,7 @@ exporter:
 
             result = parser.get_result()
             assert result["base_options"]["seed"] == 42
-            assert result["base_options"]["depol_loop"] == 2000
+            assert result["base_options"]["pol_loop_1"] == 2000
             assert result["base_options"]["replication_factors"] == (2, 2, 2)
 
             assert result["unitcell"]["name"] == "A15"

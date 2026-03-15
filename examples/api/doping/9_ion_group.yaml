@@ -21,4 +21,4 @@ spot_cation:
     - 50=methyl
 exporter: yaplot
 seed: 42
-depol_loop: 2000
+pol_loop_1: 2000
