@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-examples/api/*.yaml を読み、option_parser の structure_to_option_string で
-オプション行に戻し、同じ basename の .sh を生成する。
-見やすい位置（各 --option の前）で改行を入れる。
-実行: プロジェクトルートで python examples/api/gen_sh_from_yaml.py
+Read examples/api/*.yaml, convert them back to a single option line using
+option_parser.structure_to_option_string, and generate a .sh file with the same
+basename. Insert line breaks before each '--option' to keep the command readable.
+Run from the project root as: python examples/api/gen_sh_from_yaml.py
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ except ImportError:
 
 
 def _option_line_with_breaks(line: str) -> str:
-    """1行のオプション文字列を、各 ' --' の前で改行して返す。"""
+    """Split a single option line and insert line breaks before each ' --'."""
     parts = re.split(r" (?=--)", line)
     if len(parts) <= 1:
         return line
@@ -35,13 +35,13 @@ def _option_line_with_breaks(line: str) -> str:
 
 def main() -> None:
     if yaml is None:
-        print("PyYAML が必要です: pip install pyyaml", file=sys.stderr)
+        print("PyYAML is required: pip install pyyaml", file=sys.stderr)
         sys.exit(1)
 
     api_dir = SCRIPT_DIR
     for yaml_path in sorted(api_dir.glob("*.yaml")):
         text = yaml_path.read_text(encoding="utf-8")
-        # 先頭の # コメント行を除いてからパース
+        # Strip leading comment lines before parsing.
         body = re.sub(r"^#.*\n?", "", text).strip()
         if not body:
             continue

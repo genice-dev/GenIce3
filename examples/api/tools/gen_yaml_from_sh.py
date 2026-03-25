@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-examples/api/*.sh からオプション行を抽出し、option_parser でパースして
-同じ basename の .yaml を生成する。
-実行: プロジェクトルートで python examples/api/gen_yaml_from_sh.py
+Read examples/api/*.sh, extract the option line, parse it via option_parser,
+and generate a .yaml file with the same basename.
+Run from the project root as: python examples/api/gen_yaml_from_sh.py
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import re
 import sys
 from pathlib import Path
 
-# プロジェクトルートを path に追加
+# Add the project root to sys.path.
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent.parent
 if str(ROOT) not in sys.path:
@@ -30,7 +30,7 @@ except ImportError:
 
 
 def _numeric_if_possible(s: str):
-    """数値に見える文字列は int/float に変換（YAML で引用符なしで出すため）。"""
+    """Convert string-like numbers to int/float so YAML can omit quotes."""
     if not isinstance(s, str):
         return s
     s = s.strip()
@@ -45,7 +45,7 @@ def _numeric_if_possible(s: str):
 
 
 def _coerce_numbers(obj):
-    """再帰的にスカラー文字列を数値に変換する。"""
+    """Recursively convert scalar strings into numbers when possible."""
     if isinstance(obj, dict):
         return {k: _coerce_numbers(v) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -56,9 +56,9 @@ def _coerce_numbers(obj):
 
 
 def extract_option_line(sh_path: Path) -> str | None:
-    """.sh から genice3.cli.genice に渡しているオプション文字列を抽出する。"""
+    """Extract the option string passed to genice3.cli.genice from a .sh file."""
     text = sh_path.read_text(encoding="utf-8")
-    # 行継続 \ を空白に
+    # Join lines with trailing backslashes into a single line.
     oneline = re.sub(r"\\\s*\n\s*", " ", text)
     m = re.search(r"genice3\.cli\.genice\s+(.+)", oneline)
     if not m:
@@ -71,7 +71,7 @@ def extract_option_line(sh_path: Path) -> str | None:
 
 def main() -> None:
     if yaml is None:
-        print("PyYAML が必要です: pip install pyyaml", file=sys.stderr)
+        print("PyYAML is required: pip install pyyaml", file=sys.stderr)
         sys.exit(1)
 
     api_dir = SCRIPT_DIR
