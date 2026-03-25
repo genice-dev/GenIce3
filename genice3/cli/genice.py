@@ -1,8 +1,9 @@
-from logging import getLogger, DEBUG, INFO, StreamHandler, Formatter
+from logging import getLogger
 import sys
 from importlib.metadata import version, PackageNotFoundError
 
 from genice3.plugin import safe_import
+from genice3 import _setup_logging
 from genice3.genice import GenIce3, log_cation_cages, log_spot_cation_cages
 from genice3.cli.runner import parse_argv, validate_result
 from genice3.cli.options import (
@@ -48,31 +49,6 @@ def _wrap_desc(text: str, width: int) -> list[str]:
     if current:
         lines.append(" ".join(current))
     return lines
-
-
-def _setup_logging(debug: bool) -> None:
-    """ルートロガーの設定を統一する。
-
-    debug=False: ユーザー向け。シンプルな `LEVEL: message` 表示（ロガー名は出さない）。
-    debug=True: 開発者向け。`LEVEL logger:lineno: message` 形式で詳細情報を含める。
-    """
-    root = getLogger()
-
-    # 既存のハンドラをすべて外す（basicConfig 等の影響を消す）
-    for handler in root.handlers[:]:
-        root.removeHandler(handler)
-
-    handler = StreamHandler(sys.stderr)
-    if debug:
-        root.setLevel(DEBUG)
-        handler.setLevel(DEBUG)
-        fmt = "%(levelname)s %(name)s:%(lineno)d: %(message)s"
-    else:
-        root.setLevel(INFO)
-        handler.setLevel(INFO)
-        fmt = "%(levelname)s: %(message)s"
-    handler.setFormatter(Formatter(fmt))
-    root.addHandler(handler)
 
 
 def _opt_line(option: str, description: str) -> list[str]:

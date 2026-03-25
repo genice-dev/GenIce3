@@ -6,7 +6,7 @@
 
 <span id="abascal-2005b"></span>
 
-- **[Abascal 2005B](https://doi.org/10.1063/1.2121687)**: 
+- **[Abascal 2005B](https://doi.org/10.1063/1.2121687)**: ABASCAL, J. L. F. and VEGA, C., 2005. A general purpose model for the condensed phases of water: TIP4P/2005. The Journal of Chemical Physics. Online. 15 December 2005. Vol. 123, no. 23. DOI 10.1063/1.2121687.
 
 <span id="avogadro"></span>
 

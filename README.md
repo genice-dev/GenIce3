@@ -29,10 +29,10 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 - graphstat >=0.3.3
 - yaplotlib >=0.1.2
 - openpyscad >=0.5.0
-- genice-core >=1.3.1
 - pyyaml >=6.0
 - jinja2 >=3.1.4
 - cif2ice (>=0.4.1,<0.5.0)
+- genice-core (>=1.4.3,<2.0.0)
 
 
 ## Installation

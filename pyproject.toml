@@ -16,10 +16,10 @@ dependencies = [
     "graphstat>=0.3.3",
     "yaplotlib>=0.1.2",
     "openpyscad>=0.5.0",
-    "genice-core @ git+https://github.com/genice-dev/genice-core.git@nx_again",
     "pyyaml>=6.0",
     "jinja2>=3.1.4",
     "cif2ice (>=0.4.1,<0.5.0)",
+    "genice-core (>=1.4.3,<2.0.0)",
 ]
 
 [project.optional-dependencies]
@@ -81,7 +81,6 @@ cycless = ">=0.4.2"
 graphstat = ">=0.3.3"
 yaplotlib = ">=0.1.2"
 openpyscad = ">=0.5.0"
-genice-core = { git = "https://github.com/genice-dev/genice-core.git", branch = "nx_again" }
 pyyaml = "^6.0"
 
 [tool.poetry.group.dev.dependencies]

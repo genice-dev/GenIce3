@@ -96,7 +96,7 @@ Arguments:
   UNITCELL                 Unitcell plugin name (required)
 
 Unitcell options (depend on UNITCELL; some unitcell may have additional options. Pass after UNITCELL):
-  --density FLOAT          Target density (e.g. g/cm³). Supported by
+  --density FLOAT          Target density (e.g. g/cm3). Supported by
                            many unit cells.
   --shift X Y Z            Shift fractional coordinates. Supported by
                            many unit cells.
