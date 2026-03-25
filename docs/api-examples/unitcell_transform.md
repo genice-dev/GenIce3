@@ -36,12 +36,12 @@
     from genice3.genice import GenIce3
     from genice3.plugin import safe_import
     
-    # A15 単位胞、複製行列で拡大
+    # Start from the A15 unit cell and enlarge it using a replication matrix.
     unitcell = safe_import("unitcell", "A15").UnitCell()
     genice = GenIce3(unitcell=unitcell)
     genice.set_replication_matrix([[1, 1, 0], [-1, 1, 0], [0, 0, 1]])
     
-    # python exporter で unitcell プラグインのソースを取得
+    # Use the python exporter to obtain the source code of a unitcell plugin.
     exporter = safe_import("exporter", "python")
     exporter.dump(genice)
     ```
@@ -98,7 +98,7 @@ from genice3.genice import GenIce3
 from genice3.unitcell import ice1c
 from genice3.exporter import python as py_exporter, cage_survey
 
-# ice1c 単位胞、複製行列で拡大
+# Start from the ice1c unit cell and enlarge it using a replication matrix.
 unitcell = ice1c.UnitCell()
 genice = GenIce3(unitcell=unitcell)
 genice.set_replication_matrix([[2, 2, 0], [-2, 2, 0], [0, 0, 2]])

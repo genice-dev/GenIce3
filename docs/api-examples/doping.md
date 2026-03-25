@@ -27,7 +27,7 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
     from genice3.genice import GenIce3
     from genice3.plugin import Exporter
     
-    # corresponding command:
+    ﻿# Corresponding CLI command:
     # genice3 A15 --cation 0=N :group 1=methyl 6=methyl 3=methyl 4=methyl \
     #   --anion 2=Cl --rep 2 2 2 --exporter gromacs :water_model 4site
     
@@ -38,7 +38,7 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
         seed=43,
     )
     
-    # 単位胞内の anion/cation と cation_groups（カチオンの腕の group 指定）
+    # Set anion/cation and cation_groups in the unit cell (group assignment for cation arms).
     genice.set_unitcell(
         "A15",
         anion={2: "Cl"},
@@ -103,7 +103,7 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
     from genice3.genice import GenIce3
     from genice3.plugin import Exporter, Molecule
     
-    # corresponding command:
+    # Corresponding CLI command:
     # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
     #   --rep 2 2 2 \
     #   --spot_anion 1=Cl --spot_anion 35=Br \
@@ -113,13 +113,13 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
     
     basicConfig(level=INFO)
     
-    # GenIce3インスタンスを作成
-    # seed: 乱数シード
-    # depol_loop: 分極ループの反復回数
-    # replication_matrix: 複製行列（2x2x2の対角行列）
-    # spot_anions: 特定の水分子をアニオンで置換（水分子インデックス: イオン名）。CLI は -A / --spot_anion
-    # spot_cations: 特定の水分子をカチオンで置換（水分子インデックス: イオン名）。CLI は -C / --spot_cation
-    # 注意: debugはGenIce3のコンストラクタでは受け付けられない（ログレベルの設定はbasicConfigで行う）
+    # Create a GenIce3 instance.
+    # seed: random seed.
+    # depol_loop: number of depolarization loop iterations.
+    # replication_matrix: replication matrix (here a 2x2x2 diagonal matrix).
+    # spot_anions: replace specific water molecules with anions (water index -> ion name). CLI: -A / --spot_anion
+    # spot_cations: replace specific water molecules with cations (water index -> ion name). CLI: -C / --spot_cation
+    # Note: the GenIce3 constructor does not take a debug flag (logging level is set via basicConfig).
     genice = GenIce3(
         seed=42,
         depol_loop=2000,
@@ -132,12 +132,12 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
         },
     )
     
-    # 単位セルを設定
-    # shift: シフト（分数座標）
-    # anion: 単位胞内の格子サイトをアニオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion
-    # cation: 単位胞内の格子サイトをカチオンで置換（サイトインデックス: イオン名）。CLI は -c / --cation
-    # density: 密度（g/cm³）
-    # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
+    # Set the unit cell.
+    # shift: shift in fractional coordinates.
+    # anion: replace lattice sites in the unit cell with anions (site index -> ion name). CLI: -a / --anion
+    # cation: replace lattice sites in the unit cell with cations (site index -> ion name). CLI: -c / --cation
+    # density: density in g/cm³.
+    # If cage information is needed, you can use Exporter("cage_survey").dump(genice, file) to output JSON.
     genice.set_unitcell(
         "A15",
         shift=(0.1, 0.1, 0.1),
@@ -147,7 +147,7 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
     )
     
     
-    # エクスポーターで出力
+    # Output using the exporter.
     Exporter("gromacs").dump(
         genice,
         water_model="4site",
@@ -213,26 +213,26 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
     from genice3.genice import GenIce3
     from genice3.plugin import Exporter, Molecule
     
-    # corresponding command:
+    # Corresponding CLI command:
     # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
     #   --rep 2 2 2 \
     #   --spot_anion 1=Cl --spot_anion 35=Br \
     #   --spot_cation 1=Na --spot_cation 35=K \
     #   --exporter gromacs :water_model 4site \
-    #   --seed 42 --depol_loop 2000 -D
+    #   --seed 42 --pol_loop_1 2000 -D
     
     basicConfig(level=INFO)
     
-    # GenIce3インスタンスを作成
-    # seed: 乱数シード
-    # depol_loop: 分極ループの反復回数
-    # replication_matrix: 複製行列（2x2x2の対角行列）
-    # spot_anions / spot_cations: 水分子インデックス -> イオン名。CLI は -A / --spot_anion, -C / --spot_cation
-    # spot_cation_groups: group サブオプション（サイト -> {ケージID -> group名}）。
-    # YAML/CLI のネスト形式で使う "ion" キーは Python API では不要（別引数で渡す）。
+    # Create a GenIce3 instance.
+    # seed: random seed.
+    # pol_loop_1: maximum number of iterations for the first polarization convergence stage.
+    # replication_matrix: replication matrix (here a 2x2x2 diagonal matrix).
+    # spot_anions / spot_cations: water-molecule index -> ion name. CLI: -A / --spot_anion, -C / --spot_cation
+    # spot_cation_groups: group suboption (site -> {cage ID -> group name}).
+    # The nested \"ion\" key used in YAML/CLI is not needed in the Python API (it is passed as a separate argument).
     genice = GenIce3(
         seed=42,
-        depol_loop=2000,
+        pol_loop_1=2000,
         replication_matrix=np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]]),
         spot_anions={1: "Cl"},
         spot_cations={51: "N"},
@@ -241,14 +241,14 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
         },
     )
     
-    # 単位セルを設定
-    # anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
-    # density: 密度（g/cm³）
-    # ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
+    # Set the unit cell.
+    # anion / cation: replace lattice sites in the unit cell with ions (site index -> ion name). CLI: -a / --anion, -c / --cation
+    # density: density in g/cm³.
+    # If cage information is needed, you can use Exporter("cage_survey").dump(genice, file) to output JSON.
     genice.set_unitcell("A15", shift=(0.1, 0.1, 0.1), density=0.8)
     
     
-    # エクスポーターで出力
+    # Output using the exporter.
     Exporter("yaplot").dump(
         genice,
     )
@@ -268,7 +268,7 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
       --spot_cation 51=N :group 12=methyl 48=methyl 49=methyl 50=methyl \
       --exporter yaplot \
       --seed 42 \
-      --depol_loop 2000
+      --pol_loop_1 2000
     ```
 
 === "9_ion_group.yaml"
@@ -297,5 +297,5 @@ CLI: Ions in the unit cell are specified by **-a / --anion** and **-c / --cation
         - 50=methyl
     exporter: yaplot
     seed: 42
-    depol_loop: 2000
+    pol_loop_1: 2000
     ```

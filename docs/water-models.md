@@ -11,4 +11,5 @@ Specify a water model with the `:water_model` suboption of exporter plugins.
 | 7site | A seven-site water model. | [[Zhao 2019](references.md#zhao-2019)] |
 | ice | TIP4P/Ice water model. | [[Abascal 2005](references.md#abascal-2005)] |
 | physical_water | Physical model of water; Oxygen atom is on the lattice point. | [[Jorgensen 1983](references.md#jorgensen-1983)] |
+| tip4p2005 | TIP4P/2005 water model. | [[Abascal 2005B](references.md#abascal-2005b)] |
 |  | (Undocumented) | |

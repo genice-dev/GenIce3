@@ -11,17 +11,21 @@ Options:
   -D, --debug              Enable debug mode.
   --pol_loop_1 INTEGER     Max iterations for polarization convergence
                            (stage 1). Satisfies ice rules while reducing
-                           polarization; very cheap but limited range.
-                           Default is 1000.
+                           polarization; very cheap but limited
+                           adjustment range. Default is 1000.
   --pol_loop_2 INTEGER     Max iterations for polarization convergence
-                           (stage 2). More forceful, reliable convergence;
-                           skipped if stage 1 converges. Default is 0.
+                           (stage 2). More forceful method, slightly
+                           heavier cost, reliable convergence. Skipped
+                           if stage 1 already converges. Default is 0
+                           (disabled).
   --target_polarization FLOAT FLOAT FLOAT
                            Target polarization vector (three floats: Px
                            Py Pz). The dipole optimization will aim to
                            make the net polarization close to this
                            value. Example: --target_polarization 0 0 0
                            (default).
+  --depol_loop INTEGER     Deprecated alias for --pol_loop_1. Use
+                           --pol_loop_1 instead.
   --replication_matrix INT INT INT INT INT INT INT INT INT
                            Replication matrix as 9 integers (3x3
                            matrix). This matrix defines how the unit

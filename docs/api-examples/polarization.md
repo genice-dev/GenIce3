@@ -1,7 +1,7 @@
 **Polarization and dipole optimization**.
 
 - `7_polarized.py`  
-  - Generate a structure with a specified polarization using `target_pol` and `pol_loop_1` (and optionally `pol_loop_2`).
+  - Generate a structure with a specified polarization using `target_pol` and `depol_loop`.
 
 ---
 
@@ -14,8 +14,8 @@
 === "7_polarized.py"
 
     ```python
-    # 分極した氷の作り方 (1) コンストラクタで target_pol を指定
-    # corresponding command: 7_polarized_1.sh または 7_polarized_1_flat.sh
+    # How to build a polarized ice sample (1): specify target_pol in the constructor.
+    # Corresponding command: 7_polarized_1.sh or 7_polarized_1_flat.sh
     
     from logging import basicConfig, INFO
     import numpy as np

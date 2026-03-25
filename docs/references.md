@@ -4,6 +4,10 @@
 
 - **[Abascal 2005](https://doi.org/10.1063/1.1931662)**: ABASCAL, J. L. F., SANZ, E., GARCÍA FERNÁNDEZ, R. and VEGA, C., 2005. A potential model for the study of ices and amorphous water: TIP4P/Ice. The Journal of Chemical Physics. Online. 15 June 2005. Vol. 122, no. 23. DOI 10.1063/1.1931662.
 
+<span id="abascal-2005b"></span>
+
+- **[Abascal 2005B](https://doi.org/10.1063/1.2121687)**: 
+
 <span id="avogadro"></span>
 
 - **[Avogadro](https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif)**: Avogadro https://github.com/cryos/avogadro/blob/master/crystals/ice/H2O-Ice-IV.cif
