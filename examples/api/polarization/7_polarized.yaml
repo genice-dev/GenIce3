@@ -1,15 +1,17 @@
 # Run with GenIce3: genice3 --config 7_polarized.yaml
 # Generated from 7_polarized.sh
 
-unitcell: 1h
+unitcell: one
+layers: hh
 rep:
-- 2
-- 2
-- 2
+- 6
+- 6
+- 6
 exporter: _pol
 seed: 114
 pol_loop_1: 1000
+pol_loop_2: 10000
 target_polarization:
-- 4
 - 0
 - 0
+- 72
