@@ -3,7 +3,7 @@ import numpy as np
 from genice3.genice import GenIce3
 from genice3.plugin import Exporter, Molecule
 
-# corresponding command:
+# Corresponding CLI command:
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
 #   --rep 2 2 2 \
 #   --spot_anion 1=Cl --spot_anion 35=Br \
@@ -13,13 +13,13 @@ from genice3.plugin import Exporter, Molecule
 
 basicConfig(level=INFO)
 
-# GenIce3インスタンスを作成
-# seed: 乱数シード
-# depol_loop: 分極ループの反復回数
-# replication_matrix: 複製行列（2x2x2の対角行列）
-# spot_anions: 特定の水分子をアニオンで置換（水分子インデックス: イオン名）。CLI は -A / --spot_anion
-# spot_cations: 特定の水分子をカチオンで置換（水分子インデックス: イオン名）。CLI は -C / --spot_cation
-# 注意: debugはGenIce3のコンストラクタでは受け付けられない（ログレベルの設定はbasicConfigで行う）
+# Create a GenIce3 instance.
+# seed: random seed.
+# depol_loop: number of depolarization loop iterations.
+# replication_matrix: replication matrix (here a 2x2x2 diagonal matrix).
+# spot_anions: replace specific water molecules with anions (water index -> ion name). CLI: -A / --spot_anion
+# spot_cations: replace specific water molecules with cations (water index -> ion name). CLI: -C / --spot_cation
+# Note: the GenIce3 constructor does not take a debug flag (logging level is set via basicConfig).
 genice = GenIce3(
     seed=42,
     depol_loop=2000,
@@ -32,12 +32,12 @@ genice = GenIce3(
     },
 )
 
-# 単位セルを設定
-# shift: シフト（分数座標）
-# anion: 単位胞内の格子サイトをアニオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion
-# cation: 単位胞内の格子サイトをカチオンで置換（サイトインデックス: イオン名）。CLI は -c / --cation
-# density: 密度（g/cm³）
-# ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
+# Set the unit cell.
+# shift: shift in fractional coordinates.
+# anion: replace lattice sites in the unit cell with anions (site index -> ion name). CLI: -a / --anion
+# cation: replace lattice sites in the unit cell with cations (site index -> ion name). CLI: -c / --cation
+# density: density in g/cm³.
+# If cage information is needed, you can use Exporter("cage_survey").dump(genice, file) to output JSON.
 genice.set_unitcell(
     "A15",
     shift=(0.1, 0.1, 0.1),
@@ -47,7 +47,7 @@ genice.set_unitcell(
 )
 
 
-# エクスポーターで出力
+# Output using the exporter.
 Exporter("gromacs").dump(
     genice,
     water_model="4site",

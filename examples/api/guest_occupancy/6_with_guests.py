@@ -4,7 +4,7 @@ from genice3.genice import GenIce3
 from genice3.plugin import Exporter, Molecule
 from genice3.cli.options import parse_guest_option, parse_spot_guest_option
 
-# corresponding command (guest/spot_guest は基底オプション、exporterの外で指定):
+# Corresponding CLI command (guest/spot_guest are base options, outside the exporter):
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
 #   --rep 2 2 2 \
 #   --guest A12=me --guest A14=et --spot_guest 0=4site \
@@ -13,9 +13,9 @@ from genice3.cli.options import parse_guest_option, parse_spot_guest_option
 
 basicConfig(level=INFO)
 
-# GenIce3インスタンスを作成
-# guests: ケージタイプごとのゲスト分子指定（parse_guest_optionで raw dict を変換）
-# spot_guests: 特定ケージへのゲスト分子指定（parse_spot_guest_optionで raw dict を変換）
+# Create a GenIce3 instance.
+# guests: guest molecules per cage type (raw dict is converted by parse_guest_option).
+# spot_guests: guest molecules for specific cages (raw dict is converted by parse_spot_guest_option).
 genice = GenIce3(
     seed=42,
     pol_loop_1=2000,
@@ -24,15 +24,15 @@ genice = GenIce3(
     spot_guests=parse_spot_guest_option({0: "4site"}),
 )
 
-# 単位セルを設定
-# shift: シフト（分数座標）
-# anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
-# density: 密度（g/cm³）
-# ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
+# Set the unit cell.
+# shift: shift in fractional coordinates.
+# anion / cation: replace lattice sites in the unit cell with ions (site index -> ion name). CLI: -a / --anion, -c / --cation
+# density: density in g/cm³.
+# If cage information is needed, you can use Exporter("cage_survey").dump(genice, file) to output JSON.
 genice.set_unitcell("A15", shift=(0.1, 0.1, 0.1), density=0.8)
 
 
-# エクスポーターで出力（guest/spot_guest は GenIce3 に設定済み）
+# Output using the exporter (guest/spot_guest are already set in the GenIce3 instance).
 Exporter("gromacs").dump(
     genice,
     water_model="4site",

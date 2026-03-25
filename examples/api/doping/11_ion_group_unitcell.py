@@ -3,7 +3,7 @@ import numpy as np
 from genice3.genice import GenIce3
 from genice3.plugin import Exporter
 
-# corresponding command:
+﻿# Corresponding CLI command:
 # genice3 A15 --cation 0=N :group 1=methyl 6=methyl 3=methyl 4=methyl \
 #   --anion 2=Cl --rep 2 2 2 --exporter gromacs :water_model 4site
 
@@ -14,7 +14,7 @@ genice = GenIce3(
     seed=43,
 )
 
-# 単位胞内の anion/cation と cation_groups（カチオンの腕の group 指定）
+# Set anion/cation and cation_groups in the unit cell (group assignment for cation arms).
 genice.set_unitcell(
     "A15",
     anion={2: "Cl"},

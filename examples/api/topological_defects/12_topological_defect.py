@@ -1,5 +1,5 @@
 """
-トポロジカル欠陥（Hydronium/Hydroxide）を座標指定で埋め込むサンプル。
+Example of embedding topological defects (hydronium/hydroxide) by specifying positions.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from genice3.plugin import Exporter
 from genice3.util import find_nearest_sites_pbc
 
 # -----------------------------------------------------------------------------
-# サンプル本体
+# Main example
 # -----------------------------------------------------------------------------
 
 basicConfig(level=INFO)
@@ -23,7 +23,8 @@ genice = GenIce3(
 )
 genice.set_unitcell("A15")
 
-# 欠陥を置きたい位置を分数座標で指定（各 2 点ずつ）セル座標に変換して。
+# Specify the desired defect positions in fractional coordinates (two points each)
+# and convert them into cell coordinates.
 celli = np.linalg.inv(genice.cell)
 H3O_positions = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]) @ celli
 OH_positions = np.array([[1.0, 0.0, 0.0], [2.0, 1.0, 1.0]]) @ celli

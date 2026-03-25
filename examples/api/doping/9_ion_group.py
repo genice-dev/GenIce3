@@ -3,7 +3,7 @@ import numpy as np
 from genice3.genice import GenIce3
 from genice3.plugin import Exporter, Molecule
 
-# corresponding command:
+# Corresponding CLI command:
 # genice3 "A15[shift=(0.1,0.1,0.1), anion.0=Cl, cation.6=Na, density=0.8]" \
 #   --rep 2 2 2 \
 #   --spot_anion 1=Cl --spot_anion 35=Br \
@@ -13,13 +13,13 @@ from genice3.plugin import Exporter, Molecule
 
 basicConfig(level=INFO)
 
-# GenIce3インスタンスを作成
-# seed: 乱数シード
-# pol_loop_1: 分極収束第1段階の最大反復回数
-# replication_matrix: 複製行列（2x2x2の対角行列）
-# spot_anions / spot_cations: 水分子インデックス -> イオン名。CLI は -A / --spot_anion, -C / --spot_cation
-# spot_cation_groups: group サブオプション（サイト -> {ケージID -> group名}）。
-# YAML/CLI のネスト形式で使う "ion" キーは Python API では不要（別引数で渡す）。
+# Create a GenIce3 instance.
+# seed: random seed.
+# pol_loop_1: maximum number of iterations for the first polarization convergence stage.
+# replication_matrix: replication matrix (here a 2x2x2 diagonal matrix).
+# spot_anions / spot_cations: water-molecule index -> ion name. CLI: -A / --spot_anion, -C / --spot_cation
+# spot_cation_groups: group suboption (site -> {cage ID -> group name}).
+# The nested \"ion\" key used in YAML/CLI is not needed in the Python API (it is passed as a separate argument).
 genice = GenIce3(
     seed=42,
     pol_loop_1=2000,
@@ -31,14 +31,14 @@ genice = GenIce3(
     },
 )
 
-# 単位セルを設定
-# anion / cation: 単位胞内の格子サイトをイオンで置換（サイトインデックス: イオン名）。CLI は -a / --anion, -c / --cation
-# density: 密度（g/cm³）
-# ケージ情報が必要な場合は Exporter("cage_survey").dump(genice, file) でJSON出力可能
+# Set the unit cell.
+# anion / cation: replace lattice sites in the unit cell with ions (site index -> ion name). CLI: -a / --anion, -c / --cation
+# density: density in g/cm³.
+# If cage information is needed, you can use Exporter("cage_survey").dump(genice, file) to output JSON.
 genice.set_unitcell("A15", shift=(0.1, 0.1, 0.1), density=0.8)
 
 
-# エクスポーターで出力
+# Output using the exporter.
 Exporter("yaplot").dump(
     genice,
 )
