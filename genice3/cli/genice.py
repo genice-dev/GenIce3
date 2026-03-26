@@ -99,7 +99,7 @@ def print_help():
     )
     for line in _opt_line(
         "--density FLOAT",
-        "Target density (e.g. g/cm³). Supported by many unit cells.",
+        "Target density (e.g. g/cm3). Supported by many unit cells.",
     ):
         print(line)
     for line in _opt_line(
@@ -122,7 +122,7 @@ def print_help():
 def main() -> None:
     """メイン関数"""
     # --helpと--versionを先に処理
-    if "--help" in sys.argv or "-h" in sys.argv:
+    if len(sys.argv) == 1 or "--help" in sys.argv or "-h" in sys.argv:
         print_help()
         sys.exit(0)
     if "--version" in sys.argv or "-V" in sys.argv:

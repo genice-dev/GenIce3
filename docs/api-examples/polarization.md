@@ -1,7 +1,7 @@
 **Polarization and dipole optimization**.
 
-- `7_polarized.py`  
-  - Generate a structure with a specified polarization using `target_pol` and `depol_loop`.
+- `7_polarized.py`
+  - Generate a structure with a specified polarization using `target_pol`, `pol_loop_1`, and `pol_loop_2`.
 
 ---
 
@@ -21,16 +21,19 @@
     import numpy as np
     from genice3.genice import GenIce3
     from genice3.plugin import Exporter
+    from genice3.cli.genice import _setup_logging
     
-    basicConfig(level=INFO)
+    # basicConfig(level=INFO)
+    _setup_logging(debug=False)
     
     genice = GenIce3(
         seed=114,
         pol_loop_1=1000,
-        replication_matrix=np.diag([2, 2, 2]),
-        target_pol=np.array([4.0, 0.0, 0.0]),
+        pol_loop_2=10000,
+        replication_matrix=np.diag([6, 6, 6]),
+        target_pol=np.array([0.0, 0.0, 72.0]),
     )
-    genice.set_unitcell("1h")
+    genice.set_unitcell("one", layers="hh")
     
     Exporter("_pol").dump(genice)
     ```
@@ -41,12 +44,14 @@
     #!/bin/bash
     # Generated from 7_polarized.yaml
     
-    python3 -m genice3.cli.genice 1h \
-      --rep 2 2 2 \
+    python3 -m genice3.cli.genice one \
+      --layers hh \
+      --rep 6 6 6 \
       --exporter _pol \
       --seed 114 \
       --pol_loop_1 1000 \
-      --target_polarization 4 0 0
+      --pol_loop_2 10000 \
+      --target_polarization 0 0 72
     ```
 
 === "7_polarized.yaml"
@@ -55,16 +60,18 @@
     # Run with GenIce3: genice3 --config 7_polarized.yaml
     # Generated from 7_polarized.sh
     
-    unitcell: 1h
+    unitcell: one
+    layers: hh
     rep:
-    - 2
-    - 2
-    - 2
+    - 6
+    - 6
+    - 6
     exporter: _pol
     seed: 114
     pol_loop_1: 1000
+    pol_loop_2: 10000
     target_polarization:
-    - 4
     - 0
     - 0
+    - 72
     ```
