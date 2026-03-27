@@ -722,6 +722,7 @@ def digraph(
     target_pol: np.ndarray,
     bjerrum_L_edges: List[Tuple[int, int]],
     bjerrum_D_edges: List[Tuple[int, int]],
+    seed: int,
 ) -> nx.DiGraph:
     """Generate the directed hydrogen-bond network.
 
@@ -753,6 +754,7 @@ def digraph(
         fixed_edges=fixed_edges,
         pairing_attempts=1000,
         target_pol=target_pol,
+        seed=seed,
     )
     if not dg:
         raise ConfigurationError("Failed to generate a directed graph.")
@@ -1390,6 +1392,23 @@ class GenIce3:
             raise ConfigurationError("Unitcell is not set.")
         return self._unitcell
 
+    def _log_expanded_cell_dimensions(self) -> None:
+        """Log lattice parameters of the expanded cell (``rep @ unitcell.cell``).
+
+        Called when ``unitcell`` or ``replication_matrix`` changes so INFO-level
+        output stays aligned with the configuration used by reactive tasks.
+        """
+        if not hasattr(self, "_unitcell") or self._unitcell is None:
+            return
+        a, b, c, A, B, C = cellshape(self.replication_matrix @ self._unitcell.cell)
+        self.logger.info("Expanded cell dimensions:")
+        self.logger.info(f"  a= {a:.4f} nm")
+        self.logger.info(f"  b= {b:.4f} nm")
+        self.logger.info(f"  c= {c:.4f} nm")
+        self.logger.info(f"  A= {A:.3f} deg")
+        self.logger.info(f"  B= {B:.3f} deg")
+        self.logger.info(f"  C= {C:.3f} deg")
+
     @unitcell.setter
     def unitcell(self, unitcell):
         """Set the basic unit-cell object.
@@ -1405,15 +1424,7 @@ class GenIce3:
         self.logger.debug(f"  {unitcell.graph=}")
         self.logger.debug(f"  {unitcell.fixed=}")
 
-        # info the cell dimensions
-        a, b, c, A, B, C = cellshape(self.replication_matrix @ self.unitcell.cell)
-        self.logger.info(f"Expanded cell dimensions:")
-        self.logger.info(f"  a= {a:.4f} nm")
-        self.logger.info(f"  b= {b:.4f} nm")
-        self.logger.info(f"  c= {c:.4f} nm")
-        self.logger.info(f"  A= {A:.3f} deg")
-        self.logger.info(f"  B= {B:.3f} deg")
-        self.logger.info(f"  C= {C:.3f} deg")
+        self._log_expanded_cell_dimensions()
         # キャッシュをクリア（unitcellに依存するすべてのタスクを再計算させる）
         self.engine.cache.clear()
 
@@ -1450,6 +1461,8 @@ class GenIce3:
         """Set the unit-cell replication matrix.
 
         Changing this property clears the cache of all dependent reactive properties.
+        If ``unitcell`` is already set, expanded-cell dimensions are logged at INFO
+        (same as when assigning ``unitcell``).
 
         Args:
             replication_matrix: 3x3 integer matrix.
@@ -1459,6 +1472,7 @@ class GenIce3:
         self.logger.debug(f"    {i=}")
         self.logger.debug(f"    {j=}")
         self.logger.debug(f"    {k=}")
+        self._log_expanded_cell_dimensions()
         # キャッシュをクリア（replication_matrixに依存するすべてのタスクを再計算させる）
         self.engine.cache.clear()
 
@@ -1482,6 +1496,7 @@ class GenIce3:
             "pol_loop_1": self.pol_loop_1,
             "pol_loop_2": self.pol_loop_2,
             "target_pol": self.target_pol,
+            "seed": self.seed,
             "spot_anions": self.spot_anions,
             "spot_cations": self.spot_cations,
             "spot_hydroniums": self.spot_hydroniums,

@@ -82,6 +82,10 @@ graphstat = ">=0.3.3"
 yaplotlib = ">=0.1.2"
 openpyscad = ">=0.5.0"
 pyyaml = "^6.0"
+# For local development, use sibling repository:
+genice-core = { path = "../genice-core", develop = true }
+# To use GitHub release instead, switch to:
+# genice-core = { git = "https://github.com/genice-dev/genice-core.git", tag = "1.5.0" }
 
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.5"
