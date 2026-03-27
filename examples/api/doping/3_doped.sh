@@ -9,6 +9,6 @@ python3 -m genice3.cli.genice A15 \
   --rep 2 2 2 \
   --exporter gromacs :water_model 4site \
   --seed 42 \
-  --depol_loop 2000 \
+  --pol_loop_1 2000 \
   --spot_anion 1=Cl \
   --spot_cation 51=Na
