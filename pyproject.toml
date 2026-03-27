@@ -19,7 +19,7 @@ dependencies = [
     "pyyaml>=6.0",
     "jinja2>=3.1.4",
     "cif2ice (>=0.4.1,<0.5.0)",
-    "genice-core (>=1.4.3,<2.0.0)",
+    "genice-core (>=1.5.4,<2.0.0)",
 ]
 
 [project.optional-dependencies]
@@ -53,52 +53,12 @@ genice3 = "genice3.cli.genice:main"
 repository = "https://github.com/genice-dev/GenIce3"
 logo = "https://raw.githubusercontent.com/vitroid/GenIce/develop/logo/genice-v0.png"
 
+# Poetry 2 は [project] / [project.optional-dependencies] を読む。依存の正は [project] のみ。
 [tool.poetry]
-# version は [project].version を参照（1か所だけ編集すればよい）
-name = "genice3"
-authors = [
-  "Masakazu Matsumoto <vitroid@gmail.com>",
-]
-description = "A Swiss army knife to generate hydrogen-disordered ice structures."
-readme = "README.md"
-license = "MIT"
-# genice3 + dependency_engine (独立モジュール、将来外部化の可能性あり)
 packages = [
   { include = "genice3" },
   { include = "dependency_engine" }
 ]
-
-# poetry install to make them work
-[tool.poetry.scripts]
-genice3 = "genice3.cli.genice:main"
-
-[tool.poetry.dependencies]
-"networkx" = ">=2.0.dev20160901144005"
-"python" = ">=3.11,<3.14"
-numpy = "^2.0"
-pairlist = ">=0.6"
-cycless = ">=0.4.2"
-graphstat = ">=0.3.3"
-yaplotlib = ">=0.1.2"
-openpyscad = ">=0.5.0"
-pyyaml = "^6.0"
-# For local development, use sibling repository:
-genice-core = ">=1.5.4"
-# To use GitHub release instead, switch to:
-# genice-core = { git = "https://github.com/genice-dev/genice-core.git", tag = "1.5.0" }
-
-[tool.poetry.group.dev.dependencies]
-mkdocs = "^1.5"
-mkdocs-material = "^9.0"
-pymdown-extensions = "^10.0"
-toml = "^0.10.2"
-ipykernel = "^6.27.1"
-matplotlib = "^3.8.2"
-plotly = "^5.18.0"
-nbformat = "^5.9.2"
-requests = "^2.31.0"
-pytest = "^8.1.1"
-watchdog = "^4.0"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

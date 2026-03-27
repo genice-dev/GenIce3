@@ -12,9 +12,9 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 
 ## New in GenIce3
 
--   **Command line**: Option syntax unified; options can be read from config files.
--   **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
--   **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
+- **Command line**: Option syntax unified; options can be read from config files.
+- **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
+- **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
 
 ## Demo
 
@@ -32,7 +32,7 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 - pyyaml >=6.0
 - jinja2 >=3.1.4
 - cif2ice (>=0.4.1,<0.5.0)
-- genice-core (>=1.4.3,<2.0.0)
+- genice-core (>=1.5.4,<2.0.0)
 
 
 ## Installation

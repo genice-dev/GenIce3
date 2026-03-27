@@ -2,7 +2,7 @@
 
 # GenIce3
 
-{{ tool.poetry.description }}
+{{ project.description }}
 
 **Quick start:** Use the unit cell name as the first argument (e.g. `1h` for Ice Ih, `4` for Ice IV): `genice3 1h > ice.gro`
 
@@ -12,9 +12,9 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 
 ## New in GenIce3
 
--   **Command line**: Option syntax unified; options can be read from config files.
--   **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
--   **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
+- **Command line**: Option syntax unified; options can be read from config files.
+- **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
+- **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
 
 ## Demo
 

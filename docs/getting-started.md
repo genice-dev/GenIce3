@@ -39,7 +39,7 @@ GenIce3 works well in interactive environments.
 - pyyaml >=6.0
 - jinja2 >=3.1.4
 - cif2ice (>=0.4.1,<0.5.0)
-- genice-core (>=1.4.3,<2.0.0)
+- genice-core (>=1.5.4,<2.0.0)
 
 
 ## Installation
