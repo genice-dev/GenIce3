@@ -1049,8 +1049,8 @@ class GenIce3:
         replication_matrix: np.ndarray = np.eye(3, dtype=int),
         target_pol: np.ndarray = np.array([0.0, 0.0, 0.0]),
         seed: int = 1,
-        spot_anions: Dict[int, str] = {},
-        spot_cations: Dict[int, str] = {},
+        spot_anions: Dict[int, str] = None,
+        spot_cations: Dict[int, str] = None,
         spot_hydroniums: List[int] = None,
         spot_hydroxides: List[int] = None,
         bjerrum_L_edges: List[Tuple[int, int]] | None = None,
@@ -1094,8 +1094,8 @@ class GenIce3:
         self.pol_loop_2 = pol_loop_2
         self.replication_matrix = replication_matrix
         self.target_pol = target_pol
-        self.spot_anions = spot_anions
-        self.spot_cations = spot_cations
+        self.spot_anions = spot_anions if spot_anions is not None else {}
+        self.spot_cations = spot_cations if spot_cations is not None else {}
         self.spot_hydroniums = spot_hydroniums if spot_hydroniums is not None else []
         self.spot_hydroxides = spot_hydroxides if spot_hydroxides is not None else []
         self.bjerrum_L_edges = bjerrum_L_edges if bjerrum_L_edges is not None else []

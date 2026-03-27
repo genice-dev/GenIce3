@@ -32,3 +32,10 @@ def _setup_logging(debug: bool) -> None:
         fmt = "%(levelname)s: %(message)s"
     handler.setFormatter(Formatter(fmt))
     root.addHandler(handler)
+
+
+# API利用時にも明示的な呼び出しなしでINFOログが出るよう、
+# ハンドラ未設定の場合だけデフォルト設定を適用する。
+# （ユーザーが事前に basicConfig 等を呼んでいる場合はそちらを尊重する）
+if not getLogger().handlers:
+    _setup_logging(debug=False)

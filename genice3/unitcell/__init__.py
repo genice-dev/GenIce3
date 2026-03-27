@@ -154,13 +154,19 @@ class UnitCell:
         coord: str = "relative",
         density: float = None,
         graph: nx.Graph = None,
-        fixed: nx.DiGraph = nx.DiGraph(),
+        fixed: nx.DiGraph = None,
         shift: tuple = (0.0, 0.0, 0.0),
-        anion: dict = {},
-        cation: dict = {},
+        anion: dict = None,
+        cation: dict = None,
         cation_groups: dict = None,
         name: str = "",  # dummy
     ):
+        if anion is None:
+            anion = {}
+        if cation is None:
+            cation = {}
+        if fixed is None:
+            fixed = nx.DiGraph()
         anion = ion_processor(anion)
         cation = ion_processor(cation)
         if cation_groups is None:
