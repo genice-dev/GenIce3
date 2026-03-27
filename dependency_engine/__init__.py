@@ -72,7 +72,7 @@ class DependencyEngine:
         now = time.time()
         result = func(**dependencies)
         delta = time.time() - now
-        self.logger.info(f"  {delta:.4f} sec for {target}")
+        self.logger.debug(f"  {delta:.4f} sec for {target}")
         self.cache[target] = result
         return result
 
