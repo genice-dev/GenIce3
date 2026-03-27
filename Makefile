@@ -7,18 +7,18 @@ all: update-citations  README.md docs api-notebook
 	echo Hello.
 
 # docs/references.md is generated from citations.yaml by "make docs" (replacer --docs)
-README.md: temp_README.md Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
-	$(PYTHON) -m Utilities.replacer < temp_README.md > README.md
+README.md: temp_README.md scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
+	$(PYTHON) -m scripts.replacer < temp_README.md > README.md
 
 # Generate docs/*.md from temp_docs/*.md (same Jinja2 context as README).
 # Then embed examples/api (py/sh/yaml) into docs/api-examples/*.md.
 # Depends on unitcell/molecule plugins so that ref/desc changes are reflected.
-docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/unitcells.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
-	$(PYTHON) -m Utilities.replacer --docs
+docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/unitcells.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
+	$(PYTHON) -m scripts.replacer --docs
 	$(PYTHON) scripts/build_api_docs.py
 
-%: temp_% Utilities/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
-	$(PYTHON) -m Utilities.replacer < $< > $@
+%: temp_% scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
+	$(PYTHON) -m scripts.replacer < $< > $@
 
 
 # Regenerate API.ipynb from examples/api (READMEs + .py interleaved)
@@ -31,7 +31,7 @@ run-api-examples: scripts/run_api_examples.py
 
 update-citations:
 	cp citations.yaml old.citations.yaml
-	$(PYTHON) Utilities/citation.py < old.citations.yaml > citations.yaml
+	$(PYTHON) scripts/citation.py < old.citations.yaml > citations.yaml
 	-diff old.citations.yaml citations.yaml
 
 unitcell-test: $(patsubst genice3/unitcell/%.py, %.unitcell-test, $(wildcard genice3/unitcell/[0-9A-Za-z]*.py))

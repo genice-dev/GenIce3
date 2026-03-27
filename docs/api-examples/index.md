@@ -9,7 +9,7 @@ Each subdirectory groups examples by topic, showing how to call GenIce3 from Pyt
 | [cif_io](cif_io.md) | Reading from and writing to CIF files |
 | [doping](doping.md) | Ionic substitution and group (cation group) doping |
 | [guest_occupancy](guest_occupancy.md) | Guest placement and cage survey for clathrate hydrates |
-| [polarization](polarization.md) | Polarization and dipole optimization (`target_pol`, `depol_loop`) |
+| [polarization](polarization.md) | Polarization and dipole optimization (`target_pol`, `pol_loop_1`) |
 | [unitcell_transform](unitcell_transform.md) | Extending the unit cell (`replication_matrix`) |
 | [topological_defects](topological_defects.md) | Topological defects (Bjerrum, H3O⁺, OH⁻) |
 | [tools](tools.md) | Helper scripts for YAML ↔ shell conversions used by the examples |

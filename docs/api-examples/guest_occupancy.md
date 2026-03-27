@@ -99,7 +99,7 @@
       gromacs:
         water_model: 4site
     seed: 42
-    depol_loop: 2000
+    pol_loop_1: 2000
     ```
 
 

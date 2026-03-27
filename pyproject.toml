@@ -1,6 +1,6 @@
 [project]
 name="genice3"
-version = "3.0b3"
+version = "3.0b4"
 description = "A Swiss army knife to generate hydrogen-disordered ice structures."
 readme = "README.md"
 license = {text = "MIT"}
