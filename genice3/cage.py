@@ -2,16 +2,22 @@
 Utility functions for genice3
 """
 
+from __future__ import annotations
+
 import numpy as np
 from dataclasses import dataclass
 import string
 from logging import getLogger
+from typing import TYPE_CHECKING
 
 import networkx as nx
 from cycless import center_of_graph
 from cycless.cycles import cycles_iter
 from cycless.polyhed import cage_to_graph, polyhedra_iter
 from graphstat import GraphStat
+
+if TYPE_CHECKING:
+    from genice3.genice import GenIce3
 
 
 @dataclass
@@ -111,7 +117,12 @@ def _make_cage_expression(ring_ids: list, ringlist: list) -> str:
     return index
 
 
-def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
+def assess_cages(
+    graph: nx.Graph,
+    node_frac: np.ndarray,
+    *,
+    max_cage_rings: int = 22,
+) -> CageSpecs:
     """Detect and classify cages from a hydrogen-bond graph.
 
     Cages are defined here as quasipolyhedra surrounded by cycles of
@@ -120,6 +131,8 @@ def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
     Args:
         graph: Undirected graph representing the hydrogen-bond network.
         node_frac: Fractional coordinates of nodes (Nx3).
+        max_cage_rings: Upper bound on the number of rings (faces) per cage
+            passed to ``polyhedra_iter`` (default 22, historical GenIce value).
 
     Returns:
         A ``CageSpecs`` object containing the positions (fractional
@@ -134,7 +147,7 @@ def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
         [int(x) for x in ring]
         for ring in cycles_iter(nx.Graph(graph), 8, pos=node_frac)
     ]
-    MaxCageSize = 22
+    # logger.info(f"{len(ringlist)=} {graph.number_of_nodes()=}")
     cage_fracs = []
     # data storage of the found cages
     db = GraphStat()
@@ -142,7 +155,7 @@ def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
     g_id_to_cage_type: dict[int, str] = {}
 
     # Detect cages and classify
-    cages = [cage for cage in polyhedra_iter(ringlist, MaxCageSize)]
+    cages = [cage for cage in polyhedra_iter(ringlist, max_cage_rings)]
     cage_graphs = [cage_to_graph(cage, ringlist) for cage in cages]
     cage_fracs = [center_of_graph(g, node_frac) for g in cage_graphs]
     if len(cage_fracs) == 0:
@@ -169,3 +182,21 @@ def assess_cages(graph: nx.Graph, node_frac: np.ndarray) -> CageSpecs:
         # print([len(ringlist[ring]) for ring in cage])
 
     return CageSpecs(specs=cagespecs, positions=np.array(cage_fracs))
+
+
+def apply_max_cage_rings(genice: GenIce3, max_cage_rings: int | None) -> None:
+    """単位胞のケージ検出のリング数上限を変え、GenIce3 のリアクティブキャッシュを無効化する。
+
+    CIF 等で既に ``_cages`` が埋まっている単位胞（``_cages_lazy`` が False）では何もしない。
+    """
+    if max_cage_rings is None:
+        return
+    uc = genice.unitcell
+    if not getattr(uc, "_cages_lazy", True):
+        return
+    v = int(max_cage_rings)
+    if v < 1:
+        raise ValueError(f"max_cage_rings must be >= 1, got {v}")
+    uc._max_cage_rings = v
+    uc._cages = None
+    genice.engine.cache.clear()

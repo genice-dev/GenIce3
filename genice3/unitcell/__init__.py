@@ -159,6 +159,7 @@ class UnitCell:
         anion: dict = None,
         cation: dict = None,
         cation_groups: dict = None,
+        max_cage_rings: int = 22,
         name: str = "",  # dummy
     ):
         if anion is None:
@@ -256,6 +257,9 @@ class UnitCell:
 
         # ケージの調査は遅延評価（reactive）にする
         self._cages = None  # 遅延評価用
+        self._max_cage_rings = int(max_cage_rings)
+        # True: 未設定なら assess_cages で生成。False: CIF 等で既に _cages が入る想定
+        self._cages_lazy = True
 
         # anion, cationは単位胞内でのイオンの位置を示すので、番号が単位胞の水分子数未満でなければならない。
         if (anion or cation) and not self.SUPPORTS_ION_DOPING:
@@ -302,7 +306,11 @@ class UnitCell:
             # ケージの調査が必要になったときに実行
             # lattice_sitesは既にshift済みなので、ケージ位置も既にshift済みの座標系で計算される
             self.logger.debug("Assessing cages...")
-            self._cages = assess_cages(self.graph, self.lattice_sites)
+            self._cages = assess_cages(
+                self.graph,
+                self.lattice_sites,
+                max_cage_rings=self._max_cage_rings,
+            )
 
             # # ケージ情報をログ出力
             # if self._cages is not None:
