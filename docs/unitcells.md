@@ -17,7 +17,9 @@ List of unit cell names (symbols) specified as the first argument. Structures wi
 | 16, CS2, MTN, XVI, ice16, sII | Ultralow-density Ice XVI. | [[Jeffrey 1984](references.md#jeffrey-1984), [Kosyakov 1999](references.md#kosyakov-1999), [Sikiric 2010](references.md#sikiric-2010), [Falenty 2014](references.md#falenty-2014), [IZA Database](references.md#iza-database)] |
 | 17, XVII, ice17 | Ultralow-density Ice XVII. | [[Smirnov 2013](references.md#smirnov-2013), [Rosso 2016](references.md#rosso-2016), [Strobel 2016](references.md#strobel-2016)] |
 | 1c, Ic, ice1c | Cubic type of ice I. | [[Vos 1993](references.md#vos-1993)] |
+| 1c_2_2_2 | Expanded supercell saved as a unitcell module; built from unitcell 'ice1c'; 8 primitive cells, 64 lattice sites. |  |
 | 1h, Ih, ice1h | Most popular Ice I (hexagonal). NOTE: Due to a historical reason, the crystal axes of hexagonal ice are exchanged. If you want the basal plane to be Z axis, please use ice1h_unit instead. |  |
+| 1h_2_2_2 | Expanded supercell saved as a unitcell module; built from unitcell 'ice1h_unit'; 8 primitive cells, 128 lattice sites. |  |
 | 1h_unit, ice1h_unit | Most popular Ice I (hexagonal).  |  |
 | 2, II, ice2 | Hydrogen-ordered ice II. | [[Kamb 1964](references.md#kamb-1964), [Londono 1988](references.md#londono-1988), [Kamb 2003](references.md#kamb-2003)] |
 | 2D3 | Trilayer honeycomb ice. |  |
@@ -106,6 +108,14 @@ unitcell:
 | CLI option | Description |
 | ---------- | ----------- |
 | `--type` | Structure number 1–16 (Table 1 of Ref. [Hirsch 2004]). |
+
+### 1c_2_2_2
+
+Expanded supercell saved as a unitcell module; built from unitcell 'ice1c'; 8 primitive cells, 64 lattice sites.
+
+### 1h_2_2_2
+
+Expanded supercell saved as a unitcell module; built from unitcell 'ice1h_unit'; 8 primitive cells, 128 lattice sites.
 
 ### CIF
 

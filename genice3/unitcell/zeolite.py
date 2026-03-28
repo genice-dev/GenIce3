@@ -159,3 +159,4 @@ class UnitCell(genice3.unitcell.UnitCell):
         self.cations = cif_cell.cations
         self.cation_groups = getattr(cif_cell, "cation_groups", {})
         self._cages = cif_cell._cages
+        self._cages_lazy = False
