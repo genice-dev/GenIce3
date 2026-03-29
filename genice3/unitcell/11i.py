@@ -32,6 +32,7 @@ def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, An
     return processed, base_unprocessed
 
 
+SUPPORTS_ION_DOPING = False
 desc = {
     "ref": {"11i": "Hirsch 2004"},
     "usage": "genice3 11i[num]\n\n'num' specifies the structure in Table 1 of the Ref. [Hirsch 2004]",
@@ -45,22 +46,22 @@ desc = {
         },
     ],
     "test": (
-        {"args": "1", "options": "--pol_loop_1 0"},
-        {"args": "2", "options": "--pol_loop_1 0"},
-        {"args": "3", "options": "--pol_loop_1 0"},
-        {"args": "4", "options": "--pol_loop_1 0"},
-        {"args": "5", "options": "--pol_loop_1 0"},
-        {"args": "6", "options": "--pol_loop_1 0"},
-        {"args": "7", "options": "--pol_loop_1 0"},
-        {"args": "8", "options": "--pol_loop_1 0"},
-        {"args": "9", "options": "--pol_loop_1 0"},
-        {"args": "10", "options": "--pol_loop_1 0"},
-        {"args": "11", "options": "--pol_loop_1 0"},
-        {"args": "12", "options": "--pol_loop_1 0"},
-        {"args": "13", "options": "--pol_loop_1 0"},
-        {"args": "14", "options": "--pol_loop_1 0"},
-        {"args": "15", "options": "--pol_loop_1 0"},
-        {"args": "16", "options": "--pol_loop_1 0"},
+        {"options": "--type 1 --pol_loop_1 0"},
+        {"options": "--type 2 --pol_loop_1 0"},
+        {"options": "--type 3 --pol_loop_1 0"},
+        {"options": "--type 4 --pol_loop_1 0"},
+        {"options": "--type 5 --pol_loop_1 0"},
+        {"options": "--type 6 --pol_loop_1 0"},
+        {"options": "--type 7 --pol_loop_1 0"},
+        {"options": "--type 8 --pol_loop_1 0"},
+        {"options": "--type 9 --pol_loop_1 0"},
+        {"options": "--type 10 --pol_loop_1 0"},
+        {"options": "--type 11 --pol_loop_1 0"},
+        {"options": "--type 12 --pol_loop_1 0"},
+        {"options": "--type 13 --pol_loop_1 0"},
+        {"options": "--type 14 --pol_loop_1 0"},
+        {"options": "--type 15 --pol_loop_1 0"},
+        {"options": "--type 16 --pol_loop_1 0"},
     ),
 }
 
