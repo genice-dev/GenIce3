@@ -159,7 +159,7 @@ class UnitCell:
         anion: dict = None,
         cation: dict = None,
         cation_groups: dict = None,
-        max_cage_rings: int = 22,
+        max_cage_rings: int = 16,
         name: str = "",  # dummy
     ):
         if anion is None:
