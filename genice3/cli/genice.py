@@ -5,7 +5,7 @@ from importlib.metadata import version, PackageNotFoundError
 from genice3.plugin import safe_import
 from genice3 import _setup_logging
 from genice3.cage import apply_max_cage_rings
-from genice3.genice import GenIce3, log_cation_cages, log_spot_cation_cages
+from genice3.genice import GenIce3
 from genice3.cli.runner import parse_argv, validate_result
 from genice3.cli.options import (
     BASE_HELP_ORDER,
@@ -120,37 +120,37 @@ def print_help():
         print(line)
 
 
-def main() -> None:
-    """メイン関数"""
-    # --helpと--versionを先に処理
-    if len(sys.argv) == 1 or "--help" in sys.argv or "-h" in sys.argv:
-        print_help()
-        sys.exit(0)
-    if "--version" in sys.argv or "-V" in sys.argv:
-        print(f"genice3 {get_version()}")
-        sys.exit(0)
+def run(argv: list[str]) -> int:
+    """CLI と同じ処理を ``sys.argv[1:]`` 相当の ``argv`` で実行する。
 
-    # まずは通常ユーザー向けのシンプルなログ設定
+    戻り値はプロセスの終了コード（0 が成功）。ヘルプ・バージョン表示時も 0。
+    標準出力・標準エラーは呼び出し側の ``sys.stdout`` / ``sys.stderr`` に書く。
+    """
+    if len(argv) == 0 or "--help" in argv or "-h" in argv:
+        print_help()
+        return 0
+    if "--version" in argv or "-V" in argv:
+        print(f"genice3 {get_version()}")
+        return 0
+
     _setup_logging(debug=False)
     logger = getLogger()
 
     try:
-        result = parse_argv(sys.argv[1:])
+        result = parse_argv(argv)
     except Exception as e:
         logger.error(f"パースエラー: {e}")
         import traceback
 
         traceback.print_exc()
-        sys.exit(1)
+        return 1
 
-    # バリデーション
     is_valid, errors = validate_result(result)
     if not is_valid:
         for error in errors:
             logger.error(error)
-        sys.exit(1)
+        return 1
 
-    # 消費されなかったオプションがあればエラーで終了
     uc_unprocessed = result.get("unitcell", {}).get("unprocessed") or {}
     ex_unprocessed = result.get("exporter", {}).get("unprocessed") or {}
     if uc_unprocessed or ex_unprocessed:
@@ -160,11 +160,10 @@ def main() -> None:
         if ex_unprocessed:
             parts.append(f"exporter: {list(ex_unprocessed.keys())}")
         logger.error("認識されなかったオプションのため終了します: %s", ", ".join(parts))
-        sys.exit(1)
+        return 1
 
     base_options = result["base_options"]
 
-    # -D / --debug が有効なら、以降は詳細ログフォーマットに切り替え
     if base_options.get("debug"):
         _setup_logging(debug=True)
         logger = getLogger()
@@ -173,7 +172,7 @@ def main() -> None:
         validate_parsed_options(base_options)
     except ValueError as e:
         logger.error(str(e))
-        sys.exit(1)
+        return 1
 
     genice_kwargs = extract_genice_args(base_options)
     logger.debug(f"Settings: {genice_kwargs}")
@@ -197,7 +196,6 @@ def main() -> None:
 
     genice = GenIce3(**genice_kwargs)
 
-    # unitcellプラグインを設定
     genice.unitcell = safe_import("unitcell", unitcell_name).UnitCell(
         **unitcell_processed
     )
@@ -205,17 +203,25 @@ def main() -> None:
     if exporter_name == "cage_survey":
         apply_max_cage_rings(genice, exporter_processed.get("max_cage_rings"))
 
-    log_spot_cation_cages(genice)
-    log_cation_cages(genice)
+    # log_spot_cation_cages(genice)
+    # log_cation_cages(genice)
 
-    # コマンドライン全体を取得
-    command_line = " ".join(sys.argv)
-    exporter_processed["command_line"] = command_line
+    exporter_processed["command_line"] = " ".join(["genice3", *argv])
 
-    # exporterプラグインを実行
-    safe_import("exporter", exporter_name).dump(
-        genice, sys.stdout, **exporter_processed
-    )
+    try:
+        safe_import("exporter", exporter_name).dump(
+            genice, sys.stdout, **exporter_processed
+        )
+    except Exception:
+        logger.exception("exporter.dump に失敗しました")
+        return 1
+
+    return 0
+
+
+def main() -> None:
+    """メイン関数"""
+    raise SystemExit(run(sys.argv[1:]))
 
 
 if __name__ == "__main__":
