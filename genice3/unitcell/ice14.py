@@ -16,12 +16,13 @@ from cif2ice import cellvectors
 desc = {
     "ref": {"XIV": "Salzmann 2006"},
     "brief": "Ice XIV, a partially hydrogen-ordered counterpart of ice XII. Note that it does not reproduce the occupancies (probability of occupation) of the possible hydrogen sites.",
-    "test": ({"options": "--depol=none"},),
+    "test": ({"options": "--pol_loop_1 0"},),
 }
 
 
 class UnitCell(genice3.unitcell.UnitCell):
     SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
     def __init__(self, **kwargs):
         logger = getLogger()
 

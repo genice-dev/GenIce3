@@ -10,7 +10,6 @@ Reshaping the unit cell.
 desc = {
     "ref": {"T2": "Yagasaki 2018"},
     "brief": "Hypothetical ice T2.",
-    "test": ({"options": "--depol=optimal"},),
 }
 
 import genice3.unitcell

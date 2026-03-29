@@ -8,6 +8,15 @@ import genice3.unitcell
 import numpy as np
 from cif2ice import cellvectors
 
+desc = {
+    "ref": {
+        "TS1": "Kosyakov 1999",
+        "sIII": "Jeffrey 1984",
+        "sigma": "Dutour Sikirić 2010",
+    },
+    "brief": "Clathrate hydrates TS1.",
+}
+
 
 class UnitCell(genice3.unitcell.UnitCell):
     """
