@@ -74,14 +74,19 @@ def make_test(ice: str, tests: dict, formatters: dict):
 
             # 決定的なオプション（random を使わない）
             opts = additional_options_base.copy()
+            ion_doping_added = False
             if supports_ion_doping(ice):
                 if ice in ("6", "ice6"):
                     opts.extend(additional_options_doping_6)
+                    ion_doping_added = True
                 elif ice in ("HS1",):
                     pass
                 else:
                     opts.extend(additional_options_doping)
+                    ion_doping_added = True
             genice_options = (genice_options + " " + " ".join(opts)).strip()
+            # python exporter は spot イオンと併用不可（ValueError が正しい）。make は非ゼロ終了で止まるので別レシピにする。
+            expect_genice_failure = formatter_prefix == "python" and ion_doping_added
             # 新形式: --exporter name、gromacs のときは :water_model 4site
             genice_options += f" --exporter {formatter_prefix}"
             if formatter_prefix == "gromacs":
@@ -90,15 +95,33 @@ def make_test(ice: str, tests: dict, formatters: dict):
             logger.debug(f"Target: {target} {genice_options}")
 
             # test: 現在の出力を reference/ と比較（stderr は $*.log に記録）
-            rule = f"{product}.diff: reference/{product}\n"
-            rule += f"\t@mkdir -p reference\n"
-            rule += f"\t$(GENICE) {target} {genice_options} 2> $*.log | diff - reference/{product}\n"
-            rule += f"\t@touch $@\n\n"
+            # $(basename $@): GNU Make 3.81 では複数 '.' を含む *.diff で $* が空になるため
+            bn = "$(basename $@)"
+            if expect_genice_failure:
+                rule = f"{product}.diff: reference/{product} reference/{product}.log\n"
+                rule += f"\t@mkdir -p reference\n"
+                rule += f"\t$(GENICE) {target} {genice_options} 2> {bn}.log > {bn}.stdout.tmp; \\\n"
+                rule += f"\tec=$$?; \\\n"
+                rule += f"\tif [ $$ec -eq 0 ]; then echo 'genice: expected failure (python exporter with ion doping), got exit 0'; exit 1; fi; \\\n"
+                rule += f"\tdiff {bn}.stdout.tmp reference/{product} || exit 1; \\\n"
+                rule += f"\tgrep '^ValueError:' {bn}.log > {bn}.verr.tmp; \\\n"
+                rule += f"\tgrep '^ValueError:' reference/{product}.log > {bn}.verr.ref; \\\n"
+                rule += f"\tdiff {bn}.verr.tmp {bn}.verr.ref || exit 1; \\\n"
+                rule += f"\trm -f {bn}.stdout.tmp {bn}.verr.tmp {bn}.verr.ref\n"
+                rule += f"\t@touch $@\n\n"
 
-            # update-reference: reference/ に出力とログを保存
-            rule += f"reference/{product}: ../../genice3/unitcell/{ice}.py  {formatter_path}\n"
-            rule += f"\t@mkdir -p reference\n"
-            rule += f"\t$(GENICE) {target} {genice_options} > $@ 2> $@.log\n\n"
+                rule += f"reference/{product}: ../../genice3/unitcell/{ice}.py  {formatter_path}\n"
+                rule += f"\t@mkdir -p reference\n"
+                rule += f"\t$(GENICE) {target} {genice_options} > $@ 2> $@.log || true\n\n"
+            else:
+                rule = f"{product}.diff: reference/{product}\n"
+                rule += f"\t@mkdir -p reference\n"
+                rule += f"\t$(GENICE) {target} {genice_options} 2> {bn}.log | diff - reference/{product}\n"
+                rule += f"\t@touch $@\n\n"
+
+                rule += f"reference/{product}: ../../genice3/unitcell/{ice}.py  {formatter_path}\n"
+                rule += f"\t@mkdir -p reference\n"
+                rule += f"\t$(GENICE) {target} {genice_options} > $@ 2> $@.log\n\n"
 
             yield product, rule
 
