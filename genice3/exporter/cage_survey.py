@@ -21,7 +21,7 @@ format_desc = {
     "water": "none",
     "solute": "none",
     "hb": "none",
-    "remarks": "Cage positions and types (fractional coords, labels, faces). Replaces -A/--assess_cages. Optional :max_cage_rings N (max rings per cage, default 22).",
+    "remarks": "Cage positions and types (fractional coords, labels, faces). Replaces -A/--assess_cages. Optional :max_cage_rings N (max rings per cage, default 16).",
 }
 
 
