@@ -1672,8 +1672,6 @@ class GenIce3:
         }
         # number of nodes in the unitcell
         nuc_nodes = len(self.unitcell.lattice_sites)
-        # number of cages in the unitcell
-        nuc_cages = len(self.unitcell.cages.specs)
         for un_node, uc_group in self.unitcell.cation_groups.items():
             for node in _replicate_lattice_node(
                 un_node, nuc_nodes, self.replication_matrix
@@ -1681,6 +1679,9 @@ class GenIce3:
                 # 拡大胞のノードに隣接する4つのケージのインデックス
                 cage_indices = self.cages.node_to_cage_indices.get(node, [])
                 for cage_index in cage_indices:
+                    # number of cages in the unitcell
+                    # これをループの外にもっていくと、cageをさがす必要がなくてもさがして無駄な時間がかかる。
+                    nuc_cages = len(self.unitcell.cages.specs)
                     # ケージのインデックスを単位胞でのインデックスになおし、そこに入るグループを取得
                     self.logger.info(f"{cage_index=} {nuc_cages=} {uc_group=} {node=}")
                     uc_cage_index = cage_index % nuc_cages

@@ -121,7 +121,7 @@ def assess_cages(
     graph: nx.Graph,
     node_frac: np.ndarray,
     *,
-    max_cage_rings: int = 22,
+    max_cage_rings: int = 16,
 ) -> CageSpecs:
     """Detect and classify cages from a hydrogen-bond graph.
 
@@ -132,7 +132,7 @@ def assess_cages(
         graph: Undirected graph representing the hydrogen-bond network.
         node_frac: Fractional coordinates of nodes (Nx3).
         max_cage_rings: Upper bound on the number of rings (faces) per cage
-            passed to ``polyhedra_iter`` (default 22, historical GenIce value).
+            passed to ``polyhedra_iter`` (default 16, historical GenIce used 22).
 
     Returns:
         A ``CageSpecs`` object containing the positions (fractional
