@@ -1,0 +1,4 @@
+# Optional: examples/api/mdanalysis/ — not part of genice3 core dependencies.
+#   pip install -r examples/api/requirements-mdanalysis.txt
+MDAnalysis>=2.4.0
+matplotlib>=3.8.0

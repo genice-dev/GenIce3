@@ -96,6 +96,10 @@
 
 - **[Karttunen 2011](https://doi.org/10.1021/ic102178d)**: KARTTUNEN, Antti J., FÄSSLER, Thomas F., LINNOLAHTI, Mikko and PAKKANEN, Tapani A., 2011, Structural Principles of Semiconducting Group 14 Clathrate Frameworks. Inorganic Chemistry [online]. 7 March 2011. Vol. 50, no. 5, p. 1733–1742. DOI 10.1021/ic102178d. Available from: http://dx.doi.org/10.1021/ic102178d
 
+<span id="kawano-2024"></span>
+
+- **[Kawano 2024]**: KAWANO, Yuta, Master Course Thesis, Okayama University, 2024.
+
 <span id="koga-1997"></span>
 
 - **[Koga 1997](https://doi.org/10.1103/PhysRevLett.79.5262)**: KOGA, Kenichiro, ZENG, X. C. and TANAKA, Hideki, 1997. Freezing of Confined Water: A Bilayer Ice Phase in Hydrophobic Nanopores. Physical Review Letters [online]. 29 December 1997. Vol. 79, no. 26, p. 5262–5265. DOI 10.1103/physrevlett.79.5262. Available from: http://dx.doi.org/10.1103/PhysRevLett.79.5262
