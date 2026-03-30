@@ -51,7 +51,7 @@ List of unit cell names (symbols) specified as the first argument. Structures wi
 | T | Hypothetical clathrate type T. | [[Sikiric 2010](references.md#sikiric-2010), [Karttunen 2011](references.md#karttunen-2011)] |
 | TS1, sIII | Clathrate hydrates TS1. | [[Jeffrey 1984](references.md#jeffrey-1984), [Kosyakov 1999](references.md#kosyakov-1999), [Sikiric 2010](references.md#sikiric-2010)] |
 | XIc-a | A candidate for the proton-ordered counterpart of ice Ic. The structure 'a' in Figure 1. | [[Geiger 2014](references.md#geiger-2014)] |
-| YKD | Ice in a d-surface (testing). |  |
+| YKD | Ice in a d-surface (testing). | [[Kawano 2024](references.md#kawano-2024)] |
 | aeroice | Aeroice (alias of xFAU). | [[Matsui 2017](references.md#matsui-2017)] |
 | c0te | Filled ice C0 by Teeratchanan (Hydrogen-disordered.) (Positions of guests are supplied.) | [[Teeratchanan 2015](references.md#teeratchanan-2015)] |
 | c1te | Hydrogen-ordered hydrogen hydrate C1 by Teeratchanan. (Positions of guests are supplied.) | [[Teeratchanan 2015](references.md#teeratchanan-2015)] |
