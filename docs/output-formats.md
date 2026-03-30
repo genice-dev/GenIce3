@@ -4,7 +4,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `_KG` | Kirkwood G(r) |  |  |  |  |  | Statistical test suite 2: Calculate G(r) for checking long-range disorder in molecular orientations. |
 | `_pol` | Polarization |  |  |  | none |  | Calculate the polarization of the ice. |
-| `cage_survey` | JSON | .json | none | none | none |  | Cage positions and types (fractional coords, labels, faces). Replaces -A/--assess_cages. Optional :max_cage_rings N (max rings per cage, default 22). |
+| `cage_survey` | JSON | .json | none | none | none |  | Cage positions and types (fractional coords, labels, faces). Replaces -A/--assess_cages. Optional :max_cage_rings N (max rings per cage, default 16). |
 | `cif` | CIF | .cif | Atomic positions | Atomic positions | none |  | Experimental |
 | `g`, `gromacs` | [Gromacs](http://www.gromacs.org) | .gro | Atomic positions | Atomic positions | none | water_model: 3site, 4site, 6site, tip4p, etc. (water model name). | Default format. |
 | `lammps`, `lmp` | [LAMMPS](https://www.lammps.org/) | .lammps | Atomic positions | Atomic positions | none | water_model: 3site, 4site, 6site, tip4p, etc. (water model name). | Yet to be verified. |
