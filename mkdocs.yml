@@ -53,6 +53,7 @@ nav:
     - Topological defects: api-examples/topological_defects.md
     - Tools: api-examples/tools.md
     - Using MDAnalysis: api-examples/mdanalysis.md
+    - Visualization (py3Dmol): api-examples/visualize.md
   - Citation: citation.md
   - References: references.md
   - Contribute: contribute.md

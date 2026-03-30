@@ -5,10 +5,10 @@ import numpy as np
 try:
     import MDAnalysis as mda
     from MDAnalysis.analysis.rdf import InterRDF
+    import matplotlib.pyplot as plt
 except ModuleNotFoundError as e:
     raise ModuleNotFoundError(
-        "This example needs MDAnalysis. Install with: pip install MDAnalysis "
-        "or pip install 'genice3[mdanalysis]' (from PyPI) / pip install '.[mdanalysis]' (from repo root)."
+        "This example needs MDAnalysis and matplotlib. Install with: pip install MDAnalysis matplotlib "
     ) from e
 
 from genice3.genice import GenIce3
@@ -25,7 +25,6 @@ gro = Exporter("gromacs").dumps(genice, water_model="3site")
 universe = mda.Universe(io.StringIO(gro), format="GRO")
 
 # RDF (O–O; ice/water oxygen)
-import matplotlib.pyplot as plt
 
 o = universe.select_atoms("name O")
 h = universe.select_atoms("name H")

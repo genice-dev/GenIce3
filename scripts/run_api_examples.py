@@ -8,7 +8,7 @@ Usage (from repo root):
   python scripts/run_api_examples.py --yaml      # .py + .yaml
   python scripts/run_api_examples.py --all       # .py + .sh + .yaml
   python scripts/run_api_examples.py --dry-run
-  python scripts/run_api_examples.py --with-optional   # include examples needing extra pip deps (e.g. MDAnalysis)
+  python scripts/run_api_examples.py --with-optional   # include examples needing extra pip deps (MDAnalysis, py3dmol, …)
 
 .sh are run with bash (cwd=repo root, PYTHONPATH=repo root).
 .yaml are run as: python -m genice3.cli.genice --config <path>.
@@ -32,6 +32,7 @@ LOG_FILE = REPO_ROOT / "run_api_examples.log"
 _OPTIONAL_PY_REL = frozenset(
     {
         "examples/api/mdanalysis/15_mdanalysis.py",
+        "examples/api/visualize/16_py3dmol.py",
     }
 )
 
@@ -104,7 +105,7 @@ def main() -> None:
     ap.add_argument(
         "--with-optional",
         action="store_true",
-        help="Also run .py examples that need optional pip deps (e.g. MDAnalysis under mdanalysis/)",
+        help="Also run .py examples that need optional pip deps (mdanalysis/, visualize/, …)",
     )
     ap.add_argument("-o", "--log", type=Path, default=LOG_FILE, help="Log file for failed runs")
     args = ap.parse_args()

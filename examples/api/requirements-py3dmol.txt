@@ -1,0 +1,3 @@
+# Optional: examples/api/visualize/ — not part of genice3 core dependencies.
+#   pip install -r examples/api/requirements-py3dmol.txt
+py3dmol>=2.0.4

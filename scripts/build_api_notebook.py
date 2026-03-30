@@ -3,7 +3,7 @@
 Build API.ipynb from examples/api: READMEs (markdown) and .py files (code) interleaved.
 
 - Preserves the first 3 cells of the existing API.ipynb (Colab badge, Installation).
-- Inserts optional MDAnalysis/matplotlib install cells (for the "Using MDAnalysis" section; not core deps).
+- Inserts optional third-party pip cells (MDAnalysis/matplotlib, py3Dmol) for sections that are not core deps.
 - Inserts a Setup cell so the working directory is the repo root (needed for paths like cif/MEP.cif).
 - Skips the "tools" category (gen_sh_from_yaml, gen_yaml_from_sh use __file__ and are batch utilities).
 - For each other category: one markdown cell with "## Category" + README body, then per .py a "### Script name" markdown + code cell.
@@ -30,6 +30,7 @@ CATEGORIES = [
     ("unitcell_transform", "Unit cell transform"),
     ("topological_defects", "Topological defects"),
     ("mdanalysis", "Using MDAnalysis"),
+    ("visualize", "Visualization (py3Dmol)"),
 ]
 
 
@@ -83,6 +84,21 @@ def optional_mdanalysis_dep_cells() -> list[dict]:
     code = make_code_cell(
         "# Skip if you already have these in your environment\n"
         "%pip install -q MDAnalysis matplotlib\n"
+    )
+    return [md, code]
+
+
+def optional_py3dmol_dep_cells() -> list[dict]:
+    """Install py3dmol before the Visualization section (not in genice3 core)."""
+    md = make_md_cell(
+        "### Optional: py3Dmol\n\n"
+        "The **Visualization (py3Dmol)** section needs **`py3dmol`**. It is **not** "
+        "installed with the minimal GenIce3 install above. On Colab or local Jupyter, "
+        "run the next cell once (safe to re-run)."
+    )
+    code = make_code_cell(
+        "# Skip if you already have py3dmol in your environment\n"
+        "%pip install -q py3dmol\n"
     )
     return [md, code]
 
@@ -142,9 +158,10 @@ def build_cells_from_examples() -> list[dict]:
 def main() -> None:
     intro, nb_meta = load_existing_intro_and_metadata(API_NB)
     mdanalysis_dep = optional_mdanalysis_dep_cells()
+    py3dmol_dep = optional_py3dmol_dep_cells()
     setup = setup_cells()
     body_cells = build_cells_from_examples()
-    all_cells = intro + mdanalysis_dep + setup + body_cells
+    all_cells = intro + mdanalysis_dep + py3dmol_dep + setup + body_cells
 
     nb = {"cells": all_cells, **nb_meta}
     API_NB.write_text(json.dumps(nb, indent=2, ensure_ascii=False), encoding="utf-8")
