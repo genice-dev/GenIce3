@@ -2,6 +2,8 @@
 """
 Generate docs/api-examples/*.md from examples/api READMEs and sample code.
 
+- Each subdirectory with a README.md becomes docs/api-examples/<subdir>.md (same idea
+  for polarization, mdanalysis, basic, etc.); no separate list to maintain.
 - Each page contains the README body plus a "Sample code" section.
 - When multiple extensions (.py, .sh, .yaml) share the same base name, they are
   shown in Material content tabs.

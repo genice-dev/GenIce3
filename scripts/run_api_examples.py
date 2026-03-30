@@ -8,6 +8,7 @@ Usage (from repo root):
   python scripts/run_api_examples.py --yaml      # .py + .yaml
   python scripts/run_api_examples.py --all       # .py + .sh + .yaml
   python scripts/run_api_examples.py --dry-run
+  python scripts/run_api_examples.py --with-optional   # include examples needing extra pip deps (e.g. MDAnalysis)
 
 .sh are run with bash (cwd=repo root, PYTHONPATH=repo root).
 .yaml are run as: python -m genice3.cli.genice --config <path>.
@@ -27,11 +28,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES_API = REPO_ROOT / "examples" / "api"
 LOG_FILE = REPO_ROOT / "run_api_examples.log"
 
+# .py that need optional pip deps (not in genice3 core); excluded unless --with-optional
+_OPTIONAL_PY_REL = frozenset(
+    {
+        "examples/api/mdanalysis/15_mdanalysis.py",
+    }
+)
+
 # env so that .sh scripts and genice3 CLI find the package when run from repo
 _ENV = {**os.environ, "PYTHONPATH": str(REPO_ROOT)}
 
 
-def collect_tasks(*, py: bool, sh: bool, yaml: bool) -> list[tuple[Path, str]]:
+def collect_tasks(
+    *, py: bool, sh: bool, yaml: bool, with_optional: bool
+) -> list[tuple[Path, str]]:
     """Return list of (path, fmt) with fmt in ('py','sh','yaml'), sorted."""
     tasks: list[tuple[Path, str]] = []
     for subdir in sorted(EXAMPLES_API.iterdir()):
@@ -39,6 +49,9 @@ def collect_tasks(*, py: bool, sh: bool, yaml: bool) -> list[tuple[Path, str]]:
             continue
         if py:
             for p in sorted(subdir.glob("*.py")):
+                rel = p.relative_to(REPO_ROOT).as_posix()
+                if rel in _OPTIONAL_PY_REL and not with_optional:
+                    continue
                 tasks.append((p, "py"))
         if sh:
             for p in sorted(subdir.glob("*.sh")):
@@ -88,13 +101,18 @@ def main() -> None:
     ap.add_argument("--sh", action="store_true", help="Also run .sh scripts (bash)")
     ap.add_argument("--yaml", action="store_true", help="Also run .yaml configs (genice3 --config)")
     ap.add_argument("--all", dest="all_formats", action="store_true", help="Run .py, .sh, and .yaml")
+    ap.add_argument(
+        "--with-optional",
+        action="store_true",
+        help="Also run .py examples that need optional pip deps (e.g. MDAnalysis under mdanalysis/)",
+    )
     ap.add_argument("-o", "--log", type=Path, default=LOG_FILE, help="Log file for failed runs")
     args = ap.parse_args()
 
     py = True
     sh = args.sh or args.all_formats
     yaml = args.yaml or args.all_formats
-    tasks = collect_tasks(py=py, sh=sh, yaml=yaml)
+    tasks = collect_tasks(py=py, sh=sh, yaml=yaml, with_optional=args.with_optional)
 
     if not tasks:
         print("No files to run under examples/api", file=sys.stderr)
@@ -103,6 +121,10 @@ def main() -> None:
     if args.dry_run:
         for path, fmt in tasks:
             print(path.relative_to(REPO_ROOT), f"  [{fmt}]")
+        if not args.with_optional and _OPTIONAL_PY_REL:
+            print("\nOptional (skipped; install deps and use --with-optional):")
+            for rel in sorted(_OPTIONAL_PY_REL):
+                print(f"  {rel}")
         sys.exit(0)
 
     failed = []

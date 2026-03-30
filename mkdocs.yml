@@ -52,6 +52,7 @@ nav:
     - Unit cell transform: api-examples/unitcell_transform.md
     - Topological defects: api-examples/topological_defects.md
     - Tools: api-examples/tools.md
+    - Using MDAnalysis: api-examples/mdanalysis.md
   - Citation: citation.md
   - References: references.md
   - Contribute: contribute.md

@@ -3,6 +3,10 @@
 # プロジェクトルートから実行する場合:
 #   make -C examples/api
 #
+# オプション依存の例 (mdanalysis) を単体で試す:
+#   リポジトリルートで  pip install '.[mdanalysis]'  などしてから
+#   make -C examples/api mdanalysis
+#
 # 実行時のカレントディレクトリは examples/api になるので、
 # .sh / .yaml 内の相対パス（例: --file ../cif/MEP.cif）は examples/api 基準。
 # genice3 は Poetry venv の Python で解決する（パッケージ未インストールでも可）。
@@ -50,7 +54,11 @@ compare: $(COMPARE_TARGETS)
 	-diff $*.py.log $*.yaml.log
 	-diff $*.py.log $*.sh.log
 
-.PHONY: all api_outs compare clean
+.PHONY: all api_outs compare clean mdanalysis
+
+# Needs MDAnalysis: pip install '.[mdanalysis]' or pip install -r requirements-mdanalysis.txt (from this dir)
+mdanalysis:
+	$(PYTHON) $(ROOT)/examples/api/mdanalysis/15_mdanalysis.py
 
 # Prepend venv bin to PATH so that 'python3' inside .sh resolves to the venv python.
 %.sh.out: %.sh Makefile

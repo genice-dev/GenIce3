@@ -3,9 +3,12 @@
 Build API.ipynb from examples/api: READMEs (markdown) and .py files (code) interleaved.
 
 - Preserves the first 3 cells of the existing API.ipynb (Colab badge, Installation).
+- Inserts optional MDAnalysis/matplotlib install cells (for the "Using MDAnalysis" section; not core deps).
 - Inserts a Setup cell so the working directory is the repo root (needed for paths like cif/MEP.cif).
 - Skips the "tools" category (gen_sh_from_yaml, gen_yaml_from_sh use __file__ and are batch utilities).
 - For each other category: one markdown cell with "## Category" + README body, then per .py a "### Script name" markdown + code cell.
+
+Categories are listed in CATEGORIES (must match docs nav / examples/api subdirs).
 """
 from __future__ import annotations
 
@@ -26,6 +29,7 @@ CATEGORIES = [
     ("polarization", "Polarization"),
     ("unitcell_transform", "Unit cell transform"),
     ("topological_defects", "Topological defects"),
+    ("mdanalysis", "Using MDAnalysis"),
 ]
 
 
@@ -65,6 +69,22 @@ def load_existing_intro_and_metadata(nb_path: Path) -> tuple[list[dict], dict]:
     intro = cells[:3] if len(cells) >= 3 else cells
     meta = {k: v for k, v in raw.items() if k != "cells"}
     return intro, meta
+
+
+def optional_mdanalysis_dep_cells() -> list[dict]:
+    """Install MDAnalysis + matplotlib before the Using MDAnalysis section (not in genice3 core)."""
+    md = make_md_cell(
+        "### Optional: MDAnalysis\n\n"
+        "The **Using MDAnalysis** section at the end of this notebook needs "
+        "`MDAnalysis` and `matplotlib`. They are **not** installed with the "
+        "minimal GenIce3 install above. On Colab or local Jupyter, run the next "
+        "cell once (safe to re-run)."
+    )
+    code = make_code_cell(
+        "# Skip if you already have these in your environment\n"
+        "%pip install -q MDAnalysis matplotlib\n"
+    )
+    return [md, code]
 
 
 def setup_cells() -> list[dict]:
@@ -121,9 +141,10 @@ def build_cells_from_examples() -> list[dict]:
 
 def main() -> None:
     intro, nb_meta = load_existing_intro_and_metadata(API_NB)
+    mdanalysis_dep = optional_mdanalysis_dep_cells()
     setup = setup_cells()
     body_cells = build_cells_from_examples()
-    all_cells = intro + setup + body_cells
+    all_cells = intro + mdanalysis_dep + setup + body_cells
 
     nb = {"cells": all_cells, **nb_meta}
     API_NB.write_text(json.dumps(nb, indent=2, ensure_ascii=False), encoding="utf-8")
