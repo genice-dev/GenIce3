@@ -2,11 +2,9 @@ from logging import getLogger
 import sys
 from importlib.metadata import version, PackageNotFoundError
 
-from genice3.plugin import safe_import
 from genice3 import _setup_logging
-from genice3.cage import apply_max_cage_rings
-from genice3.genice import GenIce3
 from genice3.cli.runner import parse_argv, validate_result
+from genice3.cli.engine import run_parsed_result
 from genice3.cli.options import (
     BASE_HELP_ORDER,
     get_option_def,
@@ -194,24 +192,9 @@ def run(argv: list[str]) -> int:
     if exporter_processed:
         logger.info("exporter %s options: %s", exporter_name, exporter_processed)
 
-    genice = GenIce3(**genice_kwargs)
-
-    genice.unitcell = safe_import("unitcell", unitcell_name).UnitCell(
-        **unitcell_processed
-    )
-
-    if exporter_name == "cage_survey":
-        apply_max_cage_rings(genice, exporter_processed.get("max_cage_rings"))
-
-    # log_spot_cation_cages(genice)
-    # log_cation_cages(genice)
-
-    exporter_processed["command_line"] = " ".join(["genice3", *argv])
-
+    cmd = " ".join(["genice3", *argv])
     try:
-        safe_import("exporter", exporter_name).dump(
-            genice, sys.stdout, **exporter_processed
-        )
+        run_parsed_result(result, sys.stdout, command_line=cmd)
     except Exception:
         logger.exception("exporter.dump に失敗しました")
         return 1
