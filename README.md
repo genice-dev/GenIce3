@@ -53,7 +53,7 @@ pip uninstall genice3
 
 ## References
 
-See the [manual → References](https://genice-dev.github.io/GenIce3/references/) for the full reference list (generated from `citations.yaml`).
+See the [manual → References](https://genice-dev.github.io/GenIce3/references.html) for the full reference list (generated from `citations.yaml`).
 
 ## Citation
 
