@@ -40,10 +40,10 @@ logger.info(f"  Public: {genice.list_public_settable_reactive_properties().keys(
     from genice3.plugin import Exporter
     
     # corresponding command:
-    # genice3 A15 --exporter gromacs
+    # genice3 A15 --exporter yaplot
     genice = GenIce3()
     genice.set_unitcell("A15")
-    Exporter("gromacs").dump(genice)
+    Exporter("yaplot").dump(genice)
     ```
 
 === "2_simple.sh"

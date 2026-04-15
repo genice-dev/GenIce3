@@ -20,16 +20,17 @@ dependencies = [
     "jinja2>=3.1.4",
     "cif2ice (>=0.4.1,<0.5.0)",
     "genice-core (>=1.5.4,<2.0.0)",
-    "plotly>=5.18.0",
+    "fastapi (>=0.135.3,<0.136.0)",
+    "uvicorn (>=0.44.0,<0.45.0)",
 ]
 
 [project.optional-dependencies]
-# 例: examples/api/mdanalysis/ — 既定の pip install genice3 では入れない
-mdanalysis = [
-    "MDAnalysis>=2.4.0",
-    "matplotlib>=3.8.0",
+web = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
 ]
 dev = [
+    "httpx>=0.27.0",
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.0.0",
     "pymdown-extensions>=10.0",
@@ -38,6 +39,7 @@ dev = [
     "py3dmol>=2.0.4",
     "matplotlib>=3.8.2",
     "genice2-svg>=2.2",
+    "plotly>=5.18.0",
     "nbformat>=5.9.2",
     "genice2-mdanalysis>=0.6.5",
     "requests>=2.31.0",
@@ -48,6 +50,7 @@ dev = [
 
 [project.scripts]
 genice3 = "genice3.cli.genice:main"
+genice3-web = "genice3.webapi:main"
 
 [project.urls]
 "Homepage" = "https://github.com/genice-dev/GenIce3"

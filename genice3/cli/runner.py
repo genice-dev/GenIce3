@@ -47,16 +47,8 @@ _BASE_KEYS = frozenset(
 )
 
 
-def load_config_file(yaml_path: str) -> Dict[str, Any]:
-    """YAML 設定を読み、option_parser と同じ構造で返す。"""
-    if yaml is None:
-        return {}
-    p = Path(yaml_path)
-    if not p.exists():
-        return {}
-    with open(p, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f) or {}
-    # トップに unitcell / genice3 等がある形式を、フラットな option 構造に正規化
+def flatten_yaml_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """トップに unitcell / genice3 等がある YAML 根オブジェクトを、CLI と同じフラット構造に正規化する。"""
     out: Dict[str, Any] = {}
     if "unitcell" in config:
         uc = config["unitcell"]
@@ -71,11 +63,43 @@ def load_config_file(yaml_path: str) -> Dict[str, Any]:
         out.update(config["genice3"])
     if "exporter" in config:
         out["exporter"] = config["exporter"]
-    # その他のトップレベルキー（unitcell 用 file, osite や shift, density 等）も渡す
+    # 上で展開済みのセクション名は載せない（genice3 が残ると unitcell の未処理扱いになる）
+    _section_keys = frozenset({"unitcell", "genice3", "exporter"})
     for k, v in config.items():
+        if k in _section_keys:
+            continue
         if k not in out:
             out[k] = v
     return out
+
+
+def load_config_file(yaml_path: str) -> Dict[str, Any]:
+    """YAML 設定を読み、option_parser と同じ構造で返す。"""
+    if yaml is None:
+        return {}
+    p = Path(yaml_path)
+    if not p.exists():
+        return {}
+    with open(p, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
+    return flatten_yaml_config(config if isinstance(config, dict) else {})
+
+
+def load_config_text(text: str) -> Dict[str, Any]:
+    """YAML 文字列を読み、:func:`load_config_file` と同じフラット構造で返す（Web API 等用）。"""
+    if yaml is None:
+        return {}
+    raw = yaml.safe_load(text)
+    if not raw:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return flatten_yaml_config(raw)
+
+
+def parsed_result_from_yaml_text(yaml_text: str) -> Dict[str, Any]:
+    """YAML 本文から CLI の :func:`parse_argv` 後と同形の ``result`` を返す（Web API 用の短縮形）。"""
+    return parsed_result_from_merged(load_config_text(yaml_text))
 
 
 def _merge_config_cmdline(config: Dict[str, Any], cmdline: Dict[str, Any]) -> Dict[str, Any]:
@@ -100,6 +124,91 @@ def _get_exporter_name_and_options(data: Dict[str, Any]) -> Tuple[str, Dict[str,
         (name, subopts), = first.items()
         return str(name), dict(subopts)
     return str(first), {}
+
+
+def parsed_result_from_merged(merged: Dict[str, Any]) -> Dict[str, Any]:
+    """フラットなマージ済み設定（CLI の display 相当）から、genice が使う result 辞書を組み立てる。
+
+    CLI（:func:`parse_argv`）と Web 等（YAML → flatten → ここ）で共有する。
+    """
+    unitcell_name = str(merged.get("unitcell", ""))
+    if not unitcell_name:
+        return {
+            "base_options": {},
+            "unitcell": {"name": None, "options": {}, "processed": {}},
+            "exporter": {"name": "gromacs", "options": {}, "processed": {}},
+            "plugin_chain": [],
+        }
+
+    base_options = base_options_from_new_structure(merged)
+
+    unitcell_options = {
+        k: merged[k]
+        for k in merged
+        if k not in _BASE_KEYS and k not in ("unitcell", "exporter") and k != "H"
+    }
+
+    unitcell_processed: Dict[str, Any] = {}
+    unitcell_unprocessed: Dict[str, Any] = {}
+    try:
+        uc_module = safe_import("unitcell", unitcell_name)
+        if hasattr(uc_module, "parse_options"):
+            unitcell_processed, unitcell_unprocessed = uc_module.parse_options(
+                unitcell_options
+            )
+        elif hasattr(uc_module, "UnitCell") and hasattr(
+            uc_module.UnitCell, "parse_options"
+        ):
+            unitcell_processed, unitcell_unprocessed = uc_module.UnitCell.parse_options(
+                unitcell_options
+            )
+        else:
+            common = get_common_unitcell_option_names()
+            unitcell_processed = {
+                k: v for k, v in unitcell_options.items() if k in common
+            }
+            unitcell_unprocessed = {
+                k: v for k, v in unitcell_options.items() if k not in common
+            }
+    except Exception:
+        common = get_common_unitcell_option_names()
+        unitcell_processed = {
+            k: v for k, v in unitcell_options.items() if k in common
+        }
+        unitcell_unprocessed = {
+            k: v for k, v in unitcell_options.items() if k not in common
+        }
+
+    exporter_name, exporter_subopts = _get_exporter_name_and_options(merged)
+    if "H" in merged:
+        exporter_subopts = {**exporter_subopts, "H": merged["H"]}
+    exporter_processed: Dict[str, Any] = {}
+    exporter_unprocessed: Dict[str, Any] = {}
+    try:
+        ex_module = safe_import("exporter", exporter_name)
+        if hasattr(ex_module, "parse_options"):
+            exporter_processed, exporter_unprocessed = ex_module.parse_options(
+                exporter_subopts
+            )
+    except Exception:
+        pass
+
+    return {
+        "base_options": base_options,
+        "unitcell": {
+            "name": unitcell_name,
+            "options": unitcell_options,
+            "processed": unitcell_processed,
+            "unprocessed": unitcell_unprocessed,
+        },
+        "exporter": {
+            "name": exporter_name,
+            "options": exporter_subopts,
+            "processed": exporter_processed,
+            "unprocessed": exporter_unprocessed,
+        },
+        "plugin_chain": [],
+    }
 
 
 def parse_argv(argv: List[str]) -> Dict[str, Any]:
@@ -152,93 +261,7 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
         display = structure_for_display(parsed)
         merged = _merge_config_cmdline(config, display)
 
-    unitcell_name = str(merged.get("unitcell", ""))
-    if not unitcell_name:
-        return {
-            "base_options": {},
-            "unitcell": {"name": None, "options": {}, "processed": {}},
-            "exporter": {"name": "gromacs", "options": {}, "processed": {}},
-            "plugin_chain": [],
-        }
-
-    # 基底オプション
-    base_options = base_options_from_new_structure(merged)
-
-    # unitcell に渡すオプション（新構造のまま）
-    # --H は yaplot 等の exporter 用のため unitcell には渡さない
-    unitcell_options = {
-        k: merged[k]
-        for k in merged
-        if k not in _BASE_KEYS and k not in ("unitcell", "exporter") and k != "H"
-    }
-
-    # unitcell プラグインの parse_options（新構造を受け取る）
-    # モジュール級 parse_options を優先（CIF の file/osite 等はこちらで処理）
-    unitcell_processed: Dict[str, Any] = {}
-    unitcell_unprocessed: Dict[str, Any] = {}
-    try:
-        uc_module = safe_import("unitcell", unitcell_name)
-        if hasattr(uc_module, "parse_options"):
-            unitcell_processed, unitcell_unprocessed = uc_module.parse_options(
-                unitcell_options
-            )
-        elif hasattr(uc_module, "UnitCell") and hasattr(
-            uc_module.UnitCell, "parse_options"
-        ):
-            unitcell_processed, unitcell_unprocessed = uc_module.UnitCell.parse_options(
-                unitcell_options
-            )
-        else:
-            # parse_options がない unitcell: 共通オプションのみ消費、残りは unprocessed（警告対象）
-            common = get_common_unitcell_option_names()
-            unitcell_processed = {
-                k: v for k, v in unitcell_options.items() if k in common
-            }
-            unitcell_unprocessed = {
-                k: v for k, v in unitcell_options.items() if k not in common
-            }
-    except Exception:
-        # 読み込み失敗時も同様に共通のみ消費、残りは unprocessed
-        common = get_common_unitcell_option_names()
-        unitcell_processed = {
-            k: v for k, v in unitcell_options.items() if k in common
-        }
-        unitcell_unprocessed = {
-            k: v for k, v in unitcell_options.items() if k not in common
-        }
-
-    # exporter
-    exporter_name, exporter_subopts = _get_exporter_name_and_options(merged)
-    # --H は yaplot の水素表示半径用。exporter に渡す。
-    if "H" in merged:
-        exporter_subopts = {**exporter_subopts, "H": merged["H"]}
-    exporter_processed: Dict[str, Any] = {}
-    exporter_unprocessed: Dict[str, Any] = {}
-    try:
-        ex_module = safe_import("exporter", exporter_name)
-        if hasattr(ex_module, "parse_options"):
-            exporter_processed, exporter_unprocessed = ex_module.parse_options(
-                exporter_subopts
-            )
-    except Exception:
-        pass
-
-    return {
-        "base_options": base_options,
-        "unitcell": {
-            "name": unitcell_name,
-            "options": unitcell_options,
-            "processed": unitcell_processed,
-            "unprocessed": unitcell_unprocessed,
-        },
-        "exporter": {
-            "name": exporter_name,
-            "options": exporter_subopts,
-            "processed": exporter_processed,
-            "unprocessed": exporter_unprocessed,
-        },
-        "plugin_chain": [],
-    }
+    return parsed_result_from_merged(merged)
 
 
 def validate_result(result: Dict[str, Any]) -> Tuple[bool, List[str]]:

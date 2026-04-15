@@ -3,9 +3,9 @@
 # プロジェクトルートから実行する場合:
 #   make -C examples/api
 #
-# オプション依存の例 (mdanalysis) を単体で試す:
-#   リポジトリルートで  pip install '.[mdanalysis]'  などしてから
-#   make -C examples/api mdanalysis
+# Optional examples (install deps with pip yourself, then):
+#   make -C examples/api mdanalysis   # pip install MDAnalysis matplotlib
+#   make -C examples/api visualize    # pip install py3dmol
 #
 # 実行時のカレントディレクトリは examples/api になるので、
 # .sh / .yaml 内の相対パス（例: --file ../cif/MEP.cif）は examples/api 基準。
@@ -24,6 +24,7 @@ TRIO_BASES := \
 	doping/3_doped \
 	doping/9_ion_group \
 	doping/11_ion_group_unitcell \
+	exotic_ice/17_cylindrical_ice \
 	guest_occupancy/6_with_guests \
 	guest_occupancy/8_cage_survey \
 	polarization/7_polarized \
@@ -54,11 +55,15 @@ compare: $(COMPARE_TARGETS)
 	-diff $*.py.log $*.yaml.log
 	-diff $*.py.log $*.sh.log
 
-.PHONY: all api_outs compare clean mdanalysis
+.PHONY: all api_outs compare clean mdanalysis visualize
 
-# Needs MDAnalysis: pip install '.[mdanalysis]' or pip install -r requirements-mdanalysis.txt (from this dir)
+# Needs MDAnalysis + matplotlib: pip install -r requirements-mdanalysis.txt (from this dir)
 mdanalysis:
 	$(PYTHON) $(ROOT)/examples/api/mdanalysis/15_mdanalysis.py
+
+# Needs py3dmol: pip install -r requirements-py3dmol.txt (from this dir)
+visualize:
+	$(PYTHON) $(ROOT)/examples/api/visualize/16_py3dmol.py
 
 # Prepend venv bin to PATH so that 'python3' inside .sh resolves to the venv python.
 %.sh.out: %.sh Makefile
@@ -69,4 +74,4 @@ mdanalysis:
 	$(PYTHON) -m genice3.cli.genice --config $< > $@ 2> $<.log
 
 clean:
-	rm -f $(foreach d,basic cif_io doping guest_occupancy polarization topological_defects unitcell_transform,$(d)/*.out $(d)/*.log)
+	rm -f $(foreach d,basic cif_io doping exotic_ice guest_occupancy polarization topological_defects unitcell_transform mdanalysis visualize,$(d)/*.out $(d)/*.log)

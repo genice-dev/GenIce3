@@ -33,6 +33,8 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 - jinja2 >=3.1.4
 - cif2ice (>=0.4.1,<0.5.0)
 - genice-core (>=1.5.4,<2.0.0)
+- fastapi (>=0.135.3,<0.136.0)
+- uvicorn (>=0.44.0,<0.45.0)
 
 
 ## Installation
@@ -51,7 +53,7 @@ pip uninstall genice3
 
 ## References
 
-See the [manual → References](https://genice-dev.github.io/GenIce3/references/) for the full reference list (generated from `citations.yaml`).
+See the [manual → References](https://genice-dev.github.io/GenIce3/references.html) for the full reference list (generated from `citations.yaml`).
 
 ## Citation
 

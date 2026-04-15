@@ -1,0 +1,16 @@
+# Run with GenIce3: genice3 --config 17_cylindrical_ice.yaml
+# Generated from 17_cylindrical_ice.sh
+
+unitcell: prism
+circum:
+  - 6
+  - 1
+axial:
+  - -2
+  - 10
+x: f
+y: a
+exporter:
+  gromacs:
+    water_model: 4site
+seed: 42

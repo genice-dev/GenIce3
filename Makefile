@@ -29,6 +29,11 @@ api-notebook: scripts/build_api_notebook.py $(wildcard examples/api/*/*.py) $(wi
 run-api-examples: scripts/run_api_examples.py
 	$(PYTHON) scripts/run_api_examples.py --all
 
+# Run the cylindrical prism-ice API example and write GRO output.
+cylindrical-ice-example: examples/api/exotic_ice/17_cylindrical_ice.py
+	$(PYTHON) examples/api/exotic_ice/17_cylindrical_ice.py > examples/api/exotic_ice/17_cylindrical_ice.gro
+	@echo "Wrote examples/api/exotic_ice/17_cylindrical_ice.gro"
+
 update-citations:
 	cp citations.yaml old.citations.yaml
 	$(PYTHON) scripts/citation.py < old.citations.yaml > citations.yaml

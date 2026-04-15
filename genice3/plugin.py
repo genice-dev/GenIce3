@@ -313,39 +313,27 @@ def import_extra(category, name):
     return module
 
 
-def safe_import(category, name):
-    """
-    Load a plugin.
+def import_plugin_module(category: str, name: str):
+    """プラグインモジュールを読み込む（``?`` や usage 表示による ``sys.exit`` は行わない）。
 
-    The plugins can exist either in the system, as a extra plugin, or in the
-    local folder.
+    Args:
+        category: ``"unitcell"`` / ``"exporter"`` / ``"molecule"`` / ``"group"`` のいずれか。
+        name: プラグイン名（末尾 ``?`` は含めない）。
 
-    category: The type of the plugin; "lattice", "format", "molecule", or "loader".
-    name:     The name of the plugin.
+    Raises:
+        ValueError: ``category`` または ``name`` が不正。
+        ImportError: いずれの経路でもモジュールが見つからない。
     """
-    logger = getLogger()
     if category not in ("exporter", "molecule", "unitcell", "group"):
         raise ValueError(
             f"category must be 'exporter', 'molecule', 'unitcell', or 'group', got: {category}"
         )
-
-    # single ? as a plugin name ==> show descriptions (list all)
-    if name == "?":
-        print(descriptions(category))
-        sys.exit(0)
-
-    # SYMBOL? ==> show usage for that plugin (then exit)
-    usage = False
-    if len(name) > 1 and name[-1] == "?":
-        usage = True
-        name = name[:-1]
-
     module_name = audit_name(name, category)
 
+    logger = getLogger()
     module = None
     fullname = f"{category}.{module_name}"
     logger.debug(f"Try to Load a local module: {fullname}")
-    # まずカレントディレクトリを path に挿入して試す（実行ディレクトリの group/ 等を読むため）
     cwd = os.getcwd()
     path_inserted = cwd not in sys.path
     if path_inserted:
@@ -379,13 +367,45 @@ def safe_import(category, name):
         logger.debug(f"Try to load an extra module: {fullname}")
         module = import_extra(category, module_name)
         logger.debug("Succeeded.")
+    return module
+
+
+def safe_import(category, name):
+    """
+    Load a plugin.
+
+    The plugins can exist either in the system, as a extra plugin, or in the
+    local folder.
+
+    category: The type of the plugin; "lattice", "format", "molecule", or "loader".
+    name:     The name of the plugin.
+    """
+    logger = getLogger()
+    if category not in ("exporter", "molecule", "unitcell", "group"):
+        raise ValueError(
+            f"category must be 'exporter', 'molecule', 'unitcell', or 'group', got: {category}"
+        )
+
+    # single ? as a plugin name ==> show descriptions (list all)
+    if name == "?":
+        print(descriptions(category))
+        sys.exit(0)
+
+    # SYMBOL? ==> show usage for that plugin (then exit)
+    usage = False
+    clean_name = name
+    if len(name) > 1 and name[-1] == "?":
+        usage = True
+        clean_name = name[:-1]
+
+    module = import_plugin_module(category, clean_name)
 
     if usage:
         if "desc" in module.__dict__:
             d = module.desc
-            logger.info(f"Usage for '{name}' plugin")
+            logger.info(f"Usage for '{clean_name}' plugin")
             if category == "unitcell" and d.get("options"):
-                u = format_unitcell_usage(name, d["options"])
+                u = format_unitcell_usage(clean_name, d["options"])
                 print("CLI:  ", u["cli"])
                 print("API:  ", u["api"])
                 print("YAML:\n", u["yaml"])
@@ -426,7 +446,9 @@ def Group(name, **kwargs):
     return safe_import("group", name).Group(**kwargs)
 
 
-def get_exporter_format_rows(category="exporter", groups=("system", "extra", "local")):
+def get_exporter_format_rows(
+    category="exporter", groups=("system", "extra", "local"), markdown_name=True
+):
     """
     Collect format_desc from all exporter plugins and return rows for the README table.
 
@@ -440,7 +462,11 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
       remarks: str
       suboptions: str (optional; short description of :key value options, e.g. "water_model: 3site, 4site, 6site, tip4p")
 
-    Returns a list of dicts with keys name, application, extension, water, solute, hb, remarks, suboptions.
+    ``markdown_name=True`` のとき ``name`` は README 向けにバッククォート付きの
+    エイリアス一覧文字列になる。False のとき ``name`` は生のプラグイン名になり、
+    ``aliases`` にエイリアス配列を含める。
+
+    Returns a list of dicts with keys name, aliases, application, extension, water, solute, hb, remarks, suboptions.
     """
     logger = getLogger()
     mods = scan(category)
@@ -471,10 +497,14 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
                     continue
                 fd = mod.format_desc
                 aliases = fd.get("aliases", [name])
-                name_col = ", ".join(f"`{a}`" for a in aliases)
+                if markdown_name:
+                    name_col = ", ".join(f"`{a}`" for a in aliases)
+                else:
+                    name_col = name
                 rows.append(
                     {
                         "name": name_col,
+                        "aliases": aliases,
                         "application": fd.get("application", ""),
                         "extension": fd.get("extension", ""),
                         "water": fd.get("water", ""),

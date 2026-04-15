@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GenIce3 API — Ice III → GROMACS → 3Dmol.js</title>
+  <script src="https://3dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+  <style>
+    :root { font-family: system-ui, sans-serif; }
+    body { margin: 1rem; max-width: 56rem; }
+    #viewport {
+      width: 100%;
+      height: 420px;
+      position: relative;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 0.75rem;
+    }
+    pre#error {
+      background: #fee;
+      padding: 0.75rem;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      display: none;
+    }
+    button {
+      padding: 0.4rem 0.9rem;
+      margin-right: 0.5rem;
+      cursor: pointer;
+    }
+    label { display: block; margin-top: 0.5rem; font-size: 0.9rem; }
+    input[type="url"] { width: 100%; max-width: 36rem; }
+  </style>
+</head>
+<body>
+  <!--
+    API のポートは何でもよい（別ターミナルで既に 8765 などが動いていれば、その URL を入力欄に入れるだけ）。
+    使い方の例:
+    1) API 起動済み（例: uvicorn ... --port 8765）
+    2) この HTML を file:// 以外で開く: 例えば同ディレクトリで
+         python -m http.server 8766
+       して http://127.0.0.1:8766/ice3_gromacs_3dmol.html を開く
+    3) 画面上の API URL が API と一致しているか確認（既定は 8765）。違うなら書き換え、または
+         ?api=http://127.0.0.1:8765
+    静的サーバのポート（8766）は API（8765）とずらすとよい。
+  -->
+  <h1>Ice III（単位胞 <code>3</code>）→ GenIce3 API → GROMACS → 3Dmol.js</h1>
+  <p>
+    <code>POST /v1/generate</code> に YAML を送り、返ってきた <code>.gro</code> 相当のテキストを 3Dmol.js に渡します。
+  </p>
+  <label>API ベース URL
+    <input type="url" id="apiBase" value="http://127.0.0.1:8765" />
+  </label>
+  <p>
+    <button type="button" id="btn">構造を取得して表示</button>
+  </p>
+  <pre id="error"></pre>
+  <div id="viewport"></div>
+
+  <script>
+(function () {
+  const ICE3_YAML = [
+    "unitcell: '3'",
+    "genice3:",
+    "  rep: [1, 1, 1]",
+    "  seed: 42",
+    "exporter:",
+    "  - gromacs:",
+    "      water_model: 3site",
+    "",
+  ].join("\n");
+
+  const params = new URLSearchParams(window.location.search);
+  const apiInput = document.getElementById("apiBase");
+  apiInput.value = params.get("api") || apiInput.value;
+
+  const errEl = document.getElementById("error");
+
+  function showError(msg) {
+    errEl.style.display = "block";
+    errEl.textContent = msg;
+  }
+  function clearError() {
+    errEl.style.display = "none";
+    errEl.textContent = "";
+  }
+
+  let viewer = null;
+
+  document.getElementById("btn").addEventListener("click", async function () {
+    clearError();
+    const base = apiInput.value.replace(/\/$/, "");
+    const url = base + "/v1/generate";
+
+    let gro;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: ICE3_YAML,
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        showError("HTTP " + res.status + "\n\n" + text);
+        return;
+      }
+      gro = text;
+    } catch (e) {
+      showError(String(e) + "\n\nAPI が起動しているか、上記 URL が正しいか確認してください。");
+      return;
+    }
+
+    const el = document.getElementById("viewport");
+    el.innerHTML = "";
+
+    if (typeof $3Dmol === "undefined") {
+      showError("3Dmol.js が読み込めていません（ネットワークまたは CDN を確認）。");
+      return;
+    }
+
+    viewer = $3Dmol.createViewer(el, { backgroundColor: "white" });
+    viewer.addModel(gro, "gro");
+    viewer.setStyle({}, { stick: { radius: 0.08 }, sphere: { scale: 0.22 } });
+    viewer.addUnitCell();
+    viewer.zoomTo();
+    viewer.render();
+  });
+})();
+  </script>
+</body>
+</html>
