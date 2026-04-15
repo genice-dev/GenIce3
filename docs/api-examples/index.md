@@ -8,6 +8,7 @@ Each subdirectory groups examples by topic, showing how to call GenIce3 from Pyt
 | [basic](basic.md) | Basic usage (reactive properties, simple structure generation) |
 | [cif_io](cif_io.md) | Reading from and writing to CIF files |
 | [doping](doping.md) | Ionic substitution and group (cation group) doping |
+| [exotic_ice](exotic_ice/README.md) | Exotic/nonstandard ice examples (e.g. cylindrical nanotube-like prism ice) |
 | [guest_occupancy](guest_occupancy.md) | Guest placement and cage survey for clathrate hydrates |
 | [polarization](polarization.md) | Polarization and dipole optimization (`target_pol`, `pol_loop_1`) |
 | [unitcell_transform](unitcell_transform.md) | Extending the unit cell (`replication_matrix`) |

@@ -66,6 +66,7 @@ List of unit cell names (symbols) specified as the first argument. Structures wi
 | iceT2 | Hypothetical ice T2. | [[Yagasaki 2018](references.md#yagasaki-2018)] |
 | one | Ice I w/ stacking disorder. |  |
 | oprism | Hydrogen-ordered ice nanotubes. | [[Koga 2001](references.md#koga-2001)] |
+| prism | Twisted hydrogen-ordered ice nanotubes. | [[Miao 2026](references.md#miao-2026)] |
 | sTprime | Filled ice sT'. | [[Smirnov 2013](references.md#smirnov-2013)] |
 | xFAU | Aeroice xFAU. | [[Matsui 2017](references.md#matsui-2017)] |
 | xdtc | A porous ice with cylindrical channels. | [[Matsumoto 2021](references.md#matsumoto-2021)] |
@@ -272,6 +273,44 @@ unitcell:
 | ---------- | ----------- |
 | `--sides` | Number of sides. |
 | `--rows` | Number of rows (must be even). |
+
+### prism
+
+Twisted hydrogen-ordered ice nanotubes.
+
+**CLI:**
+
+```
+genice3 prism --circum 6 1 --axial -1 10 --x f --y a
+  --circum: Chiral vector on the square lattice; defaults to 6 2.
+  --axial: Translational vector on the square lattice; defaults to -2 6.
+  --x: Orientation of the hydrogen bonds in the x direction; f for ferroelectric, a for antiferroelectric.
+  --y: Orientation of the hydrogen bonds in the y direction; f for ferroelectric, a for antiferroelectric.
+```
+
+**API:**
+
+```python
+UnitCell("prism", circum='6 1', axial='-1 10', x='f', y='a')
+```
+
+**YAML:**
+
+```yaml
+unitcell:
+  name: prism
+  circum: 6 1
+  axial: -1 10
+  x: f
+  y: a
+```
+
+| CLI option | Description |
+| ---------- | ----------- |
+| `--circum` | Chiral vector on the square lattice; defaults to 6 2. |
+| `--axial` | Translational vector on the square lattice; defaults to -2 6. |
+| `--x` | Orientation of the hydrogen bonds in the x direction; f for ferroelectric, a for antiferroelectric. |
+| `--y` | Orientation of the hydrogen bonds in the y direction; f for ferroelectric, a for antiferroelectric. |
 
 ### xFAU
 

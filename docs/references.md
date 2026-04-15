@@ -168,6 +168,10 @@
 
 - **[Maynard-Casely 2010](https://doi.org/10.1063/1.3455889)**: MAYNARD-CASELY, H. E., BULL, C. L., GUTHRIE, M., LOA, I., MCMAHON, M. I., GREGORYANZ, E., NELMES, R. J. and LOVEDAY, J. S., 2010, The distorted close-packed crystal structure of methane A. The Journal of Chemical Physics [online]. 14 August 2010. Vol. 133, no. 6, p. 064504. DOI 10.1063/1.3455889. Available from: http://dx.doi.org/10.1063/1.3455889
 
+<span id="miao-2026"></span>
+
+- **[Miao 2026](https://doi.org/10.26434/chemrxiv.15001713/v1)**: MIAO, Zhongzheng, 2026. Chasing the “Holy Grail” of Low‑Dimensional Ice: Intrinsically Stable Freestanding One‑Dimensional Ice Crystals. Online. 7 April 2026. DOI 10.26434/chemrxiv.15001713/v1.
+
 <span id="mochizuki-2014"></span>
 
 - **[Mochizuki 2014](https://doi.org/10.1039/c4cp01616e)**: MOCHIZUKI, Kenji, HIMOTO, Kazuhiro and MATSUMOTO, Masakazu, 2014, Diversity of transition pathways in the course of crystallization into ice VII. Phys. Chem. Chem. Phys. [online]. 2014. Vol. 16, no. 31, p. 16419–16425. DOI 10.1039/c4cp01616e. Available from: http://dx.doi.org/10.1039/c4cp01616e
