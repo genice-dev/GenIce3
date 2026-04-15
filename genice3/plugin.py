@@ -446,7 +446,9 @@ def Group(name, **kwargs):
     return safe_import("group", name).Group(**kwargs)
 
 
-def get_exporter_format_rows(category="exporter", groups=("system", "extra", "local")):
+def get_exporter_format_rows(
+    category="exporter", groups=("system", "extra", "local"), markdown_name=True
+):
     """
     Collect format_desc from all exporter plugins and return rows for the README table.
 
@@ -460,7 +462,11 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
       remarks: str
       suboptions: str (optional; short description of :key value options, e.g. "water_model: 3site, 4site, 6site, tip4p")
 
-    Returns a list of dicts with keys name, application, extension, water, solute, hb, remarks, suboptions.
+    ``markdown_name=True`` のとき ``name`` は README 向けにバッククォート付きの
+    エイリアス一覧文字列になる。False のとき ``name`` は生のプラグイン名になり、
+    ``aliases`` にエイリアス配列を含める。
+
+    Returns a list of dicts with keys name, aliases, application, extension, water, solute, hb, remarks, suboptions.
     """
     logger = getLogger()
     mods = scan(category)
@@ -491,10 +497,14 @@ def get_exporter_format_rows(category="exporter", groups=("system", "extra", "lo
                     continue
                 fd = mod.format_desc
                 aliases = fd.get("aliases", [name])
-                name_col = ", ".join(f"`{a}`" for a in aliases)
+                if markdown_name:
+                    name_col = ", ".join(f"`{a}`" for a in aliases)
+                else:
+                    name_col = name
                 rows.append(
                     {
                         "name": name_col,
+                        "aliases": aliases,
                         "application": fd.get("application", ""),
                         "extension": fd.get("extension", ""),
                         "water": fd.get("water", ""),

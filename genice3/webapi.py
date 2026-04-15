@@ -136,10 +136,13 @@ def create_app() -> FastAPI:
         "/v1/meta/exporters",
         tags=["meta"],
         summary="exporter プラグイン一覧（表形式メタ）",
-        description="`exporters` は行の配列。各 exporter の別名・拡張子・`suboptions` の説明文字列などが含まれる。",
+        description=(
+            "`exporters` は行の配列。`name` は API 用の生プラグイン名（バッククォート無し）で、"
+            "`aliases` に別名配列を含む。`extension` や `suboptions` も含まれる。"
+        ),
     )
     def meta_exporters() -> dict[str, Any]:
-        rows = get_exporter_format_rows()
+        rows = get_exporter_format_rows(markdown_name=False)
         return {"exporters": rows}
 
     @app.get(
