@@ -1,0 +1,215 @@
+# CHANGES
+
+genice2/genice3 分岐点とみなすコミット: a7e63b652a2cc324e84a55dced9892eba907ce84
+
+以下は上記コミット以降（HEADまで）の修正一覧です。
+
+- 2025-12-03 e294250 -
+- 2025-12-04 0c011f2 Reactive Programmingのための依存関係管理を強化し、numpy配列の比較を追加しました。また、lazy_propertyをproperty_depending_onにリネームしました。
+- 2025-12-04 d13572f Remove unused icecream debugging statements from debug_args decorator.
+- 2025-12-04 f071b97 Add genice3.py for reactive programming implementation and update ToDo.md with new insights on dependency management
+- 2025-12-04 c3684b6 Refactor genice3.py to enhance logging and integrate click for debug mode. Updated logging levels to debug for detailed output and improved unit cell handling with property setters.
+- 2025-12-04 836db75 Enhance dependency management in DependencyCacheMixin by adding support for attribute name variations in dependency checks. This allows for more robust cache invalidation when properties change, improving reactive programming capabilities.
+- 2025-12-04 eac2926 依存関係更新を確認。
+- 2025-12-04 13ea4ca Enhance GenIce3 and DependencyCacheMixin with improved reactive property management. Introduced MoleculeType enum, refined unit cell handling, and added support for replication matrix in user API. Updated logging for better debugging and integrated new properties for molecule generation.
+- 2025-12-05 68ca313 Update logging in property_depending_on to use info level for better clarity during dependency processing.
+- 2025-12-05 f5e88f8 Add guest and ion parsing functionality to GenIce3. Introduced GuestSpec data class for guest specifications, enhanced unit cell handling with anion and cation support, and implemented Gromacs output formatting. Updated logging for better traceability during molecule generation.
+- 2025-12-05 d38ac16 Refactor site calculations in GenIce3 to utilize the unit cell matrix consistently. Updated site definitions for water molecules, anions, and cations to ensure proper transformation with the cell matrix, enhancing accuracy in molecular positioning.
+- 2025-12-06 ebdea21 Implement orientation calculations for dopants in GenIce3. Refactor unit cell initialization to compute density dynamically and adjust cell dimensions accordingly. Update main function to accept density as an input parameter for enhanced flexibility in ice generation.
+- 2025-12-06 366e796 Add threading support for dependency processing in property_depending_on. Introduced a thread-local stack to track processing hierarchy and improved logging to display dependency information during execution.
+- 2025-12-06 26a74cd Refactor UnitCell initialization in genice3.py to improve parameter typing and streamline density calculations. Adjust handling of waters, bond length, and cages, ensuring proper logging and error management for enhanced clarity in molecular positioning.
+- 2025-12-06 1720748 Refactor property dependencies in GenIce3 to streamline anion and cation calculations. Updated the dependencies for orientations to include anions and cations, enhancing the accuracy of molecular positioning.
+- 2025-12-06 beee9b2 Add Dagster migration design and UI setup documentation
+- 2025-12-06 9f303c8 Add MakefileEngine class for dependency resolution and task management
+- 2025-12-06 ea4aadf Add GenIce3 Makefile Engine Implementation
+- 2025-12-06 4bee6be Rename orientations function to assume_water_orientations for clarity and update references accordingly. Refactor property access in GenIce3 to dynamically resolve tasks, improving code maintainability and reducing redundancy.
+- 2025-12-06 b9fb428 Add sf-hamilton dependency and introduce genice3_hamilton.py for reactive GenIce3 implementation
+- 2025-12-06 97a1e3a Refactor GenIce3 methods for improved type hinting and clarity
+- 2025-12-06 acb3460 -
+- 2025-12-06 8e963f1 一旦、ほかの選択肢を消し、makefileengine上での開発を続ける。限界が来たらHamiltonに移行する。
+- 2025-12-06 4c2324d Enhance logging in MakefileEngine for improved execution tracking
+- 2025-12-06 31222de Add error handling for undefined cage types in guest_molecules method
+- 2025-12-06 2791b72 Update cage position handling in UnitCell class
+- 2025-12-07 1b51d05 GenIce2のコードを侵食しはじめた。GenIce3のコードは別ディレクトリに移し、いずれ完結させる。
+- 2025-12-07 bea31db Update project name and version for GenIce3
+- 2025-12-08 0b86a5f Add test scripts for GenIce3 functionality and refactor plugin methods
+- 2025-12-08 b4c937f Refactor Gromacs export function for improved atom indexing and formatting
+- 2025-12-08 12b6c23 -
+- 2025-12-09 4a5f654 Add new molecular models for water and organic compounds
+- 2025-12-09 f3ced76 Add GenIce3 entry point and enhance ion handling
+- 2025-12-10 2a0826d Implement version retrieval function and update help text in CLI
+- 2025-12-10 449499b Refactor GenIce3 structure and enhance utility functions
+- 2025-12-10 bf20de9 Add configuration error handling and new CIF export functionality
+- 2025-12-11 9b9d309 Add example scripts for GenIce3 API usage
+- 2025-12-11 1908962 Enhance cage logging format in UnitCell class
+- 2025-12-11 03b460c Add handling for empty cage positions in cages and replicate_positions functions
+- 2025-12-11 4c8e85b Add test suite for GenIce3
+- 2025-12-11 587ecb7 Update dependencies and enhance pytest configuration
+- 2025-12-12 dc2c860 Add configuration management for GenIce3
+- 2025-12-12 d254a5e Add example YAML configuration files and update Python script for GenIce3
+- 2025-12-12 c04f704 Add pyyaml dependency to pyproject.toml
+- 2025-12-14 e6dcdb1 Add new unit cell scripts and conversion tool for GenIce3
+- 2025-12-14 7122969 Enhance lattice analysis and add new unit cell definitions for GenIce3
+- 2025-12-15 79198d2 -
+- 2025-12-15 8b81563 Refactor unit cell scripts to import cellvectors
+- 2025-12-15 1ef868a Add new ice1hte unit cell definition and update UnitCell constructor
+- 2025-12-15 5ac9b3a とりあえず仮にaddしておく。修正必要。
+- 2025-12-15 6eb3c47 genice2をrefactor時点にものに復元(当時のgenice2と現在のgenice3の動作比較のため)
+- 2025-12-15 0870564 genice2とgenice3で同じ構造が生じることを確認するテストを準備。unitcellのd*まで確認。
+- 2025-12-15 824e4db unitcellのうち、ざっくり動作確認したもののみgit add.
+- 2025-12-15 c9e3f6b 動作検証したもののみgit addする。
+- 2025-12-15 30f83d5 Implement new utility functions for CIF-like data processing in genice3.util
+- 2025-12-15 2bbf244 Add unit cell test functionality and new entry point script
+- 2025-12-15 73269a5 続き
+- 2025-12-15 62d8789 続き
+- 2025-12-15 eacbfb2 続き。水素無秩序氷の照合は酸素位置とグラフのみとした。これで多くのケースで相同となった。
+- 2025-12-15 e9c8078 続き。
+- 2025-12-16 f522655 続き。
+- 2025-12-16 193cc17 まだ移植できていないもの。
+- 2025-12-16 aaad569 Add ice rule validation and symmetry operations for ice XI candidates
+- 2025-12-16 84b903d Refactor imports to use `cif2ice` for `cellvectors` in unit cell modules
+- 2025-12-16 ff3d3ba cifを追加。
+- 2025-12-17 5c4f6c8 lattice_vs_unitcell.pyテストにバグあり修正
+- 2025-12-17 b94595b あと7つのunitcellプラグインの移植が終わっていない。いずれもかなりの曲者。
+- 2025-12-17 2c7499f py3dmol exporterはいずれExternalにするが、今は同じ場所で管理する。
+- 2025-12-18 7fc5ec4 Kirkwood Gを追加。システムサイズが大きいと動かないのはなんとかしろ。
+- 2025-12-18 57f024a 辞書型オプションを解釈する
+- 2025-12-18 02b6bcc - makefileengineをdependencyengineに名前を変えた。 - seedをreactiveに。
+- 2025-12-18 8416d0e ー
+- 2025-12-18 2f350da exporter.py3dmolは外部パッケージに
+- 2025-12-18 2c43a9e Jupyter.ipynbは廃止。APIの説明であることがわかりやすいように。
+- 2025-12-18 d8aa24f API usage in Jupyter
+- 2025-12-18 5cdf8ac -
+- 2025-12-18 e476f68 Update Makefile and project configuration for genice3; added setup.py and custom build hooks, removed gromacs_example.py, and updated dependencies in pyproject.toml.
+- 2025-12-18 c9a1c09 Remove obsolete documentation and flowchart images from the project.
+- 2025-12-18 2480365 Update Python shebang to use python3 in unitcell scripts and adjust Makefile for compatibility.
+- 2025-12-18 baa08d6 Add poetry-wrapper.sh script to manage Python environment for Poetry
+- 2025-12-18 aeb3703 Update plugin.py to replace 'genice2' with 'genice3' in entry point group names for consistency with project versioning.
+- 2025-12-18 112bf8d Instructions for new GenIce3 API.
+- 2025-12-18 31c0cd3 Delete .genice2
+- 2025-12-18 97f1ce4 Add new unit cell structure file xFAU.py and update various unit cell scripts to improve consistency in parameters and logging. Adjust bond lengths and density calculations across multiple files.
+- 2025-12-18 c9b05ff Refactor option parsing in yaplot.py to improve clarity and consistency by renaming functions for guest and water model processing.
+- 2025-12-18 6b1dfd1 Add plotly exporter for graph visualization in GenIce3, implementing 3D graph drawing with customizable options for edge types and node representation.
+- 2025-12-18 4f319be Add blank lines to improve readability in dictparser_example.py, DICTPARSER_README.md, and dictparser.py.
+- 2025-12-18 7c6880a Add a blank line at the end of dependencyengine.py for improved readability.
+- 2025-12-18 affc131 Update API.ipynb to enhance installation instructions and output handling. Adjusted execution counts, added outputs for package installations, and modified error handling for dependencies. Improved markdown formatting and ensured consistent cell metadata.
+- 2025-12-18 a9fc8f3 Add cif2ice as a dependency in pyproject.toml to support additional functionality.
+- 2025-12-19 9717f0a Refactor draw_graph function in plotly exporter to improve edge rendering. Introduced separate handling for normal and fixed edges, optimizing the visualization of graph structures in 3D. Updated return statement for clarity and consistency.
+- 2025-12-20 b05b2c8 option_parserプロトタイプ。
+- 2025-12-22 c96ab06 optionの指定方法を大幅に刷新。結果的にはgenice2とほぼ同じ指定ができるようになったが、より構造的な記法やYAMLにも対応した。もうすこしコードを簡潔にしたい。
+- 2025-12-22 4d40e68 -
+- 2025-12-22 1b32ffd cage解析を分離
+- 2025-12-22 8381c56 config.pyを廃止
+- 2025-12-22 0dd5ba2 prototypeを削除
+- 2025-12-22 b6d98af 短縮形オプションを許容。
+- 2025-12-22 d7a5df9 cifの入出力のチェック
+- 2025-12-22 89f4feb -
+- 2026-01-24 f73b0e0 examples/apiを刷新。
+- 2026-01-24 edc2328 Remove unused parse_options function from cif.py, add LAMMPS exporter with data formatting and option parsing, and update Makefiles to use python3.
+- 2026-02-03 603bf8a Update project configuration and add new features for GenIce3
+- 2026-02-13 3941668 Update case sensitivity for CIF in scripts and configuration files
+- 2026-02-13 3a29150 Add polarized ice examples and update GenIce3 for target polarization support
+- 2026-02-13 5d44aae -
+- 2026-02-14 4cfb08e genice2の抹消
+- 2026-02-14 4913017 -
+- 2026-02-14 c96d49f README.mdの生成手順を更新。
+- 2026-02-14 b6461a3 Update project files and documentation for GenIce3
+- 2026-02-14 e766e80 Update API and README for GenIce3
+- 2026-02-14 696fef8 Refactor CLI help formatting and update API notebook
+- 2026-02-14 19376d2 オプションの取り扱いを一般化。
+- 2026-02-14 5e71322 Add Makefiles for art examples
+- 2026-02-14 f58b04e Remove unused Makefiles for art examples
+- 2026-02-14 4c43577 Add unit tests and Makefile for GenIce3
+- 2026-02-14 a140cbe Refactor assertions to raise ValueErrors for better error handling
+- 2026-02-14 0a82347 ケージラベルは文字列
+- 2026-02-14 0bfd9da mark not dopable ices.
+- 2026-02-14 992c2cd Add ion doping support check and simplify guest molecule handling
+- 2026-02-14 ad83166 branch間テストの準備中
+- 2026-02-14 46a8835 Update Makefile for enhanced discovery and testing workflow
+- 2026-02-14 cde8c5e Add benchmark scripts and gnuplot support
+- 2026-02-15 bb4a5db バッジの更新。
+- 2026-02-15 b584881 Refactor API notebook to remove output clutter
+- 2026-02-15 77480b3 Update version in pyproject.toml to 3.0a3
+- 2026-02-16 f103797 Add group functionality and Methyl class implementation
+- 2026-02-16 4cfa01a assess_cagesオプションをcage_survey exporterに変更。
+- 2026-02-16 9bda6fe @reactiveデコレータの追加。
+- 2026-02-16 7b40967 spot_cationを指定すると自動でその周囲のケージをinfoするようになった。
+- 2026-02-16 26a5be7 spot_cationのサブオプション処理の枠だけ追加。ついでにoptionのvalidationメカニズムを追加
+- 2026-02-18 b957a84 拡大胞でのケージのグラフを生成。グループをはじめて設置に成功。
+- 2026-02-18 a0558bc Refactor cage assessment logic and improve data handling
+- 2026-02-18 3c4f843 bug fix. ケージサイズはノードの数ではなく面の数で表す。
+- 2026-02-18 f445a8f CLIオプションに負数を指定できるように。
+- 2026-02-18 17ff6e3 拡大胞のunitcellプラグインを生成するexporter
+- 2026-02-18 be69413 新たに拡大胞を単位胞とするunitcellプラグインを生成するスクリプトと設定ファイルを追加
+- 2026-02-18 411ac61 Enhance error handling for undefined cage types in GenIce3
+- 2026-02-18 03f9e7b Refactor unit cell export process in 10_extend_unitcell.py
+- 2026-02-18 8644ee3 Bugfix: 残基の向きがおかしいのを修正。
+- 2026-02-18 9cbbe0b cwd直下のgroup/フォルダー等からプラグインをインポートする機能。
+- 2026-02-18 83f9287 Update ToDo.md to reflect progress on Spot cation group options
+- 2026-02-18 69f63b4 Refactor formatting of exporter format rows in plugin.py
+- 2026-02-18 4d66ccf Refactor molecular ion construction in GenIce3
+- 2026-02-18 2d4469b --cationにサブオプション--groupが使えるようになった。ただし、YAML形式のみ。
+- 2026-02-20 a73099d オプション指定法を全面変更。
+- 2026-02-20 99db593 Refactor: 変数名にlabelがおおくてわからないのを修正。
+- 2026-02-24 580ecf7 Hydronium/Hydroxideを置くサンプルコード。
+- 2026-02-24 3b6c7ea Refactor topological defect embedding example
+- 2026-02-25 d065e4f Bjerrumに対応。
+- 2026-02-25 94fe81f 文書の準備
+- 2026-02-25 832cf71 文書のアップデート。
+- 2026-02-26 05b553d Update version in pyproject.toml from 3.0a4 to 3.0b0 and clean up versioning comments for clarity.
+- 2026-02-26 602aeb4 docsを全チェックし、問題を修正。
+- 2026-02-26 5682a96 Update version to 3.0b1 in pyproject.toml and README.md for consistency.
+- 2026-02-26 1753ad5 Enhance API documentation and examples
+- 2026-02-26 3a3c783 Enhance API examples and documentation
+- 2026-02-26 c91327f Update version to 3.0b2 in pyproject.toml and README.md for consistency.
+- 2026-02-26 541ec26 Enhance GenIce3 with new dependency engine and update documentation
+- 2026-02-26 a7ae5a5 Refactor documentation and update Makefile for unit cell handling
+- 2026-02-26 c94203b setter APIを準備。
+- 2026-02-26 03e153e Add DOI for Fan 2010 citation in citations.yaml
+- 2026-02-26 ff0ffd2 Update documentation and examples for GenIce3 API
+- 2026-03-02 3efbfa5 Update citations.yaml with new Matsumoto 2007 entry, increment version to 3.0b3 in pyproject.toml and README.md, and enhance logging output in various modules for better clarity.
+- 2026-03-02 b343b8f Add example script for reshaping unit cells and update README
+- 2026-03-04 3538a33 Refactor API notebook and documentation for unit cell handling
+- 2026-03-15 03e10a2 Update polarization handling and documentation
+- 2026-03-17 45d26a5 オプション書式の試行錯誤の記録を削除。
+- 2026-03-25 eb50971 文書の整理
+- 2026-03-25 a45b141 ツールの整理
+- 2026-03-25 0621f2e コメントの英語化
+- 2026-03-25 743ceb6 強制分極
+- 2026-03-25 10286d1 feat: Update genice-core dependency, translate API examples to English, rename polarization loop parameter, and add new environment documentation.
+- 2026-03-26 4c7b469 feat: Revise polarization example with new `pol_loop_2` parameter, updated replication and target polarization, switch to `_setup_logging`, and add `ENV.md`.
+- 2026-03-28 940e7dc Refactor: Relocate utility scripts and development files to dedicated `scripts/` and `dev/` directories, removing the `Utilities/` folder and updating related configurations.
+- 2026-03-28 caf43dd feat: introduce `pol_loop_1` and `pol_loop_2` for polarization, add a Sikiric parser, and refactor utility scripts into `scripts` and
+- 2026-03-28 b69c26b 開発時だけ使うファイルを集約
+- 2026-03-28 4f2d6a8 feat: Add Sikiric parser and other utility scripts, update polarization features, and refine API examples and documentation.
+- 2026-03-28 7cec51b feat: Add documentation generation scripts, update examples, and bump version to 3.0b4.
+- 2026-03-28 b8e1a17 feat: Introduce documentation generation scripts for plugins and citations, and refine API examples.
+- 2026-03-28 bf61369 refactor: Rename polarization parameter `depol_loop` to `pol_loop_1`, introduce `pol_loop_2`, move utility scripts to `scripts/`, and update
+- 2026-03-28 401ae0f genice-coreに乱数seedを渡すようにした。
+- 2026-03-28 ae2df37 genice-coreのバージョン指定
+- 2026-03-28 96b334c pyproject.tomlの簡素化。
+- 2026-03-28 56c0f4e Can spacify the max cage rings in cage_survey.
+- 2026-03-28 06d67a7 Prepared the supercells of ice I for assessing the "cages", a.k.a. quasipolyhedra.
+- 2026-03-29 8aa3d1b 最大ケージを16面体に変更。DOHのようにもっと大きなケージをもつ場合はオプションで指定することにする。
+- 2026-03-29 b201d7d -
+- 2026-03-29 d075624 Enhance test rules for ion doping scenarios
+- 2026-03-29 3efcd93 Update test options and add new unit cell for Ice XI
+- 2026-03-29 65668db Refactor CLI main function for improved argument handling
+- 2026-03-29 d9886ea Update default max cage rings to 16 in cage_survey
+- 2026-03-30 4f54461 Aux ices.
+- 2026-03-30 f1188b7 mdanalysisを使う例を追加。
+- 2026-03-30 a12fde7 New ice YKD
+- 2026-03-30 b1869cc -
+- 2026-03-30 602799d -
+- 2026-03-30 3364a3b Enhance API documentation and examples for py3Dmol visualization
+- 2026-03-30 4173f03 Update dependencies and documentation for plotly and visualization examples
+- 2026-04-12 7578c4b Change exporter from gromacs to yaplot in example script
+- 2026-04-13 9ec9df7 Update dependencies and add WebAPI documentation
+- 2026-04-13 3b53689 Add web client example and tests for GenIce3 API
+- 2026-04-15 304c898 prismを追加。
+- 2026-04-15 c0a26ab Update references in README files
+- 2026-04-15 ccc8662 Enhance exporter format function and API documentation
+- 2026-04-15 e76562e Merge branch 'webapi'
+- 2026-04-30 71289ad CIFタイプの原子座標データからunitcellを生成するケースで、水素原子位置が指定されているか否かで明確に別関数を使うように変更。 partial_orderオプションを廃止。2つの酸素の間に水素が2つあれば方向が確定していないとみなすようにした。
+- 2026-04-30 ecc10fa 氷21を小林論文から採用。
+- 2026-04-30 97d5b85 氷21
