@@ -5,3 +5,6 @@
     ```shell
     genice3 CS2 -e cage_survey > cages.json
     ```
+
+- 階層的オプションの指定
+- exporter等の名称の変更

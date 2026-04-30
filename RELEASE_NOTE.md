@@ -1,58 +1,58 @@
 # RELEASE NOTE
 
-対象範囲: `a7e63b652a2cc324e84a55dced9892eba907ce84` 以降の GenIce3 系変更
+Scope: GenIce3-related changes after `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
-## 概要
+## Overview
 
-GenIce2 系から分岐後、GenIce3 は API・オプション体系・依存関係エンジン・プラグイン構成を中心に大きく再設計されました。  
-この期間の変更は、単なる機能追加だけでなく、CLI/設定記法/文書/テスト基盤まで含む移行作業と整備が主軸です。
+After branching from the GenIce2 line, GenIce3 has been extensively redesigned around its API, option model, dependency engine, and plugin architecture.  
+This period includes not only feature additions but also broad migration and stabilization work across CLI behavior, configuration style, documentation, and tests.
 
-## 主要アップデート
+## Major Updates
 
-- **GenIce3 基盤の確立**
-  - `genice3.py` 導入以降、依存関係ベースの再計算モデル（reactive）を中心に内部実装を整理。
-  - `DependencyCacheMixin`、`@reactive`、依存関係処理の改良により、設定変更時の再評価を安定化。
+- **Core foundation of GenIce3**
+  - Introduced `genice3.py` and reorganized internals around a dependency-driven reactive recalculation model.
+  - Improved reevaluation stability when settings change through refinements to `DependencyCacheMixin`, `@reactive`, and dependency processing.
 
-- **CLI とオプション指定法の刷新**
-  - オプション指定法を複数回にわたり再設計し、最終的により構造化された記法と YAML 設定運用を強化。
-  - `pol_loop_1` / `pol_loop_2` など分極関連パラメータを整理し、強制分極や目標分極指定の取り回しを改善。
-  - 負数オプションや短縮形オプションなど、CLI 実用性を向上。
+- **CLI and option-system redesign**
+  - Reworked option syntax in multiple iterations, resulting in a more structured interface and stronger YAML-based workflows.
+  - Refined polarization-related parameters such as `pol_loop_1` and `pol_loop_2`, including forced and target-polarization handling.
+  - Improved CLI usability by supporting negative values and shorthand option forms.
 
-- **unitcell / 物性モデルの拡充**
-  - 多数の unitcell を移植・追加し、動作照合テストを継続的に実施。
-  - `YKD`、`ice21`（および別名エントリ）など新規構造を追加。
-  - 最新では CIF 由来の unitcell 生成時に、水素位置の明示有無で処理を分岐するよう改善。
+- **unitcell and structure-model expansion**
+  - Migrated and added many unitcell plugins, with continuous behavior-comparison tests.
+  - Added new structures including `YKD`, `ice21`, and its alias entries.
+  - Improved CIF-derived unitcell generation by branching logic based on whether hydrogen positions are explicitly provided.
 
-- **ドーピング・欠陥・ケージ解析の強化**
-  - イオン配置、`spot_cation` 周辺処理、group 指定、Hydronium/Hydroxide、Bjerrum 欠陥などを段階的に対応。
-  - `cage_survey` 系の仕様調整（最大リング数、評価ロジック）と関連 exporter を拡充。
+- **Doping, defects, and cage analysis**
+  - Added or expanded support for ion placement, `spot_cation`-related handling, group options, Hydronium/Hydroxide, and Bjerrum defects.
+  - Enhanced `cage_survey`-related behavior, including max-ring handling and evaluation logic.
 
-- **exporter と可視化の拡張**
-  - GROMACS 出力整備、LAMMPS exporter 追加、plotly/py3Dmol など可視化経路を拡張。
-  - exporter のフォーマット関数やオプション解釈を継続的に改善。
+- **Exporter and visualization improvements**
+  - Improved GROMACS output, added a LAMMPS exporter, and expanded visualization paths including plotly and py3Dmol.
+  - Continued refinement of exporter format functions and option parsing.
 
-- **Web/API と文書整備**
-  - API ノートブック、examples、WebAPI 文書とテストを整備。
-  - README・references・citations を更新し、利用手順と参照情報を強化。
+- **Web/API and documentation updates**
+  - Expanded API notebooks, examples, and WebAPI docs/tests.
+  - Updated README, references, and citations to improve usability and traceability.
 
-- **テスト/開発環境の整備**
-  - identity 系を含む比較テスト・発見ルールを拡充。
-  - `scripts/`・`dev/` への整理、ビルド/Makefile 周辺の継続的リファクタリングを実施。
+- **Testing and development environment**
+  - Strengthened comparison tests (including identity-related suites) and discovery workflows.
+  - Continued refactoring around project layout and tooling (`scripts/`, `dev/`, and Makefile/build flows).
 
-## 互換性に関する注意点
+## Compatibility Notes
 
-- GenIce2 由来の実装・設定から、GenIce3 の API/オプション体系へ移行する過程で、指定方法や既定挙動が変更されています。
-- 分極関連パラメータ、ケージ評価、ドーピング指定、exporter オプションは、旧スクリプトの互換性確認が必要です。
-- CIF 取り込み処理では `partial_order` オプションが廃止され、水素原子の入力状態によって処理系が分かれます。
+- Migration from GenIce2-style usage to the GenIce3 API/option system includes behavior and syntax changes.
+- Polarization settings, cage evaluation, doping options, and exporter options should be checked when porting older scripts.
+- In CIF processing, the `partial_order` option has been removed, and behavior now depends on hydrogen-position input availability.
 
-## バージョン推移（この期間で確認できるもの）
+## Version Progression (observed in this period)
 
 - `3.0a3` -> `3.0a4` -> `3.0b0` -> `3.0b1` -> `3.0b2` -> `3.0b3` -> `3.0b4`
 
-## 直近トピック（2026-04）
+## Recent Topics (2026-04)
 
-- WebAPI 関連ドキュメント/テストを追加。
-- `prism` の追加。
-- exporter format/API 文書を強化。
-- `ice21` を採用し、別名エントリを追加。
-- CIF 由来 unitcell 生成ロジックを改善（水素位置の扱いを明確化）。
+- Added WebAPI-related documentation and tests.
+- Added `prism`.
+- Improved exporter-format handling and API docs.
+- Adopted `ice21` and added alias entries.
+- Improved CIF-based unitcell generation logic for hydrogen-position handling.
