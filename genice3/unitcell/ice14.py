@@ -67,9 +67,7 @@ D15 0.8472(3) 0.3248(3) 0.4010(6) 2.03(1) 1.0000
         # helper routines to make from CIF-like data
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, fixed, pairs = waters_and_pairs(
-            cell, atomd, sops, rep=(1, 1, 2), partial_order=True
-        )
+        waters, fixed, pairs = waters_and_pairs(cell, atomd, sops, rep=(1, 1, 2))
 
         density = density_in_g_cm3(len(waters), cell)
         coord = "relative"

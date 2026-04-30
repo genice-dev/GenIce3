@@ -15,12 +15,13 @@ from cif2ice import cellvectors
 desc = {
     "ref": {"VIII": "Kuhs 1998"},
     "brief": "Ice VIII, a hydrogen-ordered counterpart of ice VII.",
-    "test": ({"options": "--depol=none"},),
+    "test": ({"options": "--pol_loop_1 0"},),
 }
 
 
 class UnitCell(genice3.unitcell.UnitCell):
     SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
     def __init__(self, **kwargs):
         atoms = """
         O 0   0.25       0.1071(12)
@@ -74,7 +75,7 @@ class UnitCell(genice3.unitcell.UnitCell):
         # helper routines to make from CIF-like data
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, fixed = waters_and_pairs(cell, atomd, sops, rep=(2, 2, 2))
+        waters, fixed, _ = waters_and_pairs(cell, atomd, sops, rep=(2, 2, 2))
 
         density = density_in_g_cm3(len(waters), cell)
         coord = "relative"

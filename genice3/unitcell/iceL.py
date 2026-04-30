@@ -8,7 +8,7 @@ from genice3.util import (
     atomdic,
     fullatoms,
     symmetry_operators,
-    waters_and_pairs,
+    generate_oxygen_positions,
     density_in_g_cm3,
 )
 from logging import getLogger
@@ -54,7 +54,7 @@ class UnitCell(genice3.unitcell.UnitCell):
         cell = cellvectors(a, b, c)
 
         atomd = atomdic(atoms)
-        waters, _ = waters_and_pairs(cell, atomd, symmetry_operators(symops))
+        waters = generate_oxygen_positions(atomd, symmetry_operators(symops))
 
         density = density_in_g_cm3(len(waters), cell)
 

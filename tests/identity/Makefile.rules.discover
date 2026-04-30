@@ -1412,12 +1412,12 @@ reference/engel20_10577.cage_survey: ../../genice3/unitcell/engel20.py ../../gen
 
 eleven_7491.cage_survey.diff: reference/eleven_7491.cage_survey
 	@mkdir -p reference
-	$(GENICE) eleven --seed 1 --spot_cation 0=Na --spot_anion 2=Cl --guest A12=me --exporter cage_survey --target_polarization 0 0 4 --density 1.1 2> $*.log | diff - reference/eleven_7491.cage_survey
+	$(GENICE) eleven --layers ccchchc --seed 1 --spot_cation 0=Na --spot_anion 2=Cl --guest A12=me --exporter cage_survey --target_polarization 0 0 4 --density 1.1 2> $*.log | diff - reference/eleven_7491.cage_survey
 	@touch $@
 
 reference/eleven_7491.cage_survey: ../../genice3/unitcell/eleven.py ../../genice3/exporter/cage_survey.py
 	@mkdir -p reference
-	$(GENICE) eleven --seed 1 --spot_cation 0=Na --spot_anion 2=Cl --guest A12=me --exporter cage_survey --target_polarization 0 0 4 --density 1.1 > $@ 2> $@.log
+	$(GENICE) eleven --layers ccchchc --seed 1 --spot_cation 0=Na --spot_anion 2=Cl --guest A12=me --exporter cage_survey --target_polarization 0 0 4 --density 1.1 > $@ 2> $@.log
 
 Struct33_6850.lammps.diff: reference/Struct33_6850.lammps
 	@mkdir -p reference

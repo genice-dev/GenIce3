@@ -213,7 +213,7 @@ def symmetry_operators(symops: str, offsets: Iterable = [("+0", "+0", "+0")]):
 #     return waters, pairs
 
 
-def atoms_to_waters(oxygens, hydrogens, cell, partial_order=False):
+def atoms_to_waters(oxygens, hydrogens, cell):  # , partial_order=False):
     """
     原子座標 (O, H) から水分子の重心座標と水素結合ペアを求める。
 
@@ -225,21 +225,21 @@ def atoms_to_waters(oxygens, hydrogens, cell, partial_order=False):
         H原子の分数座標 (shape: (n_H, 3))
     cell : np.ndarray
         セル行列
-    partial_order : bool, default False
-        True のときは、重心計算をせず、O–O ペアも返す（秩序化用）。
+    # partial_order : bool, default False
+    #     True のときは、重心計算をせず、O–O ペアも返す（秩序化用）。
 
     Returns
     -------
-    if partial_order is False:
-        waters : list[np.ndarray]
-            水分子の重心座標のリスト
-        pairs : list[list[int, int]]
-            水素結合ペア (donor_O_index, acceptor_O_index) のリスト
+    # if partial_order is False:
+    #     waters : list[np.ndarray]
+    #         水分子の重心座標のリスト
+    #     pairs : list[list[int, int]]
+    #         水素結合ペア (donor_O_index, acceptor_O_index) のリスト
 
-    if partial_order is True:
+    # if partial_order is True:
         oxygens : np.ndarray
-        pairs   : list[list[int, int]]  (O–O 間のHB由来ペア)
-        oo_pairs: list[tuple[int, int]] (距離しきい値以内の O–O ペア)
+        fixed   : set[tuple[int, int]]  (水素結合が確定しているペア)
+        pairs   : set[tuple[int, int]]  (水素結合があるペア（固定も含む）)
     """
     logger = getLogger("atoms_to_waters")
 
@@ -256,7 +256,7 @@ def atoms_to_waters(oxygens, hydrogens, cell, partial_order=False):
     logger.debug("covalent OH parent map: %s", parent)
 
     # --- Step 2: 水素結合ペア (O_donor, O_acceptor) を集める --------------------
-    pairs = []
+    hydrogen_bonds = set()
     for o_idx, h_idx in pl.pairs_iter(
         oxygens, maxdist=0.20, cell=cell, pos2=hydrogens, distance=False  # nm
     ):
@@ -264,20 +264,21 @@ def atoms_to_waters(oxygens, hydrogens, cell, partial_order=False):
         if h_idx not in oh[o_idx]:
             donor = parent[h_idx]  # このHの親O
             acceptor = o_idx
-            pairs.append([donor, acceptor])
+            hydrogen_bonds.add((donor, acceptor))
 
-    logger.debug("HB pairs (donor, acceptor): %s", pairs)
+    logger.debug("HB pairs (donor, acceptor): %s", hydrogen_bonds)
 
-    # --- Step 3: 秩序化用の部分情報だけ欲しい場合 ------------------------------
-    if partial_order:
-        oo_pairs = [
-            (i, j)
-            for i, j in pl.pairs_iter(oxygens, maxdist=0.30, cell=cell, distance=False)
-        ]
-        # oxygens: O原子座標
-        # pairs  : HBペア (donor, acceptor)
-        # oo_pairs: 近接 O–O ペア
-        return oxygens, pairs, oo_pairs
+    # pairsは、水素結合があるが向きが定まっていないもの。
+    pairs = set()
+    fixed = set()
+    for donor, acceptor in hydrogen_bonds:
+        if (acceptor, donor) in hydrogen_bonds:
+            if donor < acceptor:
+                pairs.add((donor, acceptor))
+        else:
+            fixed.add((donor, acceptor))
+
+    return oxygens, fixed, pairs | fixed
 
     # --- Step 4: 各Oごとに水分子重心を計算 ------------------------------------
 
@@ -307,6 +308,42 @@ def atoms_to_waters(oxygens, hydrogens, cell, partial_order=False):
     return waters, pairs
 
 
+def generate_oxygen_positions(
+    atomd,
+    sops,
+    rep=(1, 1, 1),
+    O_labels=("O",),
+):
+    """Generate oxygen positions from CIF-like data.
+    Hydrogen positions are left to be determined later somewhere else.
+
+    Args:
+        atomd: Atom dictionary from atomdic()
+        sops: Symmetry operators from symmetry_operators()
+        rep: Replication factors (default: (1, 1, 1))
+        O_labels: Labels for oxygen atoms (default: ("O",))
+
+    Returns:
+        oxygens: Oxygen positions (numpy array)
+    """
+    oxygens = []
+    for name, pos in fullatoms(atomd, sops):
+        if name[0] in O_labels:
+            oxygens.append(pos)
+
+    oo = [
+        [o[0] + x, o[1] + y, o[2] + z]
+        for o in oxygens
+        for x in range(rep[0])
+        for y in range(rep[1])
+        for z in range(rep[2])
+    ]
+    oxygens = np.array(oo)
+    oxygens /= np.array(rep)
+
+    return oxygens
+
+
 def waters_and_pairs(
     cell,
     atomd,
@@ -314,7 +351,7 @@ def waters_and_pairs(
     rep=(1, 1, 1),
     O_labels=("O",),
     H_labels="DH",
-    partial_order=False,
+    # partial_order=False,
 ):
     """Generate water positions and pairs from CIF-like data.
 
@@ -342,12 +379,20 @@ def waters_and_pairs(
         elif name[0] in H_labels:
             hydrogens.append(pos)
 
-    if not partial_order:
-        if len(oxygens) * 2 != len(hydrogens) and len(hydrogens) != 0:
-            raise ValueError(
-                f"hydrogen count must be 2×oxygen count or 0: "
-                f"O={len(oxygens)}, H={len(hydrogens)}"
-            )
+    if len(hydrogens) == 0:
+        raise ValueError(
+            "No hydrogen atoms found in atomd. Use generate_oxygen_positions() instead."
+        )
+
+    # 水素位置が二重に定義されている場合もありうる。
+
+    # if not partial_order:
+    #     if len(oxygens) * 2 != len(hydrogens) and len(hydrogens) != 0:
+    #         raise ValueError(
+    #             f"hydrogen count must be 2×oxygen count or 0: "
+    #             f"O={len(oxygens)}, H={len(hydrogens)}"
+    #         )
+
     cell *= np.array(rep)
 
     oo = [
@@ -374,7 +419,7 @@ def waters_and_pairs(
     hydrogens = np.array(hh)
     hydrogens /= np.array(rep)
 
-    return atoms_to_waters(oxygens, hydrogens, cell, partial_order=partial_order)
+    return atoms_to_waters(oxygens, hydrogens, cell)  # , partial_order=partial_order)
 
 
 def shortest_distance(coord, cell):
@@ -582,5 +627,19 @@ def operations(spaceg: str, origin: int = 0):
             1/2+x,        1/2-y,          z
             -x,           -y,          1/2+z
         """
+        )
+    elif spaceg == "I-42d" or spaceg == "122":
+        symops = symmetry_operators(
+            """
+      x,            y,            z
+     -x,           -y,            z
+      y,           -x,           -z
+     -y,            x,           -z
+      x,          1/2-y,        1/4-z
+     -x,          1/2+y,        1/4-z
+      y,          1/2+x,        1/4+z
+     -y,          1/2-x,        1/4+z
+     """,
+            offsets=[("+0", "+0", "+0"), ("+1/2", "+1/2", "+1/2")],
         )
     return symops

@@ -87,7 +87,7 @@ class UnitCell(genice3.unitcell.UnitCell):
 
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, fixed = waters_and_pairs(cell, atomd, sops)
+        waters, fixed, _ = waters_and_pairs(cell, atomd, sops)
 
         # self.cagetype = []
         # self.cagepos = []

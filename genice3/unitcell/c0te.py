@@ -6,7 +6,7 @@ Usage: genice3 c0te
 from genice3.util import (
     atomdic,
     symmetry_operators,
-    waters_and_pairs,
+    generate_oxygen_positions,
     density_in_g_cm3,
 )
 import genice3.unitcell
@@ -63,7 +63,7 @@ class UnitCell(genice3.unitcell.UnitCell):
         #         self.cagetype.append(atomname)
         #         self.cagepos.append(pos)
 
-        waters, pairs = waters_and_pairs(cell, atomd, sops)
+        waters = generate_oxygen_positions(atomd, sops)
 
         density = density_in_g_cm3(len(waters), cell)
         coord = "relative"

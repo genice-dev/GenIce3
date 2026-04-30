@@ -17,6 +17,7 @@ desc = {
 
 class UnitCell(genice3.unitcell.UnitCell):
     SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
     def __init__(self, **kwargs):
         logger = getLogger()
 
@@ -57,9 +58,7 @@ x,y,z
         # helper routines to make from CIF-like data
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, fixed, pairs = waters_and_pairs(
-            cell, atomd, sops, rep=[2, 1, 2], partial_order=True
-        )
+        waters, fixed, pairs = waters_and_pairs(cell, atomd, sops, rep=[2, 1, 2])
 
         density = 18 * len(waters) / 6.022e23 / (np.linalg.det(cell) * 1e-21)
         coord = "relative"

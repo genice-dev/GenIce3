@@ -1154,7 +1154,7 @@
   {
     "ice": "eleven",
     "target": "eleven",
-    "genice_options": "--seed 1 --spot_cation 0=Na --spot_anion 2=Cl --guest A12=me --exporter cage_survey --target_polarization 0 0 4 --density 1.1",
+    "genice_options": "--layers ccchchc --seed 1 --spot_cation 0=Na --spot_anion 2=Cl --guest A12=me --exporter cage_survey --target_polarization 0 0 4 --density 1.1",
     "formatter": "cage_survey",
     "formatter_path": "../../genice3/exporter/cage_survey.py",
     "product": "eleven_7491.cage_survey",

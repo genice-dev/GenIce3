@@ -8,7 +8,7 @@ import numpy as np
 from genice3.util import (
     atomdic,
     symmetry_operators,
-    waters_and_pairs,
+    generate_oxygen_positions,
 )
 from cif2ice import cellvectors
 
@@ -73,7 +73,7 @@ class UnitCell(genice3.unitcell.UnitCell):
         # helper routines to make from CIF-like data
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, _ = waters_and_pairs(cell, atomd, sops)
+        waters = generate_oxygen_positions(atomd, sops)
 
         coord = "relative"
 

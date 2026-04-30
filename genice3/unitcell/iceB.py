@@ -19,6 +19,7 @@ desc = {
 
 class UnitCell(genice3.unitcell.UnitCell):
     SUPPORTS_ION_DOPING = False  # 水素秩序氷
+
     def __init__(self, **kwargs):
         atoms = """
         O1 0.2382 0.7981 0.3422
@@ -45,7 +46,7 @@ class UnitCell(genice3.unitcell.UnitCell):
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
         # the unit self.cell is too small to handle; multiply (2,2,2)
-        waters, fixed = waters_and_pairs(cell, atomd, sops, rep=(2, 2, 2))
+        waters, fixed, _ = waters_and_pairs(cell, atomd, sops, rep=(2, 2, 2))
 
         density = density_in_g_cm3(len(waters), cell)
 

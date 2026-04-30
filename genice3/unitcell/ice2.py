@@ -64,11 +64,11 @@ class UnitCell(genice3.unitcell.UnitCell):
         # helper routines to make from CIF-like data
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, fixed = waters_and_pairs(cell, atomd, sops)
+        waters, fixed, pairs = waters_and_pairs(cell, atomd, sops)
 
         # set pairs in this way for hydrogen-ordered ices.
         fixed = nx.DiGraph(fixed)
-        pairs = nx.Graph(fixed)
+        pairs = nx.Graph(pairs)
 
         density = density_in_g_cm3(len(waters), cell)
 

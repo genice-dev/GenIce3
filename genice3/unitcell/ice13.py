@@ -69,7 +69,7 @@ class UnitCell(genice3.unitcell.UnitCell):
         # helper routines to make from CIF-like data
         atomd = atomdic(atoms)
         sops = symmetry_operators(symops)
-        waters, fixed = waters_and_pairs(cell, atomd, sops)
+        waters, fixed, _ = waters_and_pairs(cell, atomd, sops)
 
         density = density_in_g_cm3(len(waters), cell)
 

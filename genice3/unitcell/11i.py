@@ -323,7 +323,7 @@ class UnitCell(genice3.unitcell.UnitCell):
             rep = [2, 1, 2]
 
         # molecular positions and the HB network
-        waters, fixed = waters_and_pairs(
+        waters, fixed, _ = waters_and_pairs(
             data["cell"], data["atomd"], operations(spaceg), rep=rep
         )
 

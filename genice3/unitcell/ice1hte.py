@@ -7,7 +7,7 @@ import numpy as np
 from genice3.util import (
     atomdic,
     symmetry_operators,
-    waters_and_pairs,
+    generate_oxygen_positions,
     fullatoms,
     density_in_g_cm3,
 )
@@ -75,8 +75,8 @@ class UnitCell(genice3.unitcell.UnitCell):
         #     cagetype.append(name)
         #     cagepos.append(pos)
 
-        waters, _ = waters_and_pairs(
-            cell, atomd, symmetry_operators(symops), rep=(2, 1, 1)
+        waters = generate_oxygen_positions(
+            atomd, symmetry_operators(symops), rep=(2, 1, 1)
         )
 
         density = density_in_g_cm3(len(waters), cell)
