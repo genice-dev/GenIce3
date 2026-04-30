@@ -22,6 +22,7 @@ List of unit cell names (symbols) specified as the first argument. Structures wi
 | 1h_2_2_2 | Expanded supercell saved as a unitcell module; built from unitcell 'ice1h_unit'; 8 primitive cells, 128 lattice sites. |  |
 | 1h_unit, ice1h_unit | Most popular Ice I (hexagonal).  |  |
 | 2, II, ice2 | Hydrogen-ordered ice II. | [[Kamb 1964](references.md#kamb-1964), [Londono 1988](references.md#londono-1988), [Kamb 2003](references.md#kamb-2003)] |
+| 21, ice21 | Ice XXI | [[Kobayashi 2025](references.md#kobayashi-2025), [Lee 2025](references.md#lee-2025)] |
 | 2D3 | Trilayer honeycomb ice. |  |
 | 2d, ice2d, ice2rect | A hydrogen-disordered counterpart of ice II. | [[Nakamura 2015](references.md#nakamura-2015)] |
 | 3, III, ice3 | Ice III. | [[Petrenko 1999](references.md#petrenko-1999)] |

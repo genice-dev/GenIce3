@@ -14,7 +14,7 @@ import networkx as nx
 from cif2ice import cellvectors
 
 desc = {
-    "ref": {"XXI": ("Kobayashi 2025", "Lee 2025")},
+    "ref": {"XXIa": "Lee 2025", "XXIb": "Kobayashi 2025"},
     "brief": "Ice XXI",
 }
 

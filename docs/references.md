@@ -100,6 +100,10 @@
 
 - **[Kawano 2024]**: KAWANO, Yuta, Master Course Thesis, Okayama University, 2024.
 
+<span id="kobayashi-2025"></span>
+
+- **[Kobayashi 2025](https://doi.org/10.48550/arXiv.2507.14415)**: <div class="csl-block">KOBAYASHI, Hiroki, KOMATSU, Kazuki, MOCHIZUKI, Kenji, ITO, Hayate, MOMMA, Koichi, MACHIDA, Shinichi, HATTORI, Takanori, HIRATA, Kunio, KAWANO, Yoshiaki, MAKI-YONEKURA, Saori, TAKABA, Kiyofumi, YONEKURA, Koji, XUE, Qianli, SATO, Misaki and KAGI, Hiroyuki, 2025. <i>New metastable ice phases via supercooled water</i> [online]. 2025. arXiv. Available from: https://arxiv.org/abs/2507.14415</div><div class="csl-right-inline">Water exhibits rich polymorphism, where more than 20 crystalline phases have been experimentally reported. Five of them are metastable and form at low temperatures by either heating amorphous ice or degassing clathrate hydrates. However, such metastable phases rarely crystallise directly from liquid water, making it challenging to study metastable phase relations at relatively high temperatures. Here, we report that high-pressure metastable phases of ice, including two unknown phases named ices XXI and XXII, crystallise directly from liquid water in a deeply supercooled region around the homogeneous nucleation temperature. The key is to use emulsified water to stabilise supercooled water in laboratory timescales. Ices XXI and XXII are obtained by isothermal compression of emulsified water at 295 K and 250 K, respectively. Our powder x-ray and neutron diffraction analyses combined with molecular dynamics (MD) simulations revealed the surprisingly complex structures of these new phases with Z = 152 (ice XXI) and 304 (ice XXII). Ice XXI is topologically identical to 'ice T2' previously predicted by MD simulations, and our experimental structural model can be used as a benchmark for its structures in simulations, which depend on the force fields. On cooling, ice XXI transforms into an orientationally ordered counterpart named ice XXIII. Our results revealed the "hidden" structural complexity of water underlying the phase diagram, as implied by previous computational works. Further efforts at unveiling such metastable phase relations will bridge the large gaps between computational and experimental phase diagrams of water.</div>
+
 <span id="koga-1997"></span>
 
 - **[Koga 1997](https://doi.org/10.1103/PhysRevLett.79.5262)**: KOGA, Kenichiro, ZENG, X. C. and TANAKA, Hideki, 1997. Freezing of Confined Water: A Bilayer Ice Phase in Hydrophobic Nanopores. Physical Review Letters [online]. 29 December 1997. Vol. 79, no. 26, p. 5262–5265. DOI 10.1103/physrevlett.79.5262. Available from: http://dx.doi.org/10.1103/PhysRevLett.79.5262
@@ -120,13 +124,17 @@
 
 - **[Kuhs 1998](https://doi.org/10.1063/1.448109)**: KUHS, W. F., FINNEY, J. L., VETTIER, C. and BLISS, D. V., 1984, Structure and hydrogen ordering in ices VI, VII, and VIII by neutron powder diffraction. The Journal of Chemical Physics [online]. 15 October 1984. Vol. 81, no. 8, p. 3612–3623. DOI 10.1063/1.448109. Available from: http://dx.doi.org/10.1063/1.448109
 
-<span id="liu-2019"></span>
+<span id="lee-2025"></span>
 
-- **[Liu 2019](https://doi.org/10.1073/pnas.1900739116)**: LIU, Yuan, HUANG, Yingying, ZHU, Chongqin, LI, Hui, ZHAO, Jijun, WANG, Lu, OJAMÄE, Lars, FRANCISCO, Joseph S. and ZENG, Xiao Cheng, 2019, An ultralow-density porous ice with the largest internal cavity identified in the water phase diagram. Proceedings of the National Academy of Sciences [online]. 10 June 2019. Vol. 116, no. 26, p. 12684–12691. DOI 10.1073/pnas.1900739116. Available from: http://dx.doi.org/10.1073/pnas.1900739116
+- **[Lee 2025](https://doi.org/10.1038/s41563-025-02364-x)**: LEE, Yun-Hee, KIM, Jin Kyun, KIM, Yong-Jae, KIM, Minju, CHO, Yong Chan, HUSBAND, Rachel J., STROHM, Cornelius, EHRENREICH-PETERSEN, Emma, GLAZYRIN, Konstantin, LAURUS, Torsten, GRAAFSMA, Heinz, BAUER, Robert P. C., LEHMKÜHLER, Felix, APPEL, Karen, KONÔPKOVÁ, Zuzana, TANG, Minxue, DWIVEDI, Anand Prashant, SZTUCK-DAMBIETZ, Jolanta, RANDOLPH, Lisa, BUAKOR, Khachiwan, HUMPHRIES, Oliver, BAEHTZ, Carsten, EKLUND, Tobias, MOHRBACH, Lisa Katharina, MONDAL, Anshuman, MARQUARDT, Hauke, O’BANNON, Earl Francis, AMANN-WINKEL, Katrin, YOO, Choong-Shik, ZASTRAU, Ulf, LIERMANN, Hanns-Peter, NADA, Hiroki and LEE, Geun Woo, 2025. Multiple freezing–melting pathways of high-density ice through ice XXI phase at room temperature. (ed.), Nature Materials. Online. 10 October 2025. Vol. 25, no. 2, p. 302–309. DOI 10.1038/s41563-025-02364-x.
 
 <span id="lei-2025"></span>
 
 - **[Lei 2025](https://doi.org/10.1038/s41598-025-00001-w)**: TAHERI, Bita, ZAKERHAMIDI, Mohammad Sadegh, SHAMKHALI, Amir Nasser, KIAN, Roshanak and SADEGHAN, Amir Amiri, 2025. Solvent polarity effect on photophysical properties of some aromatic azo dyes with focus on tautomeric and toxicity competition. Scientific Reports. Online. 5 May 2025. Vol. 15, no. 1. DOI 10.1038/s41598-025-00001-w.
+
+<span id="liu-2019"></span>
+
+- **[Liu 2019](https://doi.org/10.1073/pnas.1900739116)**: LIU, Yuan, HUANG, Yingying, ZHU, Chongqin, LI, Hui, ZHAO, Jijun, WANG, Lu, OJAMÄE, Lars, FRANCISCO, Joseph S. and ZENG, Xiao Cheng, 2019, An ultralow-density porous ice with the largest internal cavity identified in the water phase diagram. Proceedings of the National Academy of Sciences [online]. 10 June 2019. Vol. 116, no. 26, p. 12684–12691. DOI 10.1073/pnas.1900739116. Available from: http://dx.doi.org/10.1073/pnas.1900739116
 
 <span id="lobban-1998"></span>
 
