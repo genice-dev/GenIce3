@@ -1,5 +1,9 @@
 """
 Example of embedding topological defects (Bjerrum defects) by specifying positions.
+
+Six D/L pairs (12 defects) in a 2×2×2 A15 supercell — harder than the original
+2-pair case for path pairing in ``genice_core.ice_graph`` (connect_engine / MCF).
+Positions are chosen so each defect sits on a distinct water site (no duplicate i).
 """
 
 from __future__ import annotations
@@ -23,17 +27,47 @@ genice = GenIce3(
 )
 genice.set_unitcell("A15")
 
-# Specify the desired defect positions in fractional coordinates (two points each)
-# and convert them into cell coordinates.
+# Supercell coordinates (same convention as the original 2-pair example).
 celli = np.linalg.inv(genice.cell)
-D_positions = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]) @ celli
-L_positions = np.array([[1.0, 0.0, 0.0], [2.0, 1.0, 1.0]]) @ celli
+
+# Six D sources and six L sinks, spread through the cell.
+D_frac = np.array(
+    [
+        [0.0, 0.0, 0.0],
+        [1.0, 1.0, 1.0],
+        [0.5, 0.0, 1.0],
+        [1.5, 0.5, 0.5],
+        [0.0, 1.5, 1.5],
+        [1.0, 0.5, 1.5],
+    ]
+)
+L_frac = np.array(
+    [
+        [1.0, 0.0, 0.0],
+        [2.0, 1.0, 1.0],
+        [0.0, 1.0, 0.0],
+        [2.0, 0.0, 2.0],
+        [1.5, 1.5, 0.0],
+        [0.5, 1.0, 2.0],
+    ]
+)
+
+D_positions = D_frac @ celli
+L_positions = L_frac @ celli
+
 D_edges = find_nearest_edges_pbc(
     D_positions, genice.graph, genice.lattice_sites, genice.cell
 )
 L_edges = find_nearest_edges_pbc(
     L_positions, genice.graph, genice.lattice_sites, genice.cell
 )
+
+print(f"Bjerrum D: {len(D_edges)} edges")
+for k, e in enumerate(D_edges):
+    print(f"  D[{k}] frac={D_frac[k]} -> {e}")
+print(f"Bjerrum L: {len(L_edges)} edges")
+for k, e in enumerate(L_edges):
+    print(f"  L[{k}] frac={L_frac[k]} -> {e}")
 
 genice.add_bjerrum_D(D_edges)
 genice.add_bjerrum_L(L_edges)
