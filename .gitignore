@@ -90,3 +90,4 @@ site/
 scripts/pdoc-template/frame.html.jinja2
 pyproject.toml
 eyecatches
+examples/api/topological_defects/poissonflux_a15_2x2x2.html
