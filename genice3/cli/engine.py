@@ -4,12 +4,16 @@ CLI / Web 等が共有する GenIce3 実行コア（パース済み result → e
 
 from __future__ import annotations
 
+import time
+from logging import getLogger
 from typing import Any, Dict, TextIO
 
 from genice3.cage import apply_max_cage_rings
 from genice3.genice import GenIce3
 from genice3.plugin import safe_import
 from genice3.cli.options import extract_genice_args
+
+logger = getLogger(__name__)
 
 
 def run_parsed_result(
@@ -45,4 +49,9 @@ def run_parsed_result(
 
     exporter_processed["command_line"] = command_line if command_line is not None else ""
 
-    safe_import("exporter", exporter_name).dump(genice, file, **exporter_processed)
+    logger.info("Executing exporter: %s", exporter_name)
+    t0 = time.time()
+    try:
+        safe_import("exporter", exporter_name).dump(genice, file, **exporter_processed)
+    finally:
+        logger.info("  %.4f sec for exporter %s", time.time() - t0, exporter_name)
