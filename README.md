@@ -6,7 +6,7 @@ A Swiss army knife to generate hydrogen-disordered ice structures.
 
 **Quick start:** Use the unit cell name as the first argument (e.g. `1h` for Ice Ih, `4` for Ice IV): `genice3 1h > ice.gro`
 
-Version 3.0b5
+Version 3.0b6
 
 For **usage**, **ice structures**, **output formats**, **water models**, **guest molecules**, and the full manual, see the [documentation](https://genice-dev.github.io/GenIce3).
 
@@ -51,7 +51,7 @@ genice3 CS2 -e cage_survey > cages.json
 
 - networkx >=2.0.dev20160901144005
 - numpy >=2.0
-- pairlist >=0.6.4
+- pairlist >=1.0.0
 - cycless >=0.7
 - graphstat >=0.3.3
 - yaplotlib >=0.1.2

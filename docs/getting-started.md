@@ -52,7 +52,7 @@ GenIce3 works well in interactive environments.
 
 - networkx >=2.0.dev20160901144005
 - numpy >=2.0
-- pairlist >=0.6.4
+- pairlist >=1.0.0
 - cycless >=0.7
 - graphstat >=0.3.3
 - yaplotlib >=0.1.2

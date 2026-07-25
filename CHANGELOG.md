@@ -4,11 +4,15 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
-### 3.0b5 (in development)
+### 3.0b6
+
+* Require `pairlist` >= 1.0.0.
+
+### 3.0b5
 
 * Topological-defect examples extended; MCF connect engine integration.
 * Exporter logging improvements; documentation updates.
-* (Poisson-flux exporter and related examples may be added or removed during this cycle — check the tree at release time.)
+* Removed Poisson-flux exporter and related examples from the tree.
 
 ### 3.0b4
 

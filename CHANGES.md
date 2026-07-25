@@ -4,6 +4,7 @@ Auto-generated commit list (run `make changes` to refresh).
 
 GenIce3 fork point (last shared commit with the GenIce2 line): `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
+- 2026-07-25 ed619bd Update docs and remove poissonflux exporter
 - 2026-05-27 3fabbf2 Enhance topological defect example and add MCF connect engine
 - 2026-05-27 3d06527 Implement Poisson flux visualization and add new exporter
 - 2026-05-27 4f05608 Enhance logging in exporter execution
