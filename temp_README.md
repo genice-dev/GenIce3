@@ -12,9 +12,7 @@ For **usage**, **ice structures**, **output formats**, **water models**, **guest
 
 ## New in GenIce3
 
-- **Command line**: Option syntax unified; options can be read from config files.
-- **API**: Improved API; embed protonic (H<sub>3</sub>O<sup>+</sup>, OH<sup>−</sup>) and Bjerrum topological defects via Python.
-- **Algorithm**: Reactive pipeline with `DependencyEngine`; data generation runs automatically from your specifications.
+{% include 'templates/new-in-genice3.md' %}
 
 ## Demo
 

@@ -1,5 +1,92 @@
 # Change log
 
+Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 fork (`a7e63b65`). For a full per-commit list since that point, run `make changes`. For release-candidate narrative and compatibility notes, see [RELEASE_NOTE.md](RELEASE_NOTE.md).
+
+## GenIce3
+
+### 3.0b5 (in development)
+
+* Topological-defect examples extended; MCF connect engine integration.
+* Exporter logging improvements; documentation updates.
+* (Poisson-flux exporter and related examples may be added or removed during this cycle — check the tree at release time.)
+
+### 3.0b4
+
+* Documentation generation for plugins and citations; API examples refined and translated.
+* Polarization: `depol_loop` renamed to `pol_loop_1`; `pol_loop_2` added; forced/target polarization support.
+* Utility scripts consolidated under `scripts/` and `dev/`.
+* `genice-core` version pinning and random seed passed through to the core library.
+* `pyproject.toml` simplified; default max cage rings in `cage_survey` set to 16.
+
+### 3.0b3
+
+* Citations and README references updated (including Matsumoto 2007).
+* Logging clarity improvements across modules.
+
+### 3.0b2
+
+* API examples and manual expanded.
+
+### 3.0b1
+
+* Documentation pass across `docs/`; consistency fixes.
+
+### 3.0b0
+
+* Beta track opened (`3.0a4` → `3.0b0`).
+
+### 3.0a3–3.0a4
+
+* GenIce3 package layout stabilized (`genice3` entry points, `DependencyEngine`, `@reactive`).
+* CLI option syntax overhauled; YAML workflows for ions and guests.
+* `assess_cages` replaced by `cage_survey` exporter; spot cation / group options introduced.
+* Hydronium, hydroxide, and Bjerrum defect examples; extensive unit-cell porting and identity tests vs GenIce2.
+* Configuration via YAML; CIF export; GROMACS/LAMMPS exporters; WebAPI groundwork.
+
+## GenIce2
+
+### 1.0.11
+
+* Six-site water model adjusted.
+
+### 1.0.10
+
+* CIF-related merges and structure updates.
+
+### 1.0.9
+
+* Structure **sH** updated.
+
+### 1.0.8
+
+* Ice II reimplemented.
+
+### 1.0.6
+
+* Bug fix: center-of-mass calculation for four-site water models.
+
+### 1.0.5
+
+* Load **exyz** format.
+
+### 1.0.3
+
+* Improved atomic positions.
+
+### 1.0.2
+
+* Bug fix.
+
+### 1.0.1
+
+* Expanded descriptions in documentation.
+
+### 1.0.0
+
+* Stable 1.0 release.
+
+## GenIce 1.0 release candidates and earlier
+
 ## 1.0RC5
 
 * Visualization of the depolarization paths becomes an option.

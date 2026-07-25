@@ -6,6 +6,12 @@ PYTHON ?= poetry run python
 all: update-citations  README.md docs api-notebook 
 	echo Hello.
 
+# Raw commit list since GenIce3 fork (see docs/development.md)
+CHANGES.md: scripts/generate_changes.py
+	$(PYTHON) scripts/generate_changes.py > CHANGES.md
+
+changes: CHANGES.md
+
 # docs/references.md is generated from citations.yaml by "make docs" (replacer --docs)
 README.md: temp_README.md scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
 	$(PYTHON) -m scripts.replacer < temp_README.md > README.md
@@ -13,7 +19,7 @@ README.md: temp_README.md scripts/replacer.py genice3/__init__.py genice3/plugin
 # Generate docs/*.md from temp_docs/*.md (same Jinja2 context as README).
 # Then embed examples/api (py/sh/yaml) into docs/api-examples/*.md.
 # Depends on unitcell/molecule plugins so that ref/desc changes are reflected.
-docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/output-formats.md temp_docs/unitcells.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
+docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/changes-from-genice2.md temp_docs/output-formats.md temp_docs/unitcells.md temp_docs/water-models.md temp_docs/guest-molecules.md temp_docs/plugins.md EXTRA.yaml scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml $(wildcard genice3/unitcell/*.py) $(wildcard genice3/molecule/*.py)
 	$(PYTHON) -m scripts.replacer --docs
 	$(PYTHON) scripts/build_api_docs.py
 

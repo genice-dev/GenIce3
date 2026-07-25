@@ -47,7 +47,7 @@ This period includes not only feature additions but also broad migration and sta
 
 ## Version Progression (observed in this period)
 
-- `3.0a3` -> `3.0a4` -> `3.0b0` -> `3.0b1` -> `3.0b2` -> `3.0b3` -> `3.0b4`
+- `3.0a3` -> `3.0a4` -> `3.0b0` -> `3.0b1` -> `3.0b2` -> `3.0b3` -> `3.0b4` -> `3.0b5` (in development)
 
 ## Recent Topics (2026-04)
 

@@ -8,7 +8,6 @@
 | `cif` | CIF | .cif | Atomic positions | Atomic positions | none |  | Experimental |
 | `g`, `gromacs` | [Gromacs](http://www.gromacs.org) | .gro | Atomic positions | Atomic positions | none | water_model: 3site, 4site, 6site, tip4p, etc. (water model name). | Default format. |
 | `lammps`, `lmp` | [LAMMPS](https://www.lammps.org/) | .lammps | Atomic positions | Atomic positions | none | water_model: 3site, 4site, 6site, tip4p, etc. (water model name). | Yet to be verified. |
-| `plotly` | [Plotly](https://plotly.com/python/) | .html | Atomic positions | Atomic positions | o | type: full, digraph, fixed, frame, graph (plot layout). | Interactive 3D visualization. |
 | `py`, `python` | Python unitcell plugin | .py | none | none | graph | name: optional label stored in desc (e.g. match the saved .py stem); omit when redirecting stdout—nothing is invented by default. | Outputs a unitcell plugin where the supercell becomes the new unit cell; desc documents base plugin, replication matrix, and invoking CLI when available. |
 | `y`, `yaplot` | [Yaplot](https://github.com/vitroid/Yaplot) | .yap | Atomic positions | Atomic positions | o | H: radius of H atom (numeric). | It renders molecular configurations and the HB network. |
 

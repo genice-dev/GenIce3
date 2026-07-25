@@ -14,7 +14,7 @@
 | Water models（表） | docs/water-models.md |
 | Guest molecules（表） | docs/guest-molecules.md |
 | Extra plugins（genice2-rdf 等） | docs/plugins.md |
-| Main changes from GenIce2（cage_survey） | docs/changes-from-genice2.md |
+| Main changes from GenIce2（README と同一本文） | `templates/new-in-genice3.md` → README / `docs/changes-from-genice2.md` / getting-started |
 | References / Citation / Contribute / License | README + docs/citation.md, contribute.md, license.md |
 
 ---

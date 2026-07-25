@@ -2,7 +2,7 @@
 Example of embedding topological defects (Bjerrum defects) by specifying positions.
 
 Six D/L pairs (12 defects) in a 2×2×2 A15 supercell — harder than the original
-2-pair case for path pairing in ``genice_core.ice_graph`` (connect_engine / MCF).
+2-pair case for path pairing in ``genice_core.ice_graph`` (MCF connect_engine since 1.6.0).
 Positions are chosen so each defect sits on a distinct water site (no duplicate i).
 """
 

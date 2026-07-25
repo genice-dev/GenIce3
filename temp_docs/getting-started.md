@@ -12,15 +12,7 @@ Full documentation is available at the [manual](https://genice-dev.github.io/Gen
 
 ## New in GenIce3
 
--   **Command line**
-    -   Option syntax is now unified.
-    -   Options can also be read from config files.
--   **API**
-    -   The API has been significantly improved.
-    -   Python users can embed protonic (H₃O⁺, OH⁻) and Bjerrum topological defects directly into ice lattices.
--   **Algorithm**
-    -   A reactive programming style is used; the `DependencyEngine` was developed for this purpose.
-    -   Once you specify the required data, the data generation pipeline is prepared and run automatically.
+{% include 'templates/new-in-genice3.md' %}
 
 ## Demo
 

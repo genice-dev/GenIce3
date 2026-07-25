@@ -402,6 +402,7 @@ if "--docs" in sys.argv:
     for stem in [
         "cli",
         "getting-started",
+        "changes-from-genice2",
         "output-formats",
         "unitcells",
         "water-models",

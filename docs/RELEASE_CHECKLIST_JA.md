@@ -12,7 +12,7 @@
 ## 2. ドキュメント
 
 - [ ] `RELEASE_NOTE.md` が最新変更を反映している
-- [ ] `CHANGES.md` と `RELEASE_NOTE.md` の内容が矛盾していない
+- [ ] `make changes` で `CHANGES.md` を更新し、`RELEASE_NOTE.md` / `CHANGELOG.md` と矛盾がない
 - [ ] 破壊的変更（互換性注意点）が明記されている
 - [ ] 新機能・主要修正の使用例が最低1つある
 - [ ] **ドキュメント本文が英語のみで記述されている（原則）**
