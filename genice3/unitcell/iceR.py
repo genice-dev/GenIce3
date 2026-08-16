@@ -57,7 +57,7 @@ class UnitCell(genice3.unitcell.UnitCell):
 
         bondlen = 3.05
 
-        # density = 1.5
+        density = 1.5
 
         cell = cellvectors(
             a=7.547382417065826,
@@ -73,6 +73,6 @@ class UnitCell(genice3.unitcell.UnitCell):
             lattice_sites=waters,
             coord=coord,
             bondlen=bondlen,
-            # density=density,
+            density=density,
             **kwargs,
         )
