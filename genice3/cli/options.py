@@ -296,6 +296,65 @@ def get_option_def(name: str) -> Optional[OptionDef]:
     return None
 
 
+# 引数を取らない既知オプション（フラグ）。これ以外の定義済みオプションは引数必須。
+_NOARG_OPTION_NAMES = frozenset({"debug", "help", "version"})
+
+
+def option_requires_argument(def_: OptionDef) -> bool:
+    """定義上、1個以上の引数が必要なオプションなら True。"""
+    if def_.is_flag or def_.parse_type == OPTION_TYPE_FLAG:
+        return False
+    return def_.name not in _NOARG_OPTION_NAMES
+
+
+def format_option_label(def_: OptionDef) -> str:
+    """エラーメッセージ用のオプション表記（例: '-s / --seed'）。"""
+    parts: List[str] = []
+    if def_.short:
+        parts.append(def_.short)
+    parts.append(f"--{def_.name}")
+    return " / ".join(parts)
+
+
+def is_empty_option_value(value: Any) -> bool:
+    """パース結果が「オプションは書いたが引数が無い」状態なら True。"""
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip() == "":
+        return True
+    if isinstance(value, (list, tuple, dict)) and len(value) == 0:
+        return True
+    return False
+
+
+def missing_argument_message(name: str) -> str:
+    """引数不足時のメッセージ。"""
+    if name == "exporter":
+        return "-e / --exporter にはプラグイン名が必要です（例: -e gromacs）"
+    if name == "config":
+        return "-Y / --config には設定ファイルのパスが必要です"
+    def_ = get_option_def(name)
+    if def_ is not None:
+        return f"{format_option_label(def_)} には引数が1個以上必要です"
+    return f"--{name} には引数が1個以上必要です"
+
+
+def validate_required_option_arguments(parsed: Dict[str, Any]) -> None:
+    """
+    引数が1個以上必要な既知オプションが空なら ValueError。
+
+    未定義オプション（プラグイン向けの --pass 等）は対象外。
+    よく使う unitcell オプション（--density 等）は引数必須とみなす。
+    """
+    names = {d.name for d in GENICE3_OPTION_DEFS if option_requires_argument(d)}
+    names |= get_common_unitcell_option_names()
+    for name in names:
+        if name not in parsed:
+            continue
+        if is_empty_option_value(parsed[name]):
+            raise ValueError(missing_argument_message(name))
+
+
 def get_short_to_long_option_names() -> Dict[str, str]:
     """短いオプション名（- を除く）→ long 名のマッピング。option_parser の結果のキー正規化用。"""
     return {

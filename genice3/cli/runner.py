@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from genice3.cli.option_parser import (
+    looks_like_option,
     parse_options,
     scalarize_single_item_lists,
     structure_for_display,
@@ -17,6 +18,8 @@ from genice3.cli.options import (
     base_options_from_new_structure,
     get_common_unitcell_option_names,
     get_short_to_long_option_names,
+    missing_argument_message,
+    validate_required_option_arguments,
 )
 from genice3.plugin import safe_import
 
@@ -111,19 +114,38 @@ def _merge_config_cmdline(config: Dict[str, Any], cmdline: Dict[str, Any]) -> Di
     return out
 
 
+_EXPORTER_NAME_REQUIRED = (
+    "-e / --exporter にはプラグイン名が必要です（例: -e gromacs）"
+)
+
+
+def _exporter_plugin_name(name: Any) -> str:
+    """exporter プラグイン名を正規化する。空なら ValueError。"""
+    text = str(name).strip()
+    if not text:
+        raise ValueError(_EXPORTER_NAME_REQUIRED)
+    return text
+
+
 def _get_exporter_name_and_options(data: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-    """data["exporter"] から (name, subopts_dict) を返す。"""
+    """data["exporter"] から (name, subopts_dict) を返す。
+
+    未指定（キーなし / None）なら既定の gromacs。
+    ``-e`` / ``--exporter`` を書いたのに名前が空なら ValueError。
+    """
     raw = data.get("exporter")
     if raw is None:
         return "gromacs", {}
     items = raw if isinstance(raw, list) else [raw]
     if not items:
-        return "gromacs", {}
+        raise ValueError(_EXPORTER_NAME_REQUIRED)
     first = items[0]
     if isinstance(first, dict):
+        if not first:
+            raise ValueError(_EXPORTER_NAME_REQUIRED)
         (name, subopts), = first.items()
-        return str(name), dict(subopts)
-    return str(first), {}
+        return _exporter_plugin_name(name), dict(subopts)
+    return _exporter_plugin_name(first), {}
 
 
 def parsed_result_from_merged(merged: Dict[str, Any]) -> Dict[str, Any]:
@@ -221,8 +243,15 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
     while i < len(args):
         if args[i] in ("--config", "-Y"):
             i += 1
-            if i < len(args):
-                config = load_config_file(args[i])
+            if (
+                i >= len(args)
+                or looks_like_option(args[i])
+                or args[i].startswith(":")
+            ):
+                raise RuntimeError(
+                    f"オプションのパースに失敗しました: {missing_argument_message('config')}"
+                )
+            config = load_config_file(args[i])
             i += 1
         else:
             i += 1
@@ -252,16 +281,20 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
     else:
         try:
             parsed = parse_options(line)
+            # 短いオプション名 (-e → exporter 等) を long 名に正規化
+            for short, long_name in get_short_to_long_option_names().items():
+                if short in parsed:
+                    parsed.setdefault(long_name, parsed.pop(short))
+            validate_required_option_arguments(parsed)
         except ValueError as e:
             raise RuntimeError(f"オプションのパースに失敗しました: {e}") from e
-        # 短いオプション名 (-e → exporter 等) を long 名に正規化
-        for short, long_name in get_short_to_long_option_names().items():
-            if short in parsed:
-                parsed.setdefault(long_name, parsed.pop(short))
         display = structure_for_display(parsed)
         merged = _merge_config_cmdline(config, display)
 
-    return parsed_result_from_merged(merged)
+    try:
+        return parsed_result_from_merged(merged)
+    except ValueError as e:
+        raise RuntimeError(f"オプションのパースに失敗しました: {e}") from e
 
 
 def validate_result(result: Dict[str, Any]) -> Tuple[bool, List[str]]:

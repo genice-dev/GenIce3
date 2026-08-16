@@ -178,7 +178,10 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=str(e)) from e
 
     def _run_generate_from_yaml(body: str) -> Response:
-        result = parsed_result_from_yaml_text(body)
+        try:
+            result = parsed_result_from_yaml_text(body)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         ok, errors = validate_result(result)
         if not ok:
             raise HTTPException(status_code=400, detail={"errors": errors})

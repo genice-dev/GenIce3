@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Union
 
 
-def _looks_like_option(tok: str) -> bool:
+def looks_like_option(tok: str) -> bool:
     """トークンがオプション（--long または -short）なら True。数字のみの -1 等は False。"""
     if not tok.startswith("-"):
         return False
@@ -38,14 +38,14 @@ def parse_options(line: str) -> Dict[str, Any]:
         ValueError: unitcell が空、または第二階層を引数が1個でない第一階層に付けた場合。
     """
     tokens = line.split()
-    if not tokens or _looks_like_option(tokens[0]) or tokens[0].startswith(":"):
+    if not tokens or looks_like_option(tokens[0]) or tokens[0].startswith(":"):
         raise ValueError("unitcell が必要（先頭に単位胞名を指定してください）")
     unitcell = tokens[0]
     i = 1
     result: Dict[str, Any] = {"unitcell": unitcell}
 
     while i < len(tokens):
-        if not _looks_like_option(tokens[i]):
+        if not looks_like_option(tokens[i]):
             i += 1
             continue
         # --rep → rep, -e → e（短いオプションは後段で long 名にマップされないのでここではそのまま）
@@ -54,7 +54,7 @@ def parse_options(line: str) -> Dict[str, Any]:
         args: List[str] = []
         subopts: Dict[str, List[str]] = {}
 
-        while i < len(tokens) and not _looks_like_option(tokens[i]):
+        while i < len(tokens) and not looks_like_option(tokens[i]):
             if tokens[i].startswith(":"):
                 if len(args) != 1:
                     raise ValueError(
@@ -63,7 +63,7 @@ def parse_options(line: str) -> Dict[str, Any]:
                 sub_name = tokens[i][1:]
                 i += 1
                 sub_args: List[str] = []
-                while i < len(tokens) and not _looks_like_option(tokens[i]) and not tokens[i].startswith(":"):
+                while i < len(tokens) and not looks_like_option(tokens[i]) and not tokens[i].startswith(":"):
                     sub_args.append(tokens[i])
                     i += 1
                 subopts[sub_name] = sub_args
