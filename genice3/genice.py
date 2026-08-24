@@ -18,9 +18,15 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Any, Dict, Generator, List, Tuple
 from enum import Enum
-import inspect
 
-from dependency_engine import DependencyEngine, get_reactive_tasks, reactive
+from dependency_engine import (
+    DependencyEngine,
+    Input,
+    collect_inputs,
+    get_reactive_tasks,
+    input_fields,
+    reactive,
+)
 from genice3.unitcell import UnitCell
 
 
@@ -408,7 +414,7 @@ def replica_vector_labels(replica_vectors: np.ndarray) -> Dict[Tuple[int, ...], 
     return {tuple(xyz): i for i, xyz in enumerate(replica_vectors)}
 
 
-@reactive
+@reactive(public=True)
 def graph(
     unitcell: UnitCell,
     replica_vectors: np.ndarray,
@@ -442,7 +448,7 @@ def graph(
     return g
 
 
-@reactive
+@reactive(public=True)
 def lattice_sites(
     unitcell: UnitCell,
     replica_vectors: np.ndarray,
@@ -712,7 +718,7 @@ def fixed_edges(
     return dg
 
 
-@reactive
+@reactive(public=True)
 def digraph(
     graph: nx.Graph,
     pol_loop_1: int,
@@ -775,7 +781,7 @@ def digraph(
     return dg
 
 
-@reactive
+@reactive(public=True)
 def orientations(
     lattice_sites: np.ndarray,
     digraph: nx.DiGraph,
@@ -948,6 +954,53 @@ def place_group(direction: np.ndarray, bondlen: float, group_name: str) -> Group
 # ============================================================================
 
 
+def _as_list(value):
+    return list(value) if value is not None else []
+
+
+def _as_replication_matrix(value):
+    return np.array(value).reshape(3, 3)
+
+
+def _as_target_pol(value):
+    return np.asarray(value, dtype=float).reshape(3)
+
+
+def _as_unitcell(value):
+    if not isinstance(value, UnitCell):
+        raise ConfigurationError(
+            "unitcell must be a UnitCell instance; "
+            "use set_unitcell(name) to load by name."
+        )
+    return value
+
+
+def _on_set_seed(obj, value):
+    np.random.seed(value)
+
+
+def _on_set_unitcell(obj, value):
+    obj.logger.debug(f"  {value.lattice_sites=}")
+    obj.logger.debug(f"  {value.graph=}")
+    obj.logger.debug(f"  {value.fixed=}")
+    obj._log_expanded_cell_dimensions()
+
+
+def _on_set_replication_matrix(obj, value):
+    i, j, k = value
+    obj.logger.debug(f"    {i=}")
+    obj.logger.debug(f"    {j=}")
+    obj.logger.debug(f"    {k=}")
+    obj._log_expanded_cell_dimensions()
+
+
+class _PublicAPIProperties:
+    """Class-level alias for ``GenIce3.get_public_api_properties()``."""
+
+    def __get__(self, obj, owner):
+        return owner.get_public_api_properties()
+
+
 class GenIce3:
     """Main GenIce3 class: ice-structure generator based on reactive properties.
 
@@ -1025,24 +1078,72 @@ class GenIce3:
     # Class名でlog表示したい。
     logger = getLogger("GenIce3")
 
-    # ユーザー向けAPIとして公開するpropertyのリスト
-    # このリストに含まれるpropertyのみAPIドキュメントを作成する
-    PUBLIC_API_PROPERTIES = [
-        "digraph",
-        "graph",
-        "lattice_sites",
-        "orientations",
-        "unitcell",
-        "replication_matrix",
-        "pol_loop_1",
-        "pol_loop_2",
-        "target_pol",
-        "seed",
-        "spot_anions",
-        "spot_cations",
-        "spot_hydroniums",
-        "spot_hydroxides",
-    ]
+    PUBLIC_API_PROPERTIES = _PublicAPIProperties()
+
+    seed = Input(default=1, public=True, on_set=_on_set_seed, doc="Random seed.")
+    pol_loop_1 = Input(
+        default=1000,
+        public=True,
+        doc="Max iterations for polarization convergence (stage 1).",
+    )
+    pol_loop_2 = Input(
+        default=0,
+        public=True,
+        doc="Max iterations for polarization convergence (stage 2). 0 = disabled.",
+    )
+    target_pol = Input(
+        default_factory=lambda: np.array([0.0, 0.0, 0.0]),
+        coerce=_as_target_pol,
+        public=True,
+        doc="Target polarization vector (3 elements).",
+    )
+    replication_matrix = Input(
+        default_factory=lambda: np.eye(3, dtype=int),
+        coerce=_as_replication_matrix,
+        public=True,
+        on_set=_on_set_replication_matrix,
+        doc="3x3 integer matrix used to replicate the unit cell.",
+    )
+    unitcell = Input(
+        required=True,
+        public=True,
+        coerce=_as_unitcell,
+        on_set=_on_set_unitcell,
+        unset_error=lambda: ConfigurationError("Unitcell is not set."),
+        doc="Basic unit-cell object.",
+    )
+    spot_anions = Input(
+        default_factory=dict,
+        public=True,
+        doc="Mapping from lattice-site index to anion name.",
+    )
+    spot_cations = Input(
+        default_factory=dict,
+        public=True,
+        doc="Mapping from lattice-site index to cation name.",
+    )
+    spot_hydroniums = Input(
+        default_factory=list,
+        coerce=_as_list,
+        public=True,
+        doc="List of sites that host H3O+ (1 acceptor, 3 donors).",
+    )
+    spot_hydroxides = Input(
+        default_factory=list,
+        coerce=_as_list,
+        public=True,
+        doc="List of sites that host OH- (3 acceptors, 1 donor).",
+    )
+    bjerrum_L_edges = Input(
+        default_factory=list,
+        coerce=_as_list,
+        doc="Bjerrum L defect edges as a list of (i, j) tuples.",
+    )
+    bjerrum_D_edges = Input(
+        default_factory=list,
+        coerce=_as_list,
+        doc="Bjerrum D defect edges as a list of (i, j) tuples.",
+    )
 
     def __init__(
         self,
@@ -1088,10 +1189,7 @@ class GenIce3:
         # DependencyEngineインスタンスを作成
         self.engine = DependencyEngine()
 
-        # Default値が必要なもの
-        self.seed = (
-            seed  # reactive propertyとして設定（setterでnp.random.seed()も実行される）
-        )
+        self.seed = seed
         self.pol_loop_1 = pol_loop_1
         self.pol_loop_2 = pol_loop_2
         self.replication_matrix = replication_matrix
@@ -1111,8 +1209,8 @@ class GenIce3:
         # タスクを登録（モジュールレベルの関数を登録）
         self._register_tasks()
 
-        # Default値が不要なもの
-        for key in self.list_settable_reactive_properties():
+        # Default値が不要なもの（unitcell など）
+        for key in input_fields(type(self)):
             if key in kwargs:
                 setattr(self, key, kwargs.pop(key))
         if kwargs:
@@ -1122,122 +1220,6 @@ class GenIce3:
         """Register ``@reactive`` task functions in the ``DependencyEngine``."""
         for func in get_reactive_tasks(__name__):
             self.engine.task(func)
-
-    # spot_anions
-    @property
-    def spot_anions(self):
-        """Dictionary of anions placed at specific lattice sites.
-
-        Returns:
-            Dict[int, str]: Mapping from site index to ion name.
-        """
-        if not hasattr(self, "_spot_anions"):
-            self._spot_anions = {}
-        return self._spot_anions
-
-    @spot_anions.setter
-    def spot_anions(self, spot_anions):
-        """Set the anion configuration at specific lattice sites.
-
-        Changing this property clears the cache of all dependent reactive properties.
-
-        Args:
-            spot_anions: Mapping from site index to ion name.
-        """
-        self._spot_anions = spot_anions
-        self.logger.debug(f"  {spot_anions=}")
-        self.engine.cache.clear()
-
-    # spot_cations
-    @property
-    def spot_cations(self):
-        """Dictionary of cations placed at specific lattice sites.
-
-        Returns:
-            Dict[int, str]: Mapping from site index to ion name.
-        """
-        if not hasattr(self, "_spot_cations"):
-            self._spot_cations = {}
-        return self._spot_cations
-
-    @spot_cations.setter
-    def spot_cations(self, spot_cations):
-        """Set the cation configuration at specific lattice sites.
-
-        Changing this property clears the cache of all dependent reactive properties.
-
-        Args:
-            spot_cations: Mapping from site index to ion name.
-        """
-        self._spot_cations = spot_cations
-        self.logger.debug(f"  {spot_cations=}")
-        self.engine.cache.clear()
-
-    # spot_hydroniums (H3O+: 1受容・3供与)
-    @property
-    def spot_hydroniums(self):
-        """List of sites that host H3O+ (1 acceptor, 3 donors).
-
-        Returns:
-            List[int]: List of site indices.
-        """
-        if not hasattr(self, "_spot_hydroniums"):
-            self._spot_hydroniums = []
-        return self._spot_hydroniums
-
-    @spot_hydroniums.setter
-    def spot_hydroniums(self, spot_hydroniums):
-        self._spot_hydroniums = (
-            list(spot_hydroniums) if spot_hydroniums is not None else []
-        )
-        self.logger.debug(f"  {spot_hydroniums=}")
-        self.engine.cache.clear()
-
-    # spot_hydroxides (OH-: 3受容・1供与)
-    @property
-    def spot_hydroxides(self):
-        """List of sites that host OH- (3 acceptors, 1 donor).
-
-        Returns:
-            List[int]: List of site indices.
-        """
-        if not hasattr(self, "_spot_hydroxides"):
-            self._spot_hydroxides = []
-        return self._spot_hydroxides
-
-    @spot_hydroxides.setter
-    def spot_hydroxides(self, spot_hydroxides):
-        self._spot_hydroxides = (
-            list(spot_hydroxides) if spot_hydroxides is not None else []
-        )
-        self.logger.debug(f"  {spot_hydroxides=}")
-        self.engine.cache.clear()
-
-    # Bjerrum L 欠陥に対応するエッジ集合（(i, j) のリスト）
-    @property
-    def bjerrum_L_edges(self) -> List[Tuple[int, int]]:
-        if not hasattr(self, "_bjerrum_L_edges"):
-            self._bjerrum_L_edges = []
-        return self._bjerrum_L_edges
-
-    @bjerrum_L_edges.setter
-    def bjerrum_L_edges(self, edges: List[Tuple[int, int]] | None):
-        self._bjerrum_L_edges = list(edges) if edges is not None else []
-        self.logger.debug(f"  {self._bjerrum_L_edges=}")
-        self.engine.cache.clear()
-
-    # Bjerrum D 欠陥に対応するエッジ集合（(i, j) のリスト）
-    @property
-    def bjerrum_D_edges(self) -> List[Tuple[int, int]]:
-        if not hasattr(self, "_bjerrum_D_edges"):
-            self._bjerrum_D_edges = []
-        return self._bjerrum_D_edges
-
-    @bjerrum_D_edges.setter
-    def bjerrum_D_edges(self, edges: List[Tuple[int, int]] | None):
-        self._bjerrum_D_edges = list(edges) if edges is not None else []
-        self.logger.debug(f"  {self._bjerrum_D_edges=}")
-        self.engine.cache.clear()
 
     def add_spot_hydronium(self, sites):
         """Helper to add sites that host H3O+.
@@ -1298,109 +1280,17 @@ class GenIce3:
             new_edges = list(edges)
         self.bjerrum_D_edges = list(self.bjerrum_D_edges) + new_edges
 
-    @property
-    def seed(self):
-        """Random seed.
-
-        Returns:
-            int: Seed value.
-        """
-        return self._seed
-
-    @seed.setter
-    def seed(self, seed):
-        """Set the random seed.
-
-        Changing this property clears the cache of all dependent reactive properties.
-
-        Args:
-            seed: Seed value.
-        """
-        self._seed = seed
-        np.random.seed(seed)
-        self.logger.debug(f"  {seed=}")
-        # キャッシュをクリア（seedに依存するすべてのタスクを再計算させる）
-        self.engine.cache.clear()
-
-    @property
-    def pol_loop_1(self):
-        """Max iterations for polarization convergence (stage 1).
-
-        Returns:
-            int: Number of iterations.
-        """
-        return self._pol_loop_1
-
-    @pol_loop_1.setter
-    def pol_loop_1(self, pol_loop_1):
-        """Set max iterations for polarization convergence stage 1.
-
-        Changing this property clears the cache of all dependent reactive properties.
-
-        Args:
-            pol_loop_1: Number of iterations.
-        """
-        self._pol_loop_1 = pol_loop_1
-        self.logger.debug(f"  {pol_loop_1=}")
-        self.engine.cache.clear()
-
-    @property
-    def pol_loop_2(self):
-        """Max iterations for polarization convergence (stage 2).
-
-        Returns:
-            int: Number of iterations (0 = disabled).
-        """
-        return self._pol_loop_2
-
-    @pol_loop_2.setter
-    def pol_loop_2(self, pol_loop_2):
-        """Set max iterations for polarization convergence stage 2.
-
-        Changing this property clears the cache of all dependent reactive properties.
-
-        Args:
-            pol_loop_2: Number of iterations (0 = disabled).
-        """
-        self._pol_loop_2 = pol_loop_2
-        self.logger.debug(f"  {pol_loop_2=}")
-        self.engine.cache.clear()
-
-    @property
-    def target_pol(self):
-        """Target polarization vector (3 elements)."""
-        return self._target_pol
-
-    @target_pol.setter
-    def target_pol(self, target_pol):
-        """Set the target polarization vector and clear dependent caches."""
-        self._target_pol = np.asarray(target_pol, dtype=float).reshape(3)
-        self.logger.debug(f"  {target_pol=}")
-        self.engine.cache.clear()
-
-    @property
-    def unitcell(self):
-        """Basic unit-cell object.
-
-        Returns:
-            UnitCell: Basic unit cell.
-
-        Raises:
-            ConfigurationError: If the unit cell has not been set.
-        """
-        if not hasattr(self, "_unitcell") or self._unitcell is None:
-            raise ConfigurationError("Unitcell is not set.")
-        return self._unitcell
-
     def _log_expanded_cell_dimensions(self) -> None:
         """Log lattice parameters of the expanded cell (``rep @ unitcell.cell``).
 
         Called when ``unitcell`` or ``replication_matrix`` changes so INFO-level
         output stays aligned with the configuration used by reactive tasks.
         """
-        if not hasattr(self, "_unitcell") or self._unitcell is None:
+        uc_field = input_fields(type(self)).get("unitcell")
+        if uc_field is None or not uc_field.is_set(self):
             return
-        a, b, c, A, B, C = cellshape(self.replication_matrix @ self._unitcell.cell)
+        unitcell = self.unitcell
+        a, b, c, A, B, C = cellshape(self.replication_matrix @ unitcell.cell)
         self.logger.info("Expanded cell dimensions:")
         self.logger.info(f"  a= {a:.4f} nm")
         self.logger.info(f"  b= {b:.4f} nm")
@@ -1409,30 +1299,11 @@ class GenIce3:
         self.logger.info(f"  B= {B:.3f} deg")
         self.logger.info(f"  C= {C:.3f} deg")
 
-    @unitcell.setter
-    def unitcell(self, unitcell):
-        """Set the basic unit-cell object.
-
-        Changing this property clears the cache of all dependent reactive properties.
-
-        Args:
-            unitcell: Basic unit-cell object.
-        """
-        self._unitcell = unitcell
-        self.logger.debug(f"  {unitcell=}")
-        self.logger.debug(f"  {unitcell.lattice_sites=}")
-        self.logger.debug(f"  {unitcell.graph=}")
-        self.logger.debug(f"  {unitcell.fixed=}")
-
-        self._log_expanded_cell_dimensions()
-        # キャッシュをクリア（unitcellに依存するすべてのタスクを再計算させる）
-        self.engine.cache.clear()
-
     def set_unitcell(self, unitcell_or_name, **kwargs):
-        """Set the basic unit cell (reactive-property-friendly wrapper).
+        """Load a unit cell by name (or assign an existing ``UnitCell``).
 
-        Using this method instead of assignment (``genice.unitcell = ...``)
-        makes it explicit that the unit cell is a reactive configuration.
+        Assignment ``genice.unitcell = ...`` accepts only a ``UnitCell``
+        instance. Use this method to construct one from a plugin name.
 
         Args:
             unitcell_or_name: A ``UnitCell`` instance or unit-cell name (string).
@@ -1444,44 +1315,8 @@ class GenIce3:
         else:
             self.unitcell = UnitCellPlugin(unitcell_or_name, **kwargs)
 
-    @property
-    def replication_matrix(self):
-        """3x3 integer matrix used to replicate the unit cell.
-
-        This matrix specifies how the basic unit cell is stacked to form
-        the expanded unit cell.
-
-        Returns:
-            np.ndarray: 3x3 integer matrix.
-        """
-        return self._replication_matrix
-
-    @replication_matrix.setter
-    def replication_matrix(self, replication_matrix):
-        """Set the unit-cell replication matrix.
-
-        Changing this property clears the cache of all dependent reactive properties.
-        If ``unitcell`` is already set, expanded-cell dimensions are logged at INFO
-        (same as when assigning ``unitcell``).
-
-        Args:
-            replication_matrix: 3x3 integer matrix.
-        """
-        self._replication_matrix = np.array(replication_matrix).reshape(3, 3)
-        i, j, k = self._replication_matrix
-        self.logger.debug(f"    {i=}")
-        self.logger.debug(f"    {j=}")
-        self.logger.debug(f"    {k=}")
-        self._log_expanded_cell_dimensions()
-        # キャッシュをクリア（replication_matrixに依存するすべてのタスクを再計算させる）
-        self.engine.cache.clear()
-
     def set_replication_matrix(self, replication_matrix):
-        """Set the replication matrix (reactive-property-friendly wrapper).
-
-        Using this method instead of assignment (``genice.replication_matrix = ...``)
-        makes it explicit that the replication matrix is part of the reactive
-        configuration.
+        """Assign ``replication_matrix``. Same as ``genice.replication_matrix = ...``.
 
         Args:
             replication_matrix: 3x3 integer matrix (list-of-lists or ``ndarray``).
@@ -1490,20 +1325,7 @@ class GenIce3:
 
     def _get_inputs(self) -> Dict[str, Any]:
         """Return the ``inputs`` dictionary passed to ``engine.resolve()``."""
-        return {
-            "unitcell": self.unitcell,
-            "replication_matrix": self.replication_matrix,
-            "pol_loop_1": self.pol_loop_1,
-            "pol_loop_2": self.pol_loop_2,
-            "target_pol": self.target_pol,
-            "seed": self.seed,
-            "spot_anions": self.spot_anions,
-            "spot_cations": self.spot_cations,
-            "spot_hydroniums": self.spot_hydroniums,
-            "spot_hydroxides": self.spot_hydroxides,
-            "bjerrum_L_edges": self.bjerrum_L_edges,
-            "bjerrum_D_edges": self.bjerrum_D_edges,
-        }
+        return collect_inputs(self)
 
     def __getattr__(self, name: str):
         """Resolve access to reactive properties automatically.
@@ -1807,10 +1629,21 @@ class GenIce3:
     def get_public_api_properties(cls):
         """Return the list of properties exposed as public API.
 
+        Built from ``@reactive(public=True)`` tasks and ``Input(public=True)``
+        fields. Not a hand-maintained name list.
+
         Returns:
             list: List of public API property names.
         """
-        return cls.PUBLIC_API_PROPERTIES.copy()
+        names = [
+            func.__name__
+            for func in get_reactive_tasks(__name__)
+            if getattr(func, "_reactive_public", False)
+        ]
+        names.extend(
+            name for name, field in input_fields(cls).items() if field.public
+        )
+        return names
 
     def list_all_reactive_properties(self):
         """List all reactive properties (tasks registered in ``DependencyEngine``).
@@ -1827,26 +1660,22 @@ class GenIce3:
             dict: Mapping from property name to task function.
         """
         all_reactive = self.list_all_reactive_properties()
-        public_names = set(self.PUBLIC_API_PROPERTIES)
+        public_names = set(self.get_public_api_properties())
         return {
             name: func for name, func in all_reactive.items() if name in public_names
         }
 
     @classmethod
     def list_settable_reactive_properties(cls):
-        """List reactive properties that have a setter."""
-        return {
-            name: prop
-            for name, prop in inspect.getmembers(
-                cls, lambda x: isinstance(x, property) and x.fset is not None
-            )
-        }
+        """List reactive properties that have a setter (``Input`` fields)."""
+        return dict(input_fields(cls))
 
     @classmethod
     def list_public_settable_reactive_properties(cls):
         """List public reactive properties that have a setter."""
+        public_names = set(cls.get_public_api_properties())
         return {
-            name: prop
-            for name, prop in cls.list_settable_reactive_properties().items()
-            if name in cls.PUBLIC_API_PROPERTIES
+            name: field
+            for name, field in cls.list_settable_reactive_properties().items()
+            if name in public_names
         }
