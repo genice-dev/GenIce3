@@ -4,6 +4,12 @@ Auto-generated commit list (run `make changes` to refresh).
 
 GenIce3 fork point (last shared commit with the GenIce2 line): `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
+- 2026-08-25 ec2ff10 Add tests for Input descriptors and GenIce3 reactive inputs
+- 2026-08-24 2331015 Refactor GenIce3 properties and enhance Input handling
+- 2026-08-24 b72e8dd Implement Input descriptor and enhance reactive decorator
+- 2026-08-16 3469c62 Fix density assignment in UnitCell class
+- 2026-08-16 b7cb01d Improve error handling and option parsing in CLI
+- 2026-07-25 cacf0b2 Release GenIce3 3.0b6 with pairlist 1.0.0.
 - 2026-07-25 ed619bd Update docs and remove poissonflux exporter
 - 2026-05-27 3fabbf2 Enhance topological defect example and add MCF connect engine
 - 2026-05-27 3d06527 Implement Poisson flux visualization and add new exporter

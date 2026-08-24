@@ -4,6 +4,11 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.0b7
+
+* Reactive inputs (`unitcell`, `seed`, …) are declared with `Input` on `GenIce3`; setters, cache invalidation, and `_get_inputs` are no longer copied by hand.
+* `@reactive(public=True)` drives the public property list. `set_unitcell` remains the name-to-plugin factory; assignment accepts `UnitCell` only.
+
 ### 3.0b6
 
 * Require `pairlist` >= 1.0.0.
