@@ -3,8 +3,9 @@ message: "If you use this software, please cite it as below."
 type: software
 title: "GenIce3: Hydrogen-Disordered Ice Generator"
 abstract: >-
-  GenIce3 builds hydrogen-disordered ice and clathrate hydrate structures for
-  molecular simulation. From a catalogue of unit cells it assembles supercells
+  GenIce3 is the current GenIce. It builds hydrogen-disordered ice and clathrate
+  hydrate structures for molecular simulation. From a catalogue of unit cells
+  it assembles supercells
   whose hydrogen-bond network satisfies the Bernal-Fowler ice rules and whose
   net polarization is driven toward a prescribed target, fills clathrate cages
   with guests, substitutes ions and protonic or Bjerrum defects, and writes the

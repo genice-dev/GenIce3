@@ -1,6 +1,6 @@
 # Example prompts for GenIce3
 
-These are example prompts for **someone who does not know GenIce3** to ask an AI (e.g. Gemini, ChatGPT) and get a working command, script, or config. The AI must use the GenIce3 manual to answer correctly.
+These are example prompts for **someone who does not know GenIce3** to ask an AI (e.g. Gemini, ChatGPT) and get a working command, script, or config. The AI must use the GenIce3 manual to answer correctly. GenIce3 is the **current GenIce** (`pip install genice3`); do not send the user to GenIce 1 or GenIce2 for new work.
 
 ## How to get good answers
 

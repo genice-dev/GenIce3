@@ -2,13 +2,14 @@
 
 ## Quick start
 
-To generate a hydrogen-disordered ice structure, use the unit cell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument:
+To generate a hydrogen-disordered ice structure, install the package and pass a unit cell name (e.g. `1h` for Ice Ih, `4` for Ice IV) as the first argument:
 
 ```shell
+pip install genice3
 genice3 1h > ice.gro
 ```
 
-Full documentation is available at the [manual](https://genice-dev.github.io/GenIce3).
+This is the current GenIce. Manual: [genice-dev.github.io/GenIce3](https://genice-dev.github.io/GenIce3). For AI assistants: [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt).
 
 ## New in GenIce3
 

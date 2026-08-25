@@ -2,9 +2,14 @@
 
 ![Logo](https://raw.githubusercontent.com/vitroid/GenIce/develop/logo/genice-v0.png)
 
-**GenIce3** is a Swiss army knife to generate hydrogen-disordered ice structures (and related systems such as clathrate hydrates). You provide a unit cell name, optional replication and options (guests, ions, exporters), and GenIce3 produces atomic coordinates in formats suitable for molecular dynamics or visualization.
+**GenIce3** generates hydrogen-disordered ice and clathrate hydrate structures for molecular simulation. It is the **current GenIce**. You give a unit cell name, optional replication, guests, ions, and an exporter; GenIce3 writes coordinates that obey the ice rules (GROMACS, CIF, LAMMPS, and others). It does not minimize the energy.
 
-**Quick start:** `genice3 1h > ice.gro`
+```shell
+pip install genice3
+genice3 1h > ice.gro
+```
+
+**Quick start:** `genice3 1h > ice.gro` (`1h` is Ice Ih; `4` is Ice IV).
 
 ---
 

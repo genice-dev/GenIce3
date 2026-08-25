@@ -4,11 +4,19 @@
 
 {{ project.description }}
 
-**Quick start:** Use the unit cell name as the first argument (e.g. `1h` for Ice Ih, `4` for Ice IV): `genice3 1h > ice.gro`
+Successor of [GenIce 1](https://github.com/vitroid/GenIce) and [GenIce2](https://github.com/vitroid/GenIce2). Use this package for new work.
+
+```shell
+pip install genice3
+genice3 1h > ice.gro
+```
+
+Python 3.11 or later. Output obeys the ice rules and a chosen net polarization (default zero); it is not energy-minimized. Relax with the intended force field before a production run.
+
+**Manual:** [genice-dev.github.io/GenIce3](https://genice-dev.github.io/GenIce3)  
+**For AI assistants:** [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt)
 
 Version {{ version }}
-
-For **usage**, **ice structures**, **output formats**, **water models**, **guest molecules**, and the full manual, see the [documentation](https://genice-dev.github.io/GenIce3).
 
 ## New in GenIce3
 

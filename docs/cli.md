@@ -8,6 +8,12 @@ Usage: genice3 [OPTIONS] UNITCELL
 Options:
   -h, --help               Show this message and exit.
   -V, --version            Show the version and exit.
+  --list {unitcell|exporter|molecule|group}
+                           List the installed plugins of a category,
+                           with their descriptions, and exit. molecule
+                           lists water models and guest molecules. Use
+                           this to find the UNITCELL name, an exporter,
+                           or a molecule plugin.
   -D, --debug              Enable debug mode.
   --pol_loop_1 INTEGER     Max iterations for polarization convergence
                            (stage 1). Satisfies ice rules while reducing
@@ -57,12 +63,14 @@ Options:
                            :water_model 4site).
   -g, --guest TEXT         Specify guest molecules for each cage type.
                            Format: CAGE_LABEL=GUEST_SPEC. Examples:
-                           A12=me (single), 12=co2*0.6+me*0.4
+                           A12=me (single), A12=co2*0.6+me*0.4
                            (probabilistic mix; use quotes in shell: -g
-                           "12=co2*0.6+me*0.4"). Both molecule*occupancy
-                           (co2*0.6) and occupancy*molecule (0.6*co2)
-                           are accepted. Multiple cage types with
-                           multiple -g options.
+                           "A12=co2*0.6+me*0.4"). Both
+                           molecule*occupancy (co2*0.6) and
+                           occupancy*molecule (0.6*co2) are accepted.
+                           Multiple cage types with multiple -g options.
+                           The cage labels of a structure are those
+                           reported by -e cage_survey.
   -G, --spot_guest TEXT    Specify guest molecule at a specific cage
                            index. Format: CAGE_INDEX=MOLECULE_NAME, e.g.
                            0=me, 5=4site. Multiple spot guests can be
@@ -133,11 +141,11 @@ A longer example is in the repository: [examples/config_example.yaml](https://gi
 - To generate a 3×3×3 supercell of hydrogen-disordered ice IV with TIP4P water in GROMACS .gro format:
 
     ```shell
-    genice3 4 --water tip4p --rep 3 3 3 > ice4.gro
+    genice3 4 --rep 3 3 3 -e "gromacs :water_model tip4p" > ice4.gro
     ```
 
 - To generate a 2×2×4 supercell of CS2 clathrate hydrate with TIP4P water and THF in the large cages (united-atom model) in GROMACS .gro format:
 
     ```shell
-    genice3 CS2 -g 16=uathf6 --water tip4p --rep 2 2 4 > cs2-224.gro
+    genice3 CS2 -g A16=uathf6 --rep 2 2 4 -e "gromacs :water_model tip4p" > cs2-224.gro
     ```

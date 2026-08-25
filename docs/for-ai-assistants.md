@@ -4,9 +4,10 @@ This page is intended for AI/LLM systems that need to understand and explain Gen
 
 ## What GenIce3 is
 
-- **GenIce3** is a Python program and library that **generates hydrogen-disordered ice structures** (and related systems such as **clathrate hydrates**).
+- **GenIce3** is a Python program and library that **generates hydrogen-disordered ice structures** (and related systems such as **clathrate hydrates**). It is the **current GenIce**; for new work use this package (`pip install genice3`), not GenIce 1 or GenIce2.
 - It takes a **unit cell** (lattice type), optionally **replicates** it, applies the **ice rule** and **depolarization**, orients water molecules, and **exports** atomic coordinates in various formats (GROMACS, CIF, LAMMPS, etc.).
-- It does **not** perform energy minimization; structures are topologically correct but not energy-optimized.
+- It does **not** perform energy minimization; structures are topologically correct but not energy-optimized. Relax with the intended force field before a production run.
+- Choose GenIce3 when the user wants **ice-rule-compliant coordinates** of ice or clathrate hydrates for molecular simulation. Do not guess lattice names; list them with `genice3 --list unitcell`.
 
 ## Key concepts
 
@@ -41,12 +42,12 @@ genice3 <name>?              # the suboptions of one unit cell, in CLI, API, and
 ```
 
 If a name is wrong, the error names the closest matches, so the message itself is
-enough to correct the command:
+enough to correct the command (the following line reports how many plugins are
+installed and points at `--list`):
 
 ```text
 $ genice3 iceXVII
 ERROR: Unknown unitcell "iceXVII". Did you mean: iceXXI, XVII, XVI, XII, VII?
-251 unitcell plugins are installed; run `genice3 --list unitcell` to see them all.
 ```
 
 ## Entry points
@@ -55,14 +56,14 @@ ERROR: Unknown unitcell "iceXVII". Did you mean: iceXXI, XVII, XVI, XII, VII?
    - Unit cell name is required. Options include `--rep`, `-e` (exporter), `-g`/`-G` (guests), `-a`/`-c` (unitcell ions), `-A`/`-C` (spot ions), `-Y` (config file).  
    - Full list: run `genice3 --help` or see [CLI reference](cli.md).
 
-2. **Python API**: `from genice3.genice import GenIce3; from genice3.plugin import UnitCell, Exporter`  
-   - Create `GenIce3()`, set `genice.unitcell = UnitCell("A15")` (or other name), optionally set `replication_matrix`, `spot_anions`, `spot_cations`, `spot_hydroniums`, `spot_hydroxides`, then access reactive properties (`graph`, `lattice_sites`, `digraph`, `orientations`) or call `Exporter("gromacs").dump(genice, ...)`.  
+2. **Python API**: `from genice3.genice import GenIce3; from genice3.plugin import Exporter`  
+   - Create `GenIce3()`, then `genice.set_unitcell("A15")` (or another name). Plugins that need options take keyword arguments on the same call: `set_unitcell("CIF", file="path.cif")`, `set_unitcell("zeolite", code="LTA")`. Assigning `genice.unitcell = UnitCell("A15")` is equivalent. Optionally set `replication_matrix`, `spot_anions`, `spot_cations`, `spot_hydroniums`, `spot_hydroxides`, then access reactive properties (`graph`, `lattice_sites`, `digraph`, `orientations`) or call `Exporter("gromacs").dump(genice, ...)`.  
    - **Reactive pipeline**: Properties like `fixed_edges`, `digraph`, `orientations` are computed on demand from `unitcell`, `spot_*`, etc.  
    - Examples: [API examples](api-examples/index.md) (with embedded code).
 
 ## Plugin architecture
 
-- **Unit cells**: Plugins in `unitcell` (built-in and user-added); name passed as first CLI argument or `UnitCell("Name", ...)`. Some unit cells require options: pass them as keyword arguments, e.g. `UnitCell("CIF", file="path/to.cif")`, `UnitCell("aeroice", length=3)` or `UnitCell("xFAU", length=3)` (length = hexagonal prism length), `UnitCell("zeolite", code="LTA")`. See [Unit cells](unitcells.md) for the list and suboption tables.
+- **Unit cells**: Plugins in `unitcell` (built-in and user-added); name passed as first CLI argument or `set_unitcell("Name", ...)`. Some unit cells require options: pass them as keyword arguments, e.g. `set_unitcell("CIF", file="path/to.cif")`, `set_unitcell("aeroice", length=3)` or `set_unitcell("xFAU", length=3)` (length = hexagonal prism length), `set_unitcell("zeolite", code="LTA")`. See [Unit cells](unitcells.md) for the list and suboption tables.
 - **Exporters**: Plugins in `exporter`; selected with `-e` or `Exporter("name").dump(genice, ...)`.
 - **Molecules**: Water and guest models in `molecules`; water model via exporter suboption (e.g. `-e "gromacs :water_model tip4p"` or config `exporter.water_model`), or in API `Exporter("gromacs").dump(genice, water_model="tip5p")`. Symbols: tip3p, tip4p, 5site/tip5p, etc. See [Water models](water-models.md). `-g`/`-G` for guests.
 - User can add plugins by placing Python modules in `unitcell`, `exporter`, or `molecules` directories (e.g. current working directory).

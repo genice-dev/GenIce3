@@ -1,7 +1,7 @@
 [project]
 name="genice3"
 version = "3.0b7"
-description = "A Swiss army knife to generate hydrogen-disordered ice structures."
+description = "Generate ice-rule-compliant ice and clathrate hydrate structures for molecular simulation. This is the current GenIce."
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -9,6 +9,7 @@ authors = [
 ]
 requires-python = ">=3.11,<4.0"
 keywords = [
+    "GenIce",
     "ice",
     "clathrate hydrate",
     "water",

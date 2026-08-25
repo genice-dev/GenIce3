@@ -1,12 +1,13 @@
 # GenIce3
 
 > GenIce3 is an open-source Python package that builds hydrogen-disordered ice and
-> clathrate hydrate structures for molecular simulation. From a catalogue of about
-> 250 unit cells it assembles supercells whose hydrogen-bond network satisfies the
-> Bernal-Fowler ice rules and whose net polarization is driven toward a prescribed
-> target, fills clathrate cages with guest molecules, substitutes ions and protonic
-> or Bjerrum defects, and writes the result in the formats of common simulation and
-> visualization programs (GROMACS, LAMMPS, CIF, and others).
+> clathrate hydrate structures for molecular simulation. It is the current GenIce
+> (use this, not GenIce 1 or GenIce2, for new work). From a catalogue of unit cells
+> (`genice3 --list unitcell`) it assembles supercells whose hydrogen-bond network
+> satisfies the Bernal-Fowler ice rules and whose net polarization is driven toward
+> a prescribed target, fills clathrate cages with guest molecules, substitutes ions
+> and protonic or Bjerrum defects, and writes the result in the formats of common
+> simulation and visualization programs (GROMACS, LAMMPS, CIF, and others).
 
 Install with `pip install genice3` (Python 3.11 or later). The command is `genice3`;
 the library is `genice3`. It produces geometry, not equilibrium: relax a structure
