@@ -114,9 +114,7 @@ def _merge_config_cmdline(config: Dict[str, Any], cmdline: Dict[str, Any]) -> Di
     return out
 
 
-_EXPORTER_NAME_REQUIRED = (
-    "-e / --exporter にはプラグイン名が必要です（例: -e gromacs）"
-)
+_EXPORTER_NAME_REQUIRED = missing_argument_message("exporter")
 
 
 def _exporter_plugin_name(name: Any) -> str:
@@ -249,7 +247,7 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
                 or args[i].startswith(":")
             ):
                 raise RuntimeError(
-                    f"オプションのパースに失敗しました: {missing_argument_message('config')}"
+                    f"Failed to parse the options: {missing_argument_message('config')}"
                 )
             config = load_config_file(args[i])
             i += 1
@@ -301,5 +299,8 @@ def validate_result(result: Dict[str, Any]) -> Tuple[bool, List[str]]:
     """unitcell 名が指定されているか検証。"""
     errors = []
     if not result.get("unitcell", {}).get("name"):
-        errors.append("unitcell名が指定されていません")
+        errors.append(
+            "No unitcell name was given; pass a name as the first argument "
+            "(see `genice3 --list unitcell`)"
+        )
     return (len(errors) == 0, errors)

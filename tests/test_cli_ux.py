@@ -97,7 +97,7 @@ def test_missing_unitcell_exits_nonzero_and_message_on_stderr():
     """UNITCELL 未指定時は終了コード 1 かつ stderr に分かりやすいメッセージ"""
     code, out, err = _run_genice3(["--exporter", "gromacs"])
     assert code == 1, f"Expected exit 1 when unitcell missing, got {code}. stdout: {out}, stderr: {err}"
-    # 利用者に分かる文言（現在の実装は「unitcell名が指定されていません」）
+    # 利用者に分かる文言
     assert "unitcell" in err.lower() or "unitcell" in out.lower(), (
         f"Error message should mention unitcell. stderr: {err}, stdout: {out}"
     )
@@ -107,8 +107,23 @@ def test_missing_unitcell_message_is_user_friendly():
     """UNITCELL 未指定時のメッセージは短く、何を指定すべきか分かる"""
     code, out, err = _run_genice3(["--exporter", "gromacs"])
     combined = (err + "\n" + out).lower()
-    # 単に「unitcell」に言及があるだけでなく、指定されていないことが分かる
-    assert "指定" in (err + out) or "required" in combined or "unitcell" in combined
+    assert "required" in combined or "no unitcell" in combined or "unitcell" in combined
+
+
+def test_exporter_option_without_name_exits_nonzero():
+    """-e のあとプラグイン名が無いときは終了コード 1 かつメッセージが出る"""
+    code, out, err = _run_genice3(["1h", "-e"])
+    combined = err + "\n" + out
+    assert code == 1, f"Expected exit 1, got {code}. stdout: {out}, stderr: {err}"
+    assert "exporter" in combined.lower()
+
+
+def test_required_option_without_argument_exits_nonzero():
+    """引数が必要なオプションを値なしで書くと終了コード 1"""
+    code, out, err = _run_genice3(["1h", "-s"])
+    combined = err + "\n" + out
+    assert code == 1, f"Expected exit 1, got {code}. stdout: {out}, stderr: {err}"
+    assert "seed" in combined.lower()
 
 
 # ---------------------------------------------------------------------------

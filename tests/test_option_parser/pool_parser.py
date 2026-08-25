@@ -358,7 +358,7 @@ class PoolBasedParser:
 
         # unitcell名が必須
         if not self.unitcell_name:
-            errors.append("unitcell名が指定されていません")
+            errors.append("No unitcell name was given")
 
         # 処理されていないオプションがある場合は警告（エラーにはしない）
         if self.unprocessed_options:

@@ -201,7 +201,7 @@ def test_validate_missing_unitcell():
 
     is_valid, errors = parser.validate()
     assert not is_valid
-    assert any("unitcell名" in error for error in errors)
+    assert any("unitcell" in error.lower() for error in errors)
     print("  ✓ PASSED")
 
 

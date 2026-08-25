@@ -78,6 +78,59 @@ def test_missing_unitcell():
     print("✓ unitcell未指定のテスト成功")
 
 
+def test_exporter_without_plugin_name_raises():
+    """-e / --exporter のあとプラグイン名が無いとエラー（既定 gromacs に落とさない）"""
+    cases = (
+        ["1h", "-e"],
+        ["1h", "--exporter"],
+        ["1h", "-e", "--rep", "2", "2", "2"],
+        ["1h", "--exporter", "--rep", "2", "2", "2"],
+    )
+    for argv in cases:
+        try:
+            parse_argv(argv)
+        except (RuntimeError, ValueError) as e:
+            msg = str(e)
+            assert "exporter" in msg.lower(), (
+                f"{argv}: unexpected message: {msg}"
+            )
+            continue
+        raise AssertionError(f"{argv} はエラーになるべき")
+    # 未指定は従来どおり gromacs
+    result = parse_argv(["1h"])
+    assert result["exporter"]["name"] == "gromacs"
+    print("✓ exporter名未指定のテスト成功")
+
+
+def test_required_option_without_argument_raises():
+    """引数が1個以上必要な既知オプションは、引数なしだとエラー"""
+    cases = (
+        (["1h", "-s"], "seed"),
+        (["1h", "--seed"], "seed"),
+        (["1h", "-g"], "guest"),
+        (["1h", "-G"], "spot_guest"),
+        (["1h", "-a"], "anion"),
+        (["1h", "-r"], "rep"),
+        (["1h", "--rep"], "rep"),
+        (["1h", "--pol_loop_1"], "pol_loop_1"),
+        (["1h", "--density"], "density"),
+        (["1h", "-Y"], "config"),
+        (["1h", "--config"], "config"),
+        (["1h", "-s", "--rep", "2", "2", "2"], "seed"),
+    )
+    for argv, hint in cases:
+        try:
+            parse_argv(argv)
+        except (RuntimeError, ValueError) as e:
+            msg = str(e).lower()
+            assert hint.lower() in msg or "argument" in msg, (
+                f"{argv}: expected {hint!r} in message, got: {e}"
+            )
+            continue
+        raise AssertionError(f"{argv} はエラーになるべき")
+    print("✓ 必須引数なしオプションのテスト成功")
+
+
 def test_unknown_option_parsed_and_in_unitcell_options():
     """未定義オプション（--pass 等）は unitcell_options に入り、実行時に警告される"""
     result = parse_argv(["CS2", "-c", "0=Na", "-a", "1=Cl", "--pass"])
@@ -101,6 +154,8 @@ if __name__ == "__main__":
         test_rep_followed_by_short_option()
         test_validation()
         test_missing_unitcell()
+        test_exporter_without_plugin_name_raises()
+        test_required_option_without_argument_raises()
         test_unknown_option_parsed_and_in_unitcell_options()
         print()
         print("=" * 60)

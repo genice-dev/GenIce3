@@ -213,7 +213,7 @@ exporter:
 
         is_valid, errors = parser.validate()
         assert not is_valid
-        assert any("unitcell名" in error for error in errors)
+        assert any("unitcell" in error.lower() for error in errors)
 
     def test_unprocessed_options(self):
         """処理されなかったオプションのテスト"""

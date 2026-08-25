@@ -341,15 +341,15 @@ def is_empty_option_value(value: Any) -> bool:
 
 
 def missing_argument_message(name: str) -> str:
-    """引数不足時のメッセージ。"""
+    """Message when a known option is present but has no argument."""
     if name == "exporter":
-        return "-e / --exporter にはプラグイン名が必要です（例: -e gromacs）"
+        return "-e / --exporter requires a plugin name (e.g. -e gromacs)"
     if name == "config":
-        return "-Y / --config には設定ファイルのパスが必要です"
+        return "-Y / --config requires a path to a YAML file"
     def_ = get_option_def(name)
     if def_ is not None:
-        return f"{format_option_label(def_)} には引数が1個以上必要です"
-    return f"--{name} には引数が1個以上必要です"
+        return f"{format_option_label(def_)} requires at least one argument"
+    return f"--{name} requires at least one argument"
 
 
 def validate_required_option_arguments(parsed: Dict[str, Any]) -> None:

@@ -61,7 +61,8 @@ def parse_options(line: str) -> Dict[str, Any]:
             if tokens[i].startswith(":"):
                 if len(args) != 1:
                     raise ValueError(
-                        f"第二階層は第一階層の引数が1個のときのみ: {opt_name} の引数数={len(args)}"
+                        f"A :suboption is allowed only when --{opt_name} "
+                        f"has exactly one argument (got {len(args)})"
                     )
                 sub_name = tokens[i][1:]
                 i += 1
