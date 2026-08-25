@@ -213,9 +213,13 @@ def symmetry_operators(symops: str, offsets: Iterable = [("+0", "+0", "+0")]):
 #     return waters, pairs
 
 
-def atoms_to_waters(oxygens, hydrogens, cell):  # , partial_order=False):
+def atoms_to_waters(oxygens, hydrogens, cell):
     """
-    原子座標 (O, H) から水分子の重心座標と水素結合ペアを求める。
+    原子座標 (O, H) から酸素位置と水素結合ペアを求める。
+
+    水素が O–O 接触の片側にしかなければ、その結合の向きは実験データで決まって
+    いるので fixed に入れる。両側にあれば（部分無秩序構造の半占有水素サイト）
+    向きは未確定なので、fixed には入れず pairs にだけ残して solver に委ねる。
 
     Parameters
     ----------
@@ -225,21 +229,15 @@ def atoms_to_waters(oxygens, hydrogens, cell):  # , partial_order=False):
         H原子の分数座標 (shape: (n_H, 3))
     cell : np.ndarray
         セル行列
-    # partial_order : bool, default False
-    #     True のときは、重心計算をせず、O–O ペアも返す（秩序化用）。
 
     Returns
     -------
-    # if partial_order is False:
-    #     waters : list[np.ndarray]
-    #         水分子の重心座標のリスト
-    #     pairs : list[list[int, int]]
-    #         水素結合ペア (donor_O_index, acceptor_O_index) のリスト
-
-    # if partial_order is True:
-        oxygens : np.ndarray
-        fixed   : set[tuple[int, int]]  (水素結合が確定しているペア)
-        pairs   : set[tuple[int, int]]  (水素結合があるペア（固定も含む）)
+    oxygens : np.ndarray
+        入力の O 座標をそのまま返す。
+    fixed : set[tuple[int, int]]
+        向きが確定した水素結合 (donor, acceptor)。
+    pairs : set[tuple[int, int]]
+        水素結合があるすべてのペア（fixed を含む）。
     """
     logger = getLogger("atoms_to_waters")
 
@@ -256,15 +254,32 @@ def atoms_to_waters(oxygens, hydrogens, cell):  # , partial_order=False):
     logger.debug("covalent OH parent map: %s", parent)
 
     # --- Step 2: 水素結合ペア (O_donor, O_acceptor) を集める --------------------
-    hydrogen_bonds = set()
-    for o_idx, h_idx in pl.pairs_iter(
-        oxygens, maxdist=0.20, cell=cell, pos2=hydrogens, distance=False  # nm
+    # 受容体は「親O以外でもっとも近いO」とする。距離しきい値ひとつで受容体を選ぶと、
+    # 実測構造では O···H 距離がしきい値の前後に分布して結合を取りこぼす
+    # （例: cif/iceM.cif は 0.20 nm のすぐ外に一群があり、16本中12本しか拾えない）。
+    # 下の半径は受容体候補を探す範囲でしかなく、最近接を採るので値に鋭敏ではない。
+    acceptor_search_radius = 0.25  # nm
+    nearest_acceptor = {}  # Hインデックス -> (距離, 受容体Oインデックス)
+    for o_idx, h_idx, d in pl.pairs_iter(
+        oxygens,
+        maxdist=acceptor_search_radius,
+        cell=cell,
+        pos2=hydrogens,
+        distance=True,
     ):
         # 共有結合しているHは除外（別の水分子に属するHだけを使う）
-        if h_idx not in oh[o_idx]:
-            donor = parent[h_idx]  # このHの親O
-            acceptor = o_idx
-            hydrogen_bonds.add((donor, acceptor))
+        if h_idx in oh[o_idx]:
+            continue
+        if h_idx not in nearest_acceptor or d < nearest_acceptor[h_idx][0]:
+            nearest_acceptor[h_idx] = (d, o_idx)
+
+    hydrogen_bonds = set()
+    for h_idx, (_, acceptor) in nearest_acceptor.items():
+        if h_idx not in parent:
+            # どのOにも共有結合していないH。水の一部ではないので水素結合も張らない。
+            logger.debug("H %d has no covalent parent O; skipped.", h_idx)
+            continue
+        hydrogen_bonds.add((parent[h_idx], acceptor))
 
     logger.debug("HB pairs (donor, acceptor): %s", hydrogen_bonds)
 
