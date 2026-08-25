@@ -1,0 +1,70 @@
+# GenIce3
+
+> GenIce3 is an open-source Python package that builds hydrogen-disordered ice and
+> clathrate hydrate structures for molecular simulation. From a catalogue of about
+> 250 unit cells it assembles supercells whose hydrogen-bond network satisfies the
+> Bernal-Fowler ice rules and whose net polarization is driven toward a prescribed
+> target, fills clathrate cages with guest molecules, substitutes ions and protonic
+> or Bjerrum defects, and writes the result in the formats of common simulation and
+> visualization programs (GROMACS, LAMMPS, CIF, and others).
+
+Install with `pip install genice3` (Python 3.11 or later). The command is `genice3`;
+the library is `genice3`. It produces geometry, not equilibrium: relax a structure
+with the intended force field before a production run.
+
+The one thing to know before writing a command: do not guess plugin names.
+`genice3 --list unitcell`, `--list exporter`, and `--list molecule` print the
+installed names with their descriptions, `genice3 NAME?` prints the suboptions of
+one plugin, and an unknown name produces an error that names the closest matches.
+
+Smallest working example:
+
+```shell
+genice3 1h --rep 2 2 2 --seed 42 -e gromacs > ice.gro
+```
+
+The same from Python, exporting one structure into two formats:
+
+```python
+import numpy as np
+from genice3.genice import GenIce3
+from genice3.plugin import Exporter
+
+genice = GenIce3(replication_matrix=np.diag([2, 2, 2]), seed=42)
+genice.set_unitcell("1h")
+for fmt, path in [("gromacs", "ice.gro"), ("cif", "ice.cif")]:
+    with open(path, "w") as f:
+        Exporter(fmt).dump(genice, file=f, water_model="3site")
+```
+
+## Docs
+
+- [Overview for AI assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/): compact summary of concepts, entry points, discovery commands, and the common errors with their remedies. Read this first.
+- [Getting started](https://genice-dev.github.io/GenIce3/getting-started/): installation and a first structure.
+- [CLI reference](https://genice-dev.github.io/GenIce3/cli/): every option of `genice3`, the YAML configuration file, and worked examples.
+- [Basics](https://genice-dev.github.io/GenIce3/basics/): replication, density, seeds, and polarization control.
+- [Unit cells](https://genice-dev.github.io/GenIce3/unitcells/): the catalogue of ice phases, clathrate frameworks, and zeolite-derived lattices, with the suboptions of each.
+- [Output formats](https://genice-dev.github.io/GenIce3/output-formats/): the exporters, their file extensions, and their suboptions.
+- [Water models](https://genice-dev.github.io/GenIce3/water-models/): the built-in models and the `:water_model` exporter suboption.
+- [Guest molecules](https://genice-dev.github.io/GenIce3/guest-molecules/): filling clathrate cages, by cage type with `-g` and by cage index with `-G`.
+- [Clathrate hydrates](https://genice-dev.github.io/GenIce3/clathrate-hydrates/): cage labels, mixed occupancy, and the `cage_survey` exporter.
+- [Doping and defects](https://genice-dev.github.io/GenIce3/doping-and-defects/): lattice ions, spot ions, hydronium and hydroxide, and Bjerrum L and D defects.
+
+## API
+
+- [API examples overview](https://genice-dev.github.io/GenIce3/api-examples/): index of runnable notebooks and scripts.
+- [Basic API use](https://genice-dev.github.io/GenIce3/api-examples/basic/): the `GenIce3` object and its reactive properties.
+- [Polarization](https://genice-dev.github.io/GenIce3/api-examples/polarization/): `target_pol`, `pol_loop_1`, and `pol_loop_2`.
+- [Topological defects](https://genice-dev.github.io/GenIce3/api-examples/topological_defects/): hydronium, hydroxide, and Bjerrum defects, which the API alone can place.
+- [Guest occupancy](https://genice-dev.github.io/GenIce3/api-examples/guest_occupancy/): probabilistic and per-cage guest specification.
+- [Unit cell transform](https://genice-dev.github.io/GenIce3/api-examples/unitcell_transform/): replication matrices and cell manipulation.
+- [CIF input and output](https://genice-dev.github.io/GenIce3/api-examples/cif_io/): reading an arbitrary oxygen lattice from a CIF file.
+- [Plugins](https://genice-dev.github.io/GenIce3/plugins/): writing a unit cell, molecule, or exporter plugin.
+
+## Optional
+
+- [Changes from GenIce2](https://genice-dev.github.io/GenIce3/changes-from-genice2/): the correspondence of options for users of the previous version.
+- [Citation](https://genice-dev.github.io/GenIce3/citation/): how to cite GenIce3 and the papers behind its algorithm.
+- [References](https://genice-dev.github.io/GenIce3/references/): the literature source of each structure in the catalogue.
+- [Source repository](https://github.com/genice-dev/GenIce3): issues, source, and the test suite.
+- [genice-core](https://github.com/vitroid/genice-core): the separate library that performs the ice-rule assignment and the depolarization.

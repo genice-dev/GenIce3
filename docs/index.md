@@ -33,7 +33,7 @@ The [API examples](api-examples/index.md) show how to use GenIce3 from Python wi
 
 ## For AI assistants
 
-A concise, structured overview of GenIce3 for AI/LLM systems that need to explain the project to users: [For AI assistants](for-ai-assistants.md).
+A concise, structured overview of GenIce3 for AI/LLM systems that need to explain the project or to drive it themselves: [For AI assistants](for-ai-assistants.md). A machine-readable index of this site, in the [llms.txt](https://llmstxt.org) convention, is at [/llms.txt](llms.txt).
 
 ---
 
