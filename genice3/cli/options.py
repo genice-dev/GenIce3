@@ -40,6 +40,10 @@ from genice3.molecule import Molecule
 # =============================================================================
 
 _HELP_VERSION = "Show the version and exit."
+_HELP_LIST = (
+    "List the installed plugins of a category, with their descriptions, and exit. "
+    "Use this to find the UNITCELL name or the -e exporter name."
+)
 _HELP_DEBUG = "Enable debug mode."
 _HELP_POL_LOOP_1 = (
     "Max iterations for polarization convergence (stage 1). "
@@ -110,9 +114,10 @@ _HELP_CONFIG = (
 )
 _HELP_GUEST = (
     "Specify guest molecules for each cage type. "
-    "Format: CAGE_LABEL=GUEST_SPEC. Examples: A12=me (single), 12=co2*0.6+me*0.4 (probabilistic mix; use quotes in shell: -g \"12=co2*0.6+me*0.4\"). "
+    "Format: CAGE_LABEL=GUEST_SPEC. Examples: A12=me (single), A12=co2*0.6+me*0.4 (probabilistic mix; use quotes in shell: -g \"A12=co2*0.6+me*0.4\"). "
     "Both molecule*occupancy (co2*0.6) and occupancy*molecule (0.6*co2) are accepted. "
-    "Multiple cage types with multiple -g options."
+    "Multiple cage types with multiple -g options. "
+    "The cage labels of a structure are those reported by -e cage_survey."
 )
 _HELP_SPOT_GUEST = (
     "Specify guest molecule at a specific cage index. "
@@ -203,6 +208,13 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
     ),
     OptionDef("version", short="-V", level="base", help_text=_HELP_VERSION),
     OptionDef(
+        "list",
+        level="base",
+        metavar="CATEGORY",
+        help_text=_HELP_LIST,
+        help_format="--list {unitcell|exporter|molecule|group}",
+    ),
+    OptionDef(
         "rep",
         short="-r",
         max_values=3,
@@ -269,6 +281,7 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
 BASE_HELP_ORDER: Tuple[str, ...] = (
     "help",
     "version",
+    "list",
     "debug",
     "pol_loop_1",
     "pol_loop_2",

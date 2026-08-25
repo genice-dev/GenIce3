@@ -287,14 +287,14 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
                     parsed.setdefault(long_name, parsed.pop(short))
             validate_required_option_arguments(parsed)
         except ValueError as e:
-            raise RuntimeError(f"オプションのパースに失敗しました: {e}") from e
+            raise RuntimeError(f"Failed to parse the options: {e}") from e
         display = structure_for_display(parsed)
         merged = _merge_config_cmdline(config, display)
 
     try:
         return parsed_result_from_merged(merged)
     except ValueError as e:
-        raise RuntimeError(f"オプションのパースに失敗しました: {e}") from e
+        raise RuntimeError(f"Failed to parse the options: {e}") from e
 
 
 def validate_result(result: Dict[str, Any]) -> Tuple[bool, List[str]]:

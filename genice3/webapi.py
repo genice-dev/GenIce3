@@ -27,7 +27,7 @@ try:
     from fastapi.middleware.cors import CORSMiddleware
 except ModuleNotFoundError as e:  # pragma: no cover
     raise ModuleNotFoundError(
-        "Web API には FastAPI が必要です。例: pip install 'genice3[web]'"
+        "The web API needs FastAPI. Install it with: pip install 'genice3[web]'"
     ) from e
 
 
@@ -39,50 +39,61 @@ _GENERATE_YAML_EXAMPLE = (
 )
 
 _OPENAPI_DESCRIPTION = """
-GenIce3（水素無秩序氷・クラスレート等の構造生成）の HTTP 薄ラッパーです。**CLI の `genice3` と同じ設定論理**を YAML で渡します。
+A thin HTTP wrapper around GenIce3, which builds hydrogen-disordered ice and
+clathrate hydrate structures. The configuration is the **same YAML that the
+`genice3` command line reads with `-Y`**.
 
-## 典型フロー（エージェント向け）
+## Typical flow (for agents)
 
-1. **`GET /v1/meta/unitcells`** で利用可能な単位胞名を得る。
-2. ユーザーが選んだ単位胞について **`GET /v1/meta/unitcells/{name}/options`** で、プラグイン固有オプション（`specific_options`）と多くの格子で共通のオプション（`common_options`）を得る。フォームを組む場合はここを参照。
-3. 出力形式は **`GET /v1/meta/exporters`** と **`GET /v1/meta/exporters/{name}/options`** で調べる（`format_desc.suboptions` 等）。
-4. **`POST /v1/generate`** に **YAML 全文をリクエストボディそのまま**（UTF-8）で送る。本文は CLI の **`-Y` 設定ファイルと同系統**（トップに `unitcell` / `genice3` / `exporter` 等）。成功時のレスポンスは **`text/plain`** で、内容は選んだ exporter のテキスト（例: GROMACS の .gro 相当のテキスト）。
-5. どうしても **JSON ボディだけ**送れる場合は **`POST /v1/generate/json`** に `{"config_yaml": "<上記と同じYAML文字列>"}` を渡す（中身は `/v1/generate` と同一）。
+1. **`GET /v1/meta/unitcells`** for the names of the available unit cells.
+2. **`GET /v1/meta/unitcells/{name}/options`** for the options of the chosen one:
+   `specific_options` are the options of that plugin, `common_options` are the keys
+   that most lattices accept. Build a form from these.
+3. **`GET /v1/meta/exporters`** and **`GET /v1/meta/exporters/{name}/options`** for the
+   output formats and their suboptions (`format_desc.suboptions`).
+4. **`POST /v1/generate`** with the **whole YAML as the request body** (UTF-8). The body
+   has the same shape as the `-Y` configuration file, with `unitcell`, `genice3`, and
+   `exporter` at the top level. A successful response is **`text/plain`**: the output of
+   the chosen exporter, for example the text of a GROMACS `.gro` file.
+5. If your client can send **only JSON**, post
+   `{"config_yaml": "<the same YAML string>"}` to **`POST /v1/generate/json`** instead;
+   it does the same thing.
 
-## エラー
+## Errors
 
-- **400**: YAML の解釈・必須欠如・未認識オプション・バリデーション失敗。`detail` は JSON（文字列またはオブジェクト）。
-- **404**: メタ API で存在しないプラグイン名を指定したとき。
-- **500**: 計算・出力段階の失敗。`detail` にメッセージ。
+- **400**: the YAML could not be read, a required key is missing, an option was not
+  recognized, or validation failed. `detail` is JSON, either a string or an object.
+- **404**: a meta endpoint was given a plugin name that does not exist.
+- **500**: the construction or the export failed. `detail` carries the message.
 
-## 背景ドキュメント（人間・LLM 兼用）
+## Background documents (for humans and for LLMs alike)
 
-- プロジェクトの要約: **https://genice-dev.github.io/GenIce3/for-ai-assistants/**
-- マニュアル全体: **https://genice-dev.github.io/GenIce3**
+- Project summary: **https://genice-dev.github.io/GenIce3/for-ai-assistants/**
+- Full manual: **https://genice-dev.github.io/GenIce3**
 """
 
 _OPENAPI_TAGS = [
     {
         "name": "generate",
-        "description": "設定 YAML から構造テキストを生成する。メインは `POST /v1/generate`（生ボディ）。",
+        "description": "Build a structure from a configuration in YAML. The main entry is `POST /v1/generate`, which takes the raw body.",
     },
     {
         "name": "meta",
-        "description": "単位胞・exporter の一覧と、動的 UI / エージェント向けのオプションスキーマ。",
+        "description": "The catalogue of unit cells and exporters, and their option schemas, for dynamic user interfaces and for agents.",
     },
     {
         "name": "health",
-        "description": "稼働確認。",
+        "description": "Liveness check.",
     },
 ]
 
 
 class GenerateJsonBody(BaseModel):
-    """`application/json` で YAML 全文を渡すとき用（中身は `/v1/generate` と同じ）。"""
+    """Carries the whole YAML as `application/json`; the content is that of `/v1/generate`."""
 
     config_yaml: str = Field(
         ...,
-        description="CLI の `-Y` と同系統の YAML 全文（1 文字列にまとめる）",
+        description="The whole YAML configuration, as one string, in the form the CLI reads with `-Y`.",
         examples=[
             "unitcell: 1h\ngenice3:\n  rep: [1, 1, 1]\nexporter: gromacs\n"
         ],
@@ -108,17 +119,18 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    @app.get("/health", tags=["health"], summary="稼働確認")
+    @app.get("/health", tags=["health"], summary="Liveness check")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.get(
         "/v1/meta/unitcells",
         tags=["meta"],
-        summary="単位胞プラグイン一覧",
+        summary="The catalogue of unit cell plugins",
         description=(
-            "`unitcells.system` 等にプラグイン名の配列、`descriptions` に短い説明文。"
-            "エージェントはここで得た名前を `GET .../unitcells/{name}/options` に渡す。"
+            "`unitcells.system`, `.extra`, and `.local` are arrays of plugin names; "
+            "`descriptions` maps a name to its one-line description. "
+            "Pass a name from here to `GET .../unitcells/{name}/options`."
         ),
     )
     def meta_unitcells() -> dict[str, Any]:
@@ -135,10 +147,11 @@ def create_app() -> FastAPI:
     @app.get(
         "/v1/meta/exporters",
         tags=["meta"],
-        summary="exporter プラグイン一覧（表形式メタ）",
+        summary="The catalogue of exporter plugins, as table rows",
         description=(
-            "`exporters` は行の配列。`name` は API 用の生プラグイン名（バッククォート無し）で、"
-            "`aliases` に別名配列を含む。`extension` や `suboptions` も含まれる。"
+            "`exporters` is an array of rows. `name` is the plain plugin name to use in "
+            "this API, `aliases` lists its other names, and `extension` and `suboptions` "
+            "describe the file it writes."
         ),
     )
     def meta_exporters() -> dict[str, Any]:
@@ -148,11 +161,13 @@ def create_app() -> FastAPI:
     @app.get(
         "/v1/meta/unitcells/{name}/options",
         tags=["meta"],
-        summary="指定単位胞のオプションスキーマ",
+        summary="The option schema of one unit cell",
         description=(
-            "`specific_options`: そのプラグインの `desc.options` 由来（`name`, `help`, `required`, `example`）。"
-            "`common_options`: 多くの格子で使える共通キー（density, shift, anion, cation 等）の UI ヒント。"
-            "`examples`: CLI / Python API / YAML の例文。"
+            "`specific_options` comes from the plugin's own `desc.options`, each with "
+            "`name`, `help`, `required`, and `example`. "
+            "`common_options` are the keys that most lattices accept (density, shift, "
+            "anion, cation, and so on), with hints for a user interface. "
+            "`examples` gives the same request written for the CLI, the Python API, and YAML."
         ),
     )
     def meta_unitcell_options(name: str) -> dict[str, Any]:
@@ -166,8 +181,8 @@ def create_app() -> FastAPI:
     @app.get(
         "/v1/meta/exporters/{name}/options",
         tags=["meta"],
-        summary="指定 exporter のメタデータ",
-        description="`format_desc`（`suboptions` 文字列含む）と `usage` テキスト。",
+        summary="The metadata of one exporter",
+        description="Its `format_desc`, including the `suboptions` string, and its `usage` text.",
     )
     def meta_exporter_options(name: str) -> dict[str, Any]:
         try:
@@ -192,7 +207,7 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "message": "認識されなかったオプションがあります",
+                    "message": "Some options were not recognized",
                     "unitcell_unprocessed": list(uc_u.keys()),
                     "exporter_unprocessed": list(ex_u.keys()),
                 },
@@ -218,17 +233,20 @@ def create_app() -> FastAPI:
     @app.post(
         "/v1/generate",
         tags=["generate"],
-        summary="YAML 全文（生ボディ）で構造生成",
+        summary="Build a structure from a raw YAML body",
         description=(
-            "**リクエストボディ全体**が YAML 文字列（UTF-8）。`Content-Type` は問わず解釈するが、"
-            "OpenAPI 上は `text/plain` または `application/x-yaml` を推奨。"
-            "成功時は **200** かつ **`text/plain`** 本文（exporter の出力）。"
-            "事前に `GET /v1/meta/...` で単位胞名・オプション・exporter を確認すると安全。"
+            "The **whole request body** is the YAML configuration, in UTF-8. Any "
+            "`Content-Type` is accepted, but `text/plain` or `application/x-yaml` is "
+            "what the OpenAPI schema declares. "
+            "On success the status is **200** and the body is **`text/plain`**: the output "
+            "of the exporter. "
+            "Confirming the unit cell name, its options, and the exporter through "
+            "`GET /v1/meta/...` beforehand avoids most 400s."
         ),
         openapi_extra={
             "requestBody": {
                 "required": True,
-                "description": "CLI の `-Y` と同系統の YAML 全文（UTF-8）。",
+                "description": "The whole YAML configuration in UTF-8, in the form the CLI reads with `-Y`.",
                 "content": {
                     "text/plain": {
                         "schema": {"type": "string"},
@@ -252,10 +270,11 @@ def create_app() -> FastAPI:
     @app.post(
         "/v1/generate/json",
         tags=["generate"],
-        summary="YAML 全文を JSON で包んで構造生成",
+        summary="Build a structure from a YAML string wrapped in JSON",
         description=(
-            "`POST /v1/generate` と同じ処理。HTTP クライアントが **JSON しか送れない**とき用の別入口。"
-            "フィールド `config_yaml` に、`/v1/generate` のボディに置くのと同じ YAML 文字列を入れる。"
+            "The same work as `POST /v1/generate`, for clients that can send **only JSON**. "
+            "Put in the field `config_yaml` the same YAML string that would be the body of "
+            "`/v1/generate`."
         ),
     )
     async def generate_json(payload: GenerateJsonBody) -> Response:

@@ -278,6 +278,32 @@ def format_table_markdown(rows):
     return "\n".join([header, sep] + line_rows)
 
 
+def capture_cli_usage() -> str:
+    """Fenced CLI help from this interpreter (not ``./genice3.x``).
+
+    ``os.popen("./genice3.x -h")`` uses the shebang ``python3``, which may
+    lack numpy. Failure then goes to stderr; stdout is empty; popen does
+    not raise. ``docs/cli.md`` would be overwritten with a blank fence.
+    """
+    from contextlib import redirect_stdout
+    from io import StringIO
+
+    from genice3.cli.genice import print_help
+
+    buf = StringIO()
+    with redirect_stdout(buf):
+        print_help()
+    lines = [ln.rstrip() for ln in buf.getvalue().splitlines()]
+    body = "\n".join(lines).strip()
+    if "Usage:" not in body or "UNITCELL" not in body or len(lines) < 15:
+        raise RuntimeError(
+            "CLI help is empty or truncated "
+            f"({len(lines)} lines). "
+            "Run: poetry run python -m genice3.cli.genice -h"
+        )
+    return "```text\n" + "\n".join(lines) + "\n```"
+
+
 project = toml.load("pyproject.toml")
 
 # Prefer [project] for version and dependencies (single source of truth); fall back to [tool.poetry].
@@ -312,11 +338,11 @@ citationlist_str = prefix(citationlist, "- ")
 # Build template context: merge project with generated values so that
 # {{ ices }}, {{ waters }}, {{ guests }}, {{ usage }}, etc. are always set.
 try:
-    usage_lines = [x.rstrip() for x in os.popen("./genice3.x -h").readlines()]
-    usage = "```text\n" + "\n".join(usage_lines) + "\n```"
+    usage = capture_cli_usage()
 except Exception as e:
-    logger.warning("Failed to get usage: %s", e)
-    usage = "```text\n(run ./genice3.x -h for usage)\n```"
+    logger.error("Failed to get usage: %s", e)
+    logger.error("Aborting so docs/cli.md is not overwritten with an empty Usage block.")
+    sys.exit(1)
 
 try:
     ices = system_ices(citations=citation_keys)

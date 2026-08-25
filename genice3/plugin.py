@@ -2,6 +2,7 @@
 Plugin handler.
 """
 
+import difflib
 import glob
 import importlib
 import os
@@ -11,6 +12,8 @@ from collections import defaultdict
 from logging import DEBUG, INFO, basicConfig, getLogger
 from textwrap import fill
 from typing import Any, Dict, List, Sequence, Tuple, Union
+
+CATEGORIES = ("unitcell", "exporter", "molecule", "group")
 
 # import pkg_resources as pr
 
@@ -73,6 +76,27 @@ def format_unitcell_usage(
     }
 
 
+def _brief_of(module):
+    """One-line description of a plugin, from ``desc`` or an exporter's ``format_desc``."""
+    d = getattr(module, "desc", None)
+    if isinstance(d, dict) and d.get("brief"):
+        return str(d["brief"])
+    fd = getattr(module, "format_desc", None)
+    if isinstance(fd, dict):
+        # "application" may carry a markdown link; the terminal wants the text.
+        app = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", str(fd.get("application", ""))).strip()
+        parts = []
+        if app:
+            ext = str(fd.get("extension", "")).strip()
+            parts.append(f"{app} format ({ext})" if ext else f"{app} format")
+        remarks = str(fd.get("remarks", "")).strip()
+        if remarks:
+            parts.append(remarks if remarks.endswith(".") else remarks + ".")
+        if parts:
+            return " ".join(parts)
+    return None
+
+
 def _is_water_module(module, category):
     """Return True if the module is a water model (for molecule plugins)."""
     if category != "molecule":
@@ -114,8 +138,10 @@ def scan(category):
     for mod in modules["system"]:
         try:
             module = importlib.import_module(f"genice3.{category}.{mod}")
+            brief = _brief_of(module)
+            if brief is not None:
+                desc[mod] = brief
             if "desc" in module.__dict__:
-                desc[mod] = module.desc["brief"]
                 if "ref" in module.desc:
                     refs[mod] = module.desc["ref"]
                 if "test" in module.desc:
@@ -132,8 +158,10 @@ def scan(category):
         mods.append(ep.name)
         try:
             module = ep.load()
+            brief = _brief_of(module)
+            if brief is not None:
+                desc[ep.name] = brief
             if "desc" in module.__dict__:
-                desc[ep.name] = module.desc["brief"]
                 if "ref" in module.desc:
                     refs[ep.name] = module.desc["ref"]
                 if "test" in module.desc:
@@ -151,8 +179,10 @@ def scan(category):
     logger.info(mods)
     for mod in mods:
         module = importlib.import_module(f"{category}.{mod}")
+        brief = _brief_of(module)
+        if brief is not None:
+            desc[mod] = brief
         if "desc" in module.__dict__:
-            desc[mod] = module.desc["brief"]
             if "ref" in module.desc:
                 refs[mod] = module.desc["ref"]
             if "test" in module.desc:
@@ -176,34 +206,21 @@ def descriptions(category, width=72, water=False, groups=("system", "extra", "lo
       width=72      Width of the output.
       water=False   Pick up water molecules only (for molecule plugin).
     """
-    titles = {
-        "lattice": {
-            "system": "1. Lattice structures served with GenIce",
-            "extra": "2. Lattice structures served by external plugins",
-            "local": "3. Lattice structures served locally",
-            "title": "[Available lattice structures]",
-        },
-        "format": {
-            "system": "1. Formatters served with GenIce",
-            "extra": "2. Formatters served by external plugins",
-            "local": "3. Formatters served locally",
-            "title": "[Available formatters]",
-        },
-        "loader": {
-            "system": "1. File types served with GenIce",
-            "extra": "2. File types served by external eplugins",
-            "local": "3. File types served locally",
-            "title": "[Available input file types]",
-        },
-        "molecule": {
-            "system": "1. Molecules served with GenIce",
-            "extra": "2. Molecules served by external plugins",
-            "local": "3. Molecules served locally",
-            "title": "[Available molecules]",
-        },
+    nouns = {
+        "unitcell": "unit cells",
+        "exporter": "exporters",
+        "molecule": "molecules",
+        "group": "cation groups",
+    }
+    noun = nouns.get(category, f"{category} plugins")
+    title = {
+        "system": f"1. {noun.capitalize()} served with GenIce3",
+        "extra": f"2. {noun.capitalize()} served by external plugins",
+        "local": f"3. {noun.capitalize()} served locally",
+        "title": f"[Available {noun}]",
     }
     mods = scan(category)
-    catalog = f" \n \n{titles[category]['title']}\n \n"
+    catalog = f" \n \n{title['title']}\n \n"
     desc = mods["desc"]
     iswater = mods["iswater"]
     for group in groups:
@@ -223,7 +240,7 @@ def descriptions(category, width=72, water=False, groups=("system", "extra", "lo
                 undesc.append(L)
         for dd in desced:
             desced[dd] = ", ".join(desced[dd])
-        catalog += f"{titles[category][group]}\n \n"
+        catalog += f"{title[group]}\n \n"
         table = ""
         for dd in sorted(desced, key=lambda x: desced[x]):
             table += f"{desced[dd]}\t{dd}\n"
@@ -282,6 +299,63 @@ def plugin_descriptors(category, water=False, groups=("system", "extra", "local"
                 undesc.append(L)
         catalog[group] = [desced, undesc, refss]
     return catalog
+
+
+def available_plugin_names(category: str) -> List[str]:
+    """Return the plugin names of a category without importing the modules.
+
+    Cheap counterpart of :func:`scan`, meant for help messages and for the
+    suggestions offered when a name is not found.
+    """
+    names = set()
+    try:
+        package = importlib.import_module(f"genice3.{category}")
+    except ModuleNotFoundError:
+        package = None
+    if package is not None:
+        for path in package.__path__:
+            for mod in glob.glob(os.path.join(path, "*.py")):
+                stem = os.path.basename(mod)[:-3]
+                if not stem.startswith("__"):
+                    names.add(stem)
+    for ep in entry_points(group=f"genice3_{category}"):
+        names.add(ep.name)
+    for mod in glob.glob(f"./{category}/*.py"):
+        stem = os.path.basename(mod)[:-3]
+        if not stem.startswith("__"):
+            names.add(stem)
+    return sorted(names)
+
+
+class PluginNotFoundError(ImportError):
+    """No plugin of the requested category carries the requested name."""
+
+
+def plugin_not_found_error(category: str, name: str) -> PluginNotFoundError:
+    """Build an error that names the alternatives instead of only the failure."""
+    names = available_plugin_names(category)
+    by_lower = {n.lower(): n for n in names}
+    lines = [f'Unknown {category} "{name}".']
+    if name.lower() in by_lower:
+        lines.append(
+            f'Did you mean "{by_lower[name.lower()]}"? Plugin names are case-sensitive.'
+        )
+    else:
+        close = difflib.get_close_matches(name, names, n=5, cutoff=0.5)
+        if not close:
+            close = [
+                by_lower[c]
+                for c in difflib.get_close_matches(
+                    name.lower(), list(by_lower), n=5, cutoff=0.5
+                )
+            ]
+        if close:
+            lines.append("Did you mean: " + ", ".join(close) + "?")
+    lines.append(
+        f"{len(names)} {category} plugins are installed; "
+        f"run `genice3 --list {category}` to see them all."
+    )
+    return PluginNotFoundError(" ".join(lines))
 
 
 def audit_name(name: str, category: str = "plugin") -> str:
@@ -365,7 +439,10 @@ def import_plugin_module(category: str, name: str):
             raise
     if module is None:
         logger.debug(f"Try to load an extra module: {fullname}")
-        module = import_extra(category, module_name)
+        try:
+            module = import_extra(category, module_name)
+        except ImportError:
+            raise plugin_not_found_error(category, name) from None
         logger.debug("Succeeded.")
     return module
 
@@ -401,19 +478,27 @@ def safe_import(category, name):
     module = import_plugin_module(category, clean_name)
 
     if usage:
-        if "desc" in module.__dict__:
-            d = module.desc
-            logger.info(f"Usage for '{clean_name}' plugin")
-            if category == "unitcell" and d.get("options"):
-                u = format_unitcell_usage(clean_name, d["options"])
-                print("CLI:  ", u["cli"])
-                print("API:  ", u["api"])
-                print("YAML:\n", u["yaml"])
-            elif d.get("usage"):
-                print(d["usage"])
-            else:
-                print("(no usage)")
-            sys.exit(0)
+        logger.info(f"Usage for '{clean_name}' plugin")
+        d = getattr(module, "desc", None)
+        if not isinstance(d, dict):
+            d = {}
+        brief = _brief_of(module)
+        if brief:
+            print(brief)
+        fd = getattr(module, "format_desc", None)
+        suboptions = fd.get("suboptions") if isinstance(fd, dict) else None
+        if category == "unitcell" and d.get("options"):
+            u = format_unitcell_usage(clean_name, d["options"])
+            print("CLI:  ", u["cli"])
+            print("API:  ", u["api"])
+            print("YAML:\n", u["yaml"])
+        elif d.get("usage"):
+            print(d["usage"])
+        elif suboptions:
+            print(f'Suboptions (give as -e "{clean_name} :key value"): {suboptions}')
+        else:
+            print(f"{clean_name} takes no suboption.")
+        sys.exit(0)
 
     return module
 

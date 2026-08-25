@@ -39,7 +39,10 @@ def parse_options(line: str) -> Dict[str, Any]:
     """
     tokens = line.split()
     if not tokens or looks_like_option(tokens[0]) or tokens[0].startswith(":"):
-        raise ValueError("unitcell が必要（先頭に単位胞名を指定してください）")
+        raise ValueError(
+            "A unitcell name is required as the first argument; "
+            "run `genice3 --list unitcell` to see the available names"
+        )
     unitcell = tokens[0]
     i = 1
     result: Dict[str, Any] = {"unitcell": unitcell}

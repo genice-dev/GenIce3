@@ -2,8 +2,9 @@ from logging import getLogger
 import sys
 from importlib.metadata import version, PackageNotFoundError
 
-from genice3 import _setup_logging
+from genice3 import ConfigurationError, _setup_logging
 from genice3.cli.runner import parse_argv, validate_result
+from genice3.plugin import PluginNotFoundError
 from genice3.cli.engine import run_parsed_result
 from genice3.cli.options import (
     BASE_HELP_ORDER,
@@ -118,6 +119,24 @@ def print_help():
         print(line)
 
 
+def print_plugin_list(argv: list[str]) -> int:
+    """Handle ``genice3 --list [CATEGORY]``."""
+    from genice3.plugin import CATEGORIES, available_plugin_names, descriptions
+
+    index = argv.index("--list")
+    category = argv[index + 1] if index + 1 < len(argv) else ""
+    if category in CATEGORIES:
+        print(descriptions(category))
+        return 0
+    if category:
+        print(f'Unknown plugin category "{category}".', file=sys.stderr)
+    print("Usage: genice3 --list {" + "|".join(CATEGORIES) + "}")
+    print()
+    for name in CATEGORIES:
+        print(f"  {name:<10} {len(available_plugin_names(name))} plugins")
+    return 1 if category else 0
+
+
 def run(argv: list[str]) -> int:
     """CLI と同じ処理を ``sys.argv[1:]`` 相当の ``argv`` で実行する。
 
@@ -130,14 +149,20 @@ def run(argv: list[str]) -> int:
     if "--version" in argv or "-V" in argv:
         print(f"genice3 {get_version()}")
         return 0
+    if "--list" in argv:
+        return print_plugin_list(argv)
 
     _setup_logging(debug=False)
     logger = getLogger()
 
     try:
         result = parse_argv(argv)
+    except (PluginNotFoundError, ConfigurationError) as e:
+        # These name the valid alternatives; a traceback would only bury them.
+        logger.error(str(e))
+        return 1
     except Exception as e:
-        logger.error(f"パースエラー: {e}")
+        logger.error(f"Failed to parse the command line: {e}")
         import traceback
 
         traceback.print_exc()
@@ -157,7 +182,7 @@ def run(argv: list[str]) -> int:
             parts.append(f"unitcell: {list(uc_unprocessed.keys())}")
         if ex_unprocessed:
             parts.append(f"exporter: {list(ex_unprocessed.keys())}")
-        logger.error("認識されなかったオプションのため終了します: %s", ", ".join(parts))
+        logger.error("Unrecognized options; stopping: %s", ", ".join(parts))
         return 1
 
     base_options = result["base_options"]
@@ -195,8 +220,11 @@ def run(argv: list[str]) -> int:
     cmd = " ".join(["genice3", *argv])
     try:
         run_parsed_result(result, sys.stdout, command_line=cmd)
+    except (PluginNotFoundError, ConfigurationError) as e:
+        logger.error(str(e))
+        return 1
     except Exception:
-        logger.exception("exporter.dump に失敗しました")
+        logger.exception("exporter.dump failed")
         return 1
 
     return 0

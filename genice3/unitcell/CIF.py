@@ -91,14 +91,12 @@ class UnitCell(genice3.unitcell.UnitCell):
             )
         else:
             hatoms = np.array([a[1:] for a in atoms if re.match(hsite, a[0])])
-            waters, pairs, oo_pairs = atoms_to_waters(
-                oatoms, hatoms, cell, partial_order=True
-            )
+            sites, fixed, bonded_pairs = atoms_to_waters(oatoms, hatoms, cell)
             super().__init__(
                 cell=cell,
-                lattice_sites=waters,
-                graph=nx.Graph(oo_pairs),
-                fixed=nx.DiGraph(pairs),
+                lattice_sites=sites,
+                graph=nx.Graph(bonded_pairs),
+                fixed=nx.DiGraph(fixed),
                 coord="relative",
                 **uc_kwargs,
             )

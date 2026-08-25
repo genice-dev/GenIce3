@@ -1,13 +1,30 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
+type: software
+title: "GenIce3: Hydrogen-Disordered Ice Generator"
+abstract: >-
+  GenIce3 builds hydrogen-disordered ice and clathrate hydrate structures for
+  molecular simulation. From a catalogue of unit cells it assembles supercells
+  whose hydrogen-bond network satisfies the Bernal-Fowler ice rules and whose
+  net polarization is driven toward a prescribed target, fills clathrate cages
+  with guests, substitutes ions and protonic or Bjerrum defects, and writes the
+  result in the formats of common simulation and visualization programs.
 authors:
 - family-names: "Matsumoto"
   given-names: "Masakazu"
   orcid: "https://orcid.org/0000-0002-6799-6813"
-title: "GenIce: Hydrogen-Disordered Ice Generator"
-version: 2.1.7.1
-# date-released: 
-url: "https://github.com/vitroid/GenIce"
+version: 3.0b7
+date-released: 2026-08-25
+license: MIT
+url: "https://genice-dev.github.io/GenIce3"
+repository-code: "https://github.com/genice-dev/GenIce3"
+keywords:
+  - ice
+  - clathrate hydrate
+  - hydrogen disorder
+  - ice rules
+  - molecular simulation
+  - structure generator
 preferred-citation:
   type: article
   authors:
@@ -28,3 +45,22 @@ preferred-citation:
   start: 61
   end: 64
   year: 2017
+references:
+- type: article
+  authors:
+  - family-names: "Matsumoto"
+    given-names: "Masakazu"
+    orcid: "https://orcid.org/0000-0002-6799-6813"
+  - family-names: "Yagasaki"
+    given-names: "Takuma"
+    orcid: "https://orcid.org/0000-0002-4969-4715"
+  - family-names: "Tanaka"
+    given-names: "Hideki"
+    orcid: "https://orcid.org/0000-0003-2099-8990"
+  title: "GenIce-core: Efficient algorithm for generation of hydrogen-disordered ice structures"
+  doi: 10.1063/5.0198056
+  journal: "The Journal of Chemical Physics"
+  volume: 160
+  start: 94101
+  year: 2024
+  notes: "The ice-rule and depolarization algorithm that GenIce3 delegates to genice-core."

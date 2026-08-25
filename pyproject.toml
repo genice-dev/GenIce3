@@ -8,6 +8,33 @@ authors = [
     {name = "Masakazu Matsumoto", email = "vitroid@gmail.com"}
 ]
 requires-python = ">=3.11,<4.0"
+keywords = [
+    "ice",
+    "clathrate hydrate",
+    "water",
+    "hydrogen disorder",
+    "ice rules",
+    "molecular simulation",
+    "molecular dynamics",
+    "crystal structure",
+    "structure generator",
+    "computational chemistry",
+    "GROMACS",
+    "LAMMPS",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
 dependencies = [
     "networkx>=2.0.dev20160901144005",
     "numpy>=2.0",
@@ -53,8 +80,11 @@ genice3 = "genice3.cli.genice:main"
 genice3-web = "genice3.webapi:main"
 
 [project.urls]
-"Homepage" = "https://github.com/genice-dev/GenIce3"
+"Homepage" = "https://genice-dev.github.io/GenIce3"
+"Documentation" = "https://genice-dev.github.io/GenIce3"
+"Source" = "https://github.com/genice-dev/GenIce3"
 "Bug Tracker" = "https://github.com/genice-dev/GenIce3/issues"
+"Changelog" = "https://github.com/genice-dev/GenIce3/blob/main/CHANGELOG.md"
 "manual" = "https://genice-dev.github.io/GenIce3"
 
 [tool.genice.urls]

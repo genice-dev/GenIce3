@@ -32,11 +32,11 @@ A longer example is in the repository: [examples/config_example.yaml](https://gi
 - To generate a 3×3×3 supercell of hydrogen-disordered ice IV with TIP4P water in GROMACS .gro format:
 
     ```shell
-    genice3 4 --water tip4p --rep 3 3 3 > ice4.gro
+    genice3 4 --rep 3 3 3 -e "gromacs :water_model tip4p" > ice4.gro
     ```
 
 - To generate a 2×2×4 supercell of CS2 clathrate hydrate with TIP4P water and THF in the large cages (united-atom model) in GROMACS .gro format:
 
     ```shell
-    genice3 CS2 -g 16=uathf6 --water tip4p --rep 2 2 4 > cs2-224.gro
+    genice3 CS2 -g A16=uathf6 --rep 2 2 4 -e "gromacs :water_model tip4p" > cs2-224.gro
     ```
