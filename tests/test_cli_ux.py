@@ -79,6 +79,16 @@ def test_short_help_exits_zero():
     assert "Usage:" in out or "usage:" in out.lower()
 
 
+def test_list_molecule_includes_water_models_and_guests():
+    """--list molecule は水モデルとゲストの両方を出す"""
+    code, out, err = _run_genice3(["--list", "molecule"])
+    assert code == 0, f"Expected exit 0. stderr: {err}"
+    lower = out.lower()
+    assert "tip4p" in lower or "tip3p" in lower, f"Water models missing from --list molecule:\n{out[:800]}"
+    assert "water models" in lower
+    assert "guest" in lower
+
+
 def test_version_exits_zero_and_shows_version():
     """--version で終了コード 0 かつバージョン表示"""
     code, out, err = _run_genice3(["--version"])

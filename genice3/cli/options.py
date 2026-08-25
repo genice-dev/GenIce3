@@ -42,7 +42,8 @@ from genice3.molecule import Molecule
 _HELP_VERSION = "Show the version and exit."
 _HELP_LIST = (
     "List the installed plugins of a category, with their descriptions, and exit. "
-    "Use this to find the UNITCELL name or the -e exporter name."
+    "molecule lists water models and guest molecules. "
+    "Use this to find the UNITCELL name, an exporter, or a molecule plugin."
 )
 _HELP_DEBUG = "Enable debug mode."
 _HELP_POL_LOOP_1 = (

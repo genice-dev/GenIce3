@@ -198,13 +198,59 @@ def scan(category):
     return modules
 
 
-def descriptions(category, width=72, water=False, groups=("system", "extra", "local")):
+def _molecule_kind_wanted(name, iswater, water):
+    """Whether a molecule plugin belongs in this listing.
+
+    water=None: all; True: water models only; False: guests only.
+    """
+    if water is None:
+        return True
+    flagged = iswater.get(name, False)
+    return flagged if water else not flagged
+
+
+def _format_plugin_table(names, desc, width):
+    """Tab-aligned name / description table plus undocumented names."""
+    desced = defaultdict(list)
+    undesc = []
+    for L in names:
+        if L in desc:
+            desced[desc[L]].append(L)
+        else:
+            undesc.append(L)
+    for dd in desced:
+        desced[dd] = ", ".join(desced[dd])
+    table = ""
+    for dd in sorted(desced, key=lambda x: desced[x]):
+        table += f"{desced[dd]}\t{dd}\n"
+    if table == "":
+        table = "(None)\n"
+    table = [
+        fill(
+            line,
+            width=width,
+            drop_whitespace=False,
+            expand_tabs=True,
+            tabsize=16,
+            subsequent_indent=" " * 16,
+        )
+        for line in table.splitlines()
+    ]
+    table = "\n".join(table) + "\n"
+    extra = " ".join(undesc)
+    if extra:
+        extra = "(Undocumented) " + extra
+    return table + "----\n" + extra + "\n \n \n"
+
+
+def descriptions(category, width=72, water=None, groups=("system", "extra", "local")):
     """
     Show the list of available plugins in the category.
 
     Options:
       width=72      Width of the output.
-      water=False   Pick up water molecules only (for molecule plugin).
+      water=None    For molecule plugins: None = water models and guests,
+                    True = water models only, False = guests only.
     """
     nouns = {
         "unitcell": "unit cells",
@@ -223,45 +269,21 @@ def descriptions(category, width=72, water=False, groups=("system", "extra", "lo
     catalog = f" \n \n{title['title']}\n \n"
     desc = mods["desc"]
     iswater = mods["iswater"]
+    split_molecule = category == "molecule" and water is None
     for group in groups:
-        desced = defaultdict(list)
-        undesc = []
-        for L in mods[group]:
-            if category == "molecule":
-                if L not in iswater:
-                    iswater[L] = False
-                if water and not iswater[L]:
-                    continue
-                if not water and iswater[L]:
-                    continue
-            if L in desc:
-                desced[desc[L]].append(L)
-            else:
-                undesc.append(L)
-        for dd in desced:
-            desced[dd] = ", ".join(desced[dd])
         catalog += f"{title[group]}\n \n"
-        table = ""
-        for dd in sorted(desced, key=lambda x: desced[x]):
-            table += f"{desced[dd]}\t{dd}\n"
-        if table == "":
-            table = "(None)\n"
-        table = [
-            fill(
-                line,
-                width=width,
-                drop_whitespace=False,
-                expand_tabs=True,
-                tabsize=16,
-                subsequent_indent=" " * 16,
-            )
-            for line in table.splitlines()
-        ]
-        table = "\n".join(table) + "\n"
-        undesc = " ".join(undesc)
-        if undesc != "":
-            undesc = "(Undocumented) " + undesc
-        catalog += table + "----\n" + undesc + "\n \n \n"
+        names = list(mods[group])
+        if split_molecule:
+            waters = [L for L in names if _molecule_kind_wanted(L, iswater, True)]
+            guests = [L for L in names if _molecule_kind_wanted(L, iswater, False)]
+            catalog += "Water models\n \n"
+            catalog += _format_plugin_table(waters, desc, width)
+            catalog += "Guest molecules\n \n"
+            catalog += _format_plugin_table(guests, desc, width)
+            continue
+        if category == "molecule":
+            names = [L for L in names if _molecule_kind_wanted(L, iswater, water)]
+        catalog += _format_plugin_table(names, desc, width)
     return catalog
 
 
@@ -270,7 +292,8 @@ def plugin_descriptors(category, water=False, groups=("system", "extra", "local"
     Show the list of available plugins in the category.
 
     Options:
-      water=False   Pick up water molecules only (for molecule plugin).
+      water=False   For molecule plugins: True = water models only,
+                    False = guests only.
     """
     mods = scan(category)
     catalog = dict()
