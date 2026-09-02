@@ -603,6 +603,10 @@ def get_exporter_format_rows(
                         continue
                 if not hasattr(mod, "format_desc"):
                     continue
+                if getattr(mod, "alias_of", None):
+                    # The module it aliases contributes the row, and the row
+                    # already carries every alias in its name column.
+                    continue
                 fd = mod.format_desc
                 aliases = fd.get("aliases", [name])
                 if markdown_name:

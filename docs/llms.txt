@@ -48,7 +48,7 @@ for fmt, path in [("gromacs", "ice.gro"), ("cif", "ice.cif")]:
 - [Output formats](https://genice-dev.github.io/GenIce3/output-formats/): the exporters, their file extensions, and their suboptions.
 - [Water models](https://genice-dev.github.io/GenIce3/water-models/): the built-in models and the `:water_model` exporter suboption.
 - [Guest molecules](https://genice-dev.github.io/GenIce3/guest-molecules/): filling clathrate cages, by cage type with `-g` and by cage index with `-G`.
-- [Clathrate hydrates](https://genice-dev.github.io/GenIce3/clathrate-hydrates/): cage labels, mixed occupancy, and the `cage_survey` exporter.
+- [Clathrate hydrates](https://genice-dev.github.io/GenIce3/clathrate-hydrates/): cage types, mixed occupancy, and the `cage_survey` exporter.
 - [Doping and defects](https://genice-dev.github.io/GenIce3/doping-and-defects/): lattice ions, spot ions, hydronium and hydroxide, and Bjerrum L and D defects.
 
 ## API

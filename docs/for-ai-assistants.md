@@ -37,7 +37,7 @@ Do not guess plugin names; the program will list them.
 genice3 --list unitcell      # every ice / clathrate / zeolite framework, with descriptions
 genice3 --list exporter      # every output format
 genice3 --list molecule      # every water model and guest molecule
-genice3 CS2 -e cage_survey   # the cage labels (A12, A16, ...) that -g expects, as JSON
+genice3 CS2 -e cage_survey   # JSON per cage; specs.cage_type (A12, A16, ...) is what -g expects
 genice3 <name>?              # the suboptions of one unit cell, in CLI, API, and YAML form
 ```
 
@@ -71,7 +71,7 @@ ERROR: Unknown unitcell "iceXVII". Did you mean: iceXXI, XVII, XVI, XII, VII?
 ## Common tasks (quick answers)
 
 - **Generate Ice Ih**: `genice3 1h` or `genice3 1h --rep 2 2 2 -e gromacs > ice.gro`
-- **Clathrate with guests**: `genice3 CS2 -g A16=uathf -G 0=me` (guest by cage type and by cage index; the labels are those of `-e cage_survey`, not bare numbers)
+- **Clathrate with guests**: `genice3 CS2 -g A16=uathf -G 0=me` (guest by cage type and by cage index; the label is the `cage_type` of `-e cage_survey`, not a bare number)
 - **Ions**: `genice3 CS2 -c 0=Na -a 1=Cl` (equal number of cations and anions required)
 - **Water model**: an exporter suboption, not a top-level flag: `genice3 4 -e "gromacs :water_model tip4p"`
 - **Polarized sample**: `genice3 1h --rep 4 4 4 --pol_loop_2 10000 --target_polarization 0 0 40`
@@ -84,7 +84,7 @@ ERROR: Unknown unitcell "iceXVII". Did you mean: iceXXI, XVII, XVI, XII, VII?
 | Message | Cause and remedy |
 |--------|--------|
 | `Unknown unitcell "..."` / `Unknown exporter "..."` | The name is not installed. The message lists near matches; `genice3 --list CATEGORY` gives all of them. Names are case-sensitive (`A15`, not `a15`). |
-| `Cage type 16 is not defined. Available cage types ...` | `-g` takes the cage label, e.g. `A16`, not the number of faces. `genice3 STRUCTURE -e cage_survey` reports the labels. |
+| `Cage type 16 is not defined. Available cage types ...` | `-g` takes the cage label, e.g. `A16`, not the number of faces. `genice3 STRUCTURE -e cage_survey` reports each cage with its `cage_type`. |
 | `Unrecognized options; stopping: ...` | A flag was not consumed by the base parser, the unit cell, or the exporter. Unit-cell suboptions must follow the unit-cell name; exporter suboptions go inside `-e "name :key value"`. |
 | Different structure on every run | Expected: the proton network is random. Pass `--seed N` to reproduce one. |
 

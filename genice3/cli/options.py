@@ -118,7 +118,7 @@ _HELP_GUEST = (
     "Format: CAGE_LABEL=GUEST_SPEC. Examples: A12=me (single), A12=co2*0.6+me*0.4 (probabilistic mix; use quotes in shell: -g \"A12=co2*0.6+me*0.4\"). "
     "Both molecule*occupancy (co2*0.6) and occupancy*molecule (0.6*co2) are accepted. "
     "Multiple cage types with multiple -g options. "
-    "The cage labels of a structure are those reported by -e cage_survey."
+    "The cage labels of a structure are the cage_type values reported by -e cage_survey."
 )
 _HELP_SPOT_GUEST = (
     "Specify guest molecule at a specific cage index. "

@@ -69,8 +69,8 @@ Options:
                            molecule*occupancy (co2*0.6) and
                            occupancy*molecule (0.6*co2) are accepted.
                            Multiple cage types with multiple -g options.
-                           The cage labels of a structure are those
-                           reported by -e cage_survey.
+                           The cage labels of a structure are the
+                           cage_type values reported by -e cage_survey.
   -G, --spot_guest TEXT    Specify guest molecule at a specific cage
                            index. Format: CAGE_INDEX=MOLECULE_NAME, e.g.
                            0=me, 5=4site. Multiple spot guests can be
