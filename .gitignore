@@ -91,3 +91,6 @@ scripts/pdoc-template/frame.html.jinja2
 pyproject.toml
 eyecatches
 examples/api/mdanalysis/rdf.png
+examples/api/stat/PLAN.md
+examples/api/stat/PLAN.pdf
+MEMO.md
