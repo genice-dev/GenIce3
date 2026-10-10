@@ -75,4 +75,4 @@ Multiple spot ions: use several options, e.g. `-A 1=Cl -A 35=Br -C 1=Na -C 35=K`
 With the GenIce3 **Python API** you can embed **protonic defects** (H₃O⁺ and OH⁻) and **Bjerrum topological defects** at specified positions in the lattice. These are not exposed as command-line options yet.
 
 - **H₃O⁺ / OH⁻**: Use `spot_hydroniums` and `spot_hydroxides` (lists of site indices). See [API examples → Topological defects](api-examples/topological_defects.md).
-- **Bjerrum L/D defects**: Place defects on specific edges (hydrogen bonds) by fixing adjacent bond orientations; use helpers such as `edges_closeto()` to find the edge nearest to a coordinate. Example scripts: `examples/api/12_topological_defect.py` and `examples/api/13_topological_defect2.py`.
+- **Bjerrum L/D defects**: Place defects on specific edges (hydrogen bonds) by fixing adjacent bond orientations; use helpers such as `edges_closeto()` to find the edge nearest to a coordinate. Example scripts: `examples/api/topological_defects/12_topological_defect.py` and `examples/api/topological_defects/13_topological_defect2.py`.
