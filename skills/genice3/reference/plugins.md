@@ -1,0 +1,55 @@
+<!-- Generated from docs/plugins.md by scripts/build_skill.py. Do not edit. -->
+
+# Plugins and extensions
+
+## Prepared exporter plugins
+
+The following exporter plugins are prepared for GenIce3 (install separately; compatibility may vary):
+
+
+
+- **genice3-svg** (`pip install genice3-svg`)
+
+
+
+- **genice3-py3dmol** (`pip install genice3-py3dmol`)
+
+
+
+- **genice3-mdanalysis** (`pip install genice3-mdanalysis`)
+
+
+(List is maintained in `EXTRA.yaml` in the repository.)
+
+<!-- ## Other extra plugins on PyPI
+
+For example, to install the RDF plugin and compute radial distribution functions:
+
+```shell
+pip install genice2-rdf
+genice3 TS1 -e _RDF > TS1.rdf.txt
+``` -->
+
+## Custom plugins
+
+- **Unit cells**: Place unit-cell plugins in a `unitcell` directory. The [cif2ice](https://github.com/vitroid/cif2ice) tool can help create lattice modules from CIF files (e.g. from the [IZA structure database](http://www.iza-structure.org/databases)).
+- **Exporters**: Place exporter plugins in an `exporter` directory under the current working directory to add custom output formats.
+- **Molecules**: Place water or guest molecule plugins in a `molecule` directory in the current working directory (see [Clathrate hydrates](clathrate-hydrates.md) for an example guest plugin).
+
+## Plugin source locations
+
+Built-in unit cells and water/guest molecules live in the `genice3` package (`genice3/unitcell/`, `genice3/molecule/`). For developers, the source code for each plugin is in the corresponding module file; the [Unit cells](unitcells.md) and [Water models](water-models.md) / [Guest molecules](guest-molecules.md) tables list the symbol names that correspond to those modules.
+
+## Alternative names
+
+A plugin is found by its module name, so a second name for the same plugin is a second module that imports from the first. Poetry does not install symlinks, so this is how `Ih` and `ice1h` name one unit cell, and `g` and `gromacs` one exporter:
+
+```python
+"""Alias for gromacs (Poetry does not install symlinks)."""
+
+from genice3.exporter.gromacs import dump, dumps, format_desc, parse_options
+
+alias_of = "gromacs"
+```
+
+The `alias_of` line keeps the alias out of the [Output formats](output-formats.md) table, whose name column already lists every alias of a format.

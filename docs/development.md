@@ -69,6 +69,22 @@ poetry run pip install "git+https://github.com/genice-dev/genice-core.git@nx_aga
 
 `temp_README.md` の「New in GenIce3」、`docs/getting-started.md`、`docs/changes-from-genice2.md` は同じ `templates/new-in-genice3.md` を include する。
 
+## エージェント skill（`skills/genice3/`）
+
+AI エージェント向けの skill（[Agent Skills](https://agentskills.io) 形式）は `make skill` で生成する。手で編集しない。
+
+| 生成物 | 元 |
+|--------|----|
+| `skills/genice3/SKILL.md` | `temp_skill/SKILL.md`（Jinja2。`version` は `pyproject.toml`、`manual_url` は `mkdocs.yml` の `site_url`） |
+| `skills/genice3/reference/*.md` | `docs/` の一部（対応表は `scripts/build_skill.py` の `REFERENCES`） |
+
+- 生成時に、コピーしたページ同士のリンクは skill 内の相対リンクに、それ以外のリンクはマニュアルの URL に書き換える。名前・description の長さなど Agent Skills 仕様の検証もここで行う。
+- `make docs` の後に `make skill` を実行する（`make all` はこの順で両方を実行する）。
+- `make skill-check` は、生成物が最新でなければ失敗する。リリース前や CI で使う。
+- `make skill-sync` は `skills/genice3/` を別リポジトリ `$(SKILL_REPO)/skills/genice3/`（既定 `../genice3-skill`）へ rsync する。
+- skill に載せるページを増減するときは `REFERENCES` と `temp_skill/SKILL.md` の参照表の両方を直す。
+- `temp_skill/SKILL.md` と `docs/for-ai-assistants.md` は似たコマンド例を別々に持つ。`make skill-check` は両者の食い違いを見ないので、片方のオプションを変えたらもう片方も確認する。`tests/test_doc_commands.py`（`make test` に含まれる）が両文書の `genice3` コマンド例を実際に実行し、通らない例があれば失敗する。
+
 ## リポジトリ内の配置
 
 - **本番テスト**: `tests/`（`tests/test_option_parser/`, `tests/identity/` など）。`make test` で実行。

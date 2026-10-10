@@ -3,7 +3,7 @@ GITNAME=GenIce
 # Use Poetry venv Python so it works on any machine (override with make PYTHON=...)
 PYTHON ?= poetry run python
 
-all: update-citations  README.md docs api-notebook 
+all: update-citations  README.md docs api-notebook skill
 	echo Hello.
 
 # Raw commit list since GenIce3 fork (see docs/development.md)
@@ -25,6 +25,19 @@ docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/changes-from-genic
 
 %: temp_% scripts/replacer.py genice3/__init__.py genice3/plugin.py citations.yaml pyproject.toml
 	$(PYTHON) -m scripts.replacer < $< > $@
+
+# Agent skill (skills/genice3/): SKILL.md from temp_skill/SKILL.md, reference/ copied from docs/.
+# Run after "make docs" so that the generated docs pages are current.
+# skill-check fails when skills/genice3/ is stale; skill-sync copies it into a separate skill repository.
+SKILL_REPO ?= ../genice3-skill
+.PHONY: skill skill-check skill-sync
+skill:
+	$(PYTHON) scripts/build_skill.py
+skill-check:
+	$(PYTHON) scripts/build_skill.py --check
+skill-sync: skill
+	mkdir -p $(SKILL_REPO)/skills
+	rsync -a --delete skills/genice3/ $(SKILL_REPO)/skills/genice3/
 
 
 # Regenerate API.ipynb from examples/api (READMEs + .py interleaved)
