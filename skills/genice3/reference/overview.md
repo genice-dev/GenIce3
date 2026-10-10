@@ -4,6 +4,13 @@
 
 This page is intended for AI/LLM systems that need to understand and explain GenIce3 to users. It provides a compact, structured summary of the project.
 
+**Coding agents** (Cursor, Claude Code, Codex, GitHub Copilot, Gemini CLI, ...) can install the GenIce3 [agent skill](https://agentskills.io), which carries this page, the step-by-step workflow for running `genice3`, and the reference pages of this manual:
+
+```shell
+npx skills add genice-dev/GenIce3                    # choose the agent interactively
+gh skill install genice-dev/GenIce3 genice3          # GitHub CLI 2.90 or later; add --agent cursor, --agent claude-code, ...
+```
+
 ## What GenIce3 is
 
 - **GenIce3** is a Python program and library that **generates hydrogen-disordered ice structures** (and related systems such as **clathrate hydrates**). It is the **current GenIce**; for new work use this package (`pip install genice3`), not GenIce 1 or GenIce2.

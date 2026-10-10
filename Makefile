@@ -28,16 +28,13 @@ docs: temp_docs/cli.md temp_docs/getting-started.md temp_docs/changes-from-genic
 
 # Agent skill (skills/genice3/): SKILL.md from temp_skill/SKILL.md, reference/ copied from docs/.
 # Run after "make docs" so that the generated docs pages are current.
-# skill-check fails when skills/genice3/ is stale; skill-sync copies it into a separate skill repository.
-SKILL_REPO ?= ../genice3-skill
-.PHONY: skill skill-check skill-sync
+# skill-check fails when skills/genice3/ is stale. Users install it from this repository
+# (npx skills add genice-dev/GenIce3, gh skill install genice-dev/GenIce3 genice3).
+.PHONY: skill skill-check
 skill:
 	$(PYTHON) scripts/build_skill.py
 skill-check:
 	$(PYTHON) scripts/build_skill.py --check
-skill-sync: skill
-	mkdir -p $(SKILL_REPO)/skills
-	rsync -a --delete skills/genice3/ $(SKILL_REPO)/skills/genice3/
 
 
 # Regenerate API.ipynb from examples/api (READMEs + .py interleaved)

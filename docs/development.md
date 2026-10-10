@@ -81,7 +81,7 @@ AI エージェント向けの skill（[Agent Skills](https://agentskills.io) �
 - 生成時に、コピーしたページ同士のリンクは skill 内の相対リンクに、それ以外のリンクはマニュアルの URL に書き換える。名前・description の長さなど Agent Skills 仕様の検証もここで行う。
 - `make docs` の後に `make skill` を実行する（`make all` はこの順で両方を実行する）。
 - `make skill-check` は、生成物が最新でなければ失敗する。リリース前や CI で使う。
-- `make skill-sync` は `skills/genice3/` を別リポジトリ `$(SKILL_REPO)/skills/genice3/`（既定 `../genice3-skill`）へ rsync する。
+- 配布はこのリポジトリから直接行う。`npx skills add genice-dev/GenIce3` と `gh skill install genice-dev/GenIce3 genice3` は、どちらも `skills/*/SKILL.md` を自動で見つける。`gh skill` は `genice3@3.0b8` のようにタグで版を固定できるので、リリースタグを打つ前に `make skill` の結果をコミットしておく。
 - skill に載せるページを増減するときは `REFERENCES` と `temp_skill/SKILL.md` の参照表の両方を直す。
 - `temp_skill/SKILL.md` と `docs/for-ai-assistants.md` は似たコマンド例を別々に持つ。`make skill-check` は両者の食い違いを見ないので、片方のオプションを変えたらもう片方も確認する。`tests/test_doc_commands.py`（`make test` に含まれる）が両文書の `genice3` コマンド例を実際に実行し、通らない例があれば失敗する。
 
