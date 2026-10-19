@@ -29,6 +29,7 @@ format_desc = {
     "aliases": ["plotly"],
     "application": "[Plotly](https://plotly.com/python/)",
     "extension": ".html",
+    "media_type": "text/html",
     "water": "Atomic positions",
     "solute": "Atomic positions",
     "hb": "o",

@@ -15,6 +15,7 @@ format_desc = {
     "aliases": ["lammps", "lmp"],
     "application": "[LAMMPS](https://www.lammps.org/)",
     "extension": ".lammps",
+    "media_type": "text/plain",
     "water": "Atomic positions",
     "solute": "Atomic positions",
     "hb": "none",

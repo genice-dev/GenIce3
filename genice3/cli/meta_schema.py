@@ -85,13 +85,17 @@ def unitcell_options_schema(unitcell_name: str) -> Dict[str, Any]:
 
 def exporter_options_schema(exporter_name: str) -> Dict[str, Any]:
     """指定 exporter の format_desc 等（UI の説明文・サブオプション文字列）。"""
+    from genice3.service.media_type import resolve_media_type
+
     mod = import_plugin_module("exporter", exporter_name)
     fd = getattr(mod, "format_desc", None)
     format_desc: Dict[str, Any] = dict(fd) if isinstance(fd, dict) else {}
     usage = getattr(mod, "desc", None) or {}
     usage_text = str(usage.get("usage", "")) if isinstance(usage, dict) else ""
+    media_type = resolve_media_type(format_desc)
     return {
         "exporter": exporter_name,
         "format_desc": format_desc,
         "usage": usage_text,
+        "media_type": media_type,
     }

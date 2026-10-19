@@ -18,6 +18,7 @@ format_desc = {
     "aliases": ["cif"],
     "application": "CIF",
     "extension": ".cif",
+    "media_type": "chemical/x-cif",
     "water": "Atomic positions",
     "solute": "Atomic positions",
     "hb": "none",

@@ -54,6 +54,7 @@ format_desc = {
     "aliases": ["y", "yaplot"],
     "application": "[Yaplot](https://github.com/vitroid/Yaplot)",
     "extension": ".yap",
+    "media_type": "text/plain",
     "water": "Atomic positions",
     "solute": "Atomic positions",
     "hb": "o",

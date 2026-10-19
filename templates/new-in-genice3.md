@@ -18,7 +18,7 @@
   - Spot ions use `-A` / `-C` (spot anion/cation; **not** the old cage-assessment flag). Group guests and spot-cation cage reporting extended; unit-cell ion suboptions (e.g. `--group`) in YAML.
 - **Exporters and visualization**
   - Built-in and plugin exporters (GROMACS, CIF, LAMMPS, yaplot, plotly, py3Dmol, etc.); format functions and option parsing refined.
-  - Optional **Web API** (`genice3-web`) with client examples and tests.
+  - Optional **Web API** (`genice3[web]` / `genice3-web`) and **stdio MCP** (`genice3[mcp]` / `genice3-mcp`); shared `genice3.service` layer.
 - **Documentation and tooling**
   - Manual on GitHub Pages; plugin tables and citations generated from the repo (`make docs`, `make README.md`).
   - For a narrative of the GenIce3 development period and compatibility notes, see [RELEASE_NOTE.md](https://github.com/genice-dev/GenIce3/blob/main/RELEASE_NOTE.md) in the repository.

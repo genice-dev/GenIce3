@@ -1,5 +1,31 @@
 # WebAPIの設計指針
 
+## 実装ステータス（2026-10-19）
+
+共有層 [`genice3/service/`](genice3/service/) の上に薄い HTTP アダプタ [`genice3/webapi.py`](genice3/webapi.py)。stdio MCP は [`genice3/mcp.py`](genice3/mcp.py)（同じ service）。
+
+| 項目 | 状態 |
+|------|------|
+| YAML / TOML / JSON 入力 | 実装済 |
+| 成功応答 JSON ラップ `{meta, content, media_type}` | 実装済 |
+| seed 省略時 `1` | 実装済（`meta.seed` に明示） |
+| exporter `format_desc.media_type` | 主要 exporter + 推定ヘルパ |
+| エラー 400 / 404 / 422 / 500 | 実装済 |
+| パッケージ | `genice3[web]` / `genice3[mcp]`（本依存から FastAPI 分離） |
+| 公式マニュアルでの大宣伝 | しない（現状維持） |
+
+起動例:
+
+```shell
+pip install "genice3[web]"
+genice3-web                    # または uvicorn genice3.webapi:app
+
+pip install "genice3[mcp]"
+genice3-mcp                    # stdio; Cursor 等が子プロセス起動
+```
+
+---
+
 ## ターゲット
 
 - 人間
@@ -7,87 +33,76 @@
 
 ## エンドポイント
 
-URL は **`/v1/` を付ける**（現状どおり。破壊的変更時に `/v2/` を切れるようにする）。
+URL は **`/v1/` を付ける**（破壊的変更時に `/v2/` を切れるようにする）。
 
 1. generate: 構造を返す。(LAMMPS, Gromacs, GRO/PDB 相当のテキスト、など exporter に準拠)
-   - `POST /v1/generate` … リクエストボディに **設定テキスト**（既定は CLI の `-Y` と同じ YAML。下記「入力」）
-   - `POST /v1/generate/json` … JSON `{"config_yaml": "<YAML全文>"}`（**JSON ボディしか送れないクライアント**向けの任意経路。中身の意味は同じ設定スキーマ）
+   - `POST /v1/generate` … リクエストボディに **設定テキスト**（既定は CLI の `-Y` と同じ YAML。TOML / JSON 可）
+   - `POST /v1/generate/json` … `{"config": {...}}` またはレガシー `{"config_yaml": "<YAML全文>"}`
+   - **成功時は常に** `application/json`: `{"meta": {...}, "content": "<構造>", "media_type": "..."}`
 2. メタ query（一覧・**動的 UI 用スキーマ**）
    - 一覧: `GET /v1/meta/unitcells` / `GET /v1/meta/exporters`
-   - **unitcell 選択後**: `GET /v1/meta/unitcells/{name}/options` … プラグイン `desc["options"]` を正規化した `specific_options`、多くの格子で使える `common_options`（density, shift, anion, cation 等）、CLI/API/YAML の例文 `examples`
-   - **exporter 選択後**: `GET /v1/meta/exporters/{name}/options` … `format_desc`（`suboptions` 文字列含む）と `usage`。あわせて **`dumps()` が出せる書式の宣言**（下記「出力」）
+   - **unitcell 選択後**: `GET /v1/meta/unitcells/{name}/options`
+   - **exporter 選択後**: `GET /v1/meta/exporters/{name}/options` … `format_desc` と **`media_type`**
 
 パラメータは CLI と共通の設定スキーマで渡せば、WebAPI のために別 DSL を用意する必要がない。
 
-**可視化**: 3Dmol.js 等の viewer は **クライアント側**で、`generate` が返した構造ファイル（例: GRO）を `addModel` すればよい。**visualize 用の API は設けない**（構造テキストの返却で足りる）。
+**可視化**: 3Dmol.js 等の viewer は **クライアント側**で、JSON の `content`（例: GRO）を `addModel` すればよい。**visualize 用の API は設けない**。
 
-**範囲の限界**: トポロジカル欠陥（H₃O⁺/OH⁻・Bjerrum）など Python API 専用機能は、この HTTP 面には載せない（CLI/YAML と同じ境界）。
+**範囲の限界**: トポロジカル欠陥（H₃O⁺/OH⁻・Bjerrum）など Python API 専用機能は、この HTTP / MCP 面には載せない（CLI/YAML と同じ境界）。
+
+**MCP**: `genice3-mcp` は service の薄いラップ（stdio）。tools: `list_unitcells` / `list_exporters` / `get_unitcell_options` / `get_exporter_options` / `generate`。HTTP MCP は後回し。
 
 ---
 
-## 方針（詰めた点）
+## 方針（確定）
 
 ### 1. 入力
 
 - **共通の設定スキーマ**（CLI の `-Y` と同一。サブセットにしない）。
-- シリアライズは **YAML を正**とし、**それに互換な TOML / JSON** も受け付ける（同じキー構造。パース後は同じ内部表現に流す）。
-- Content-Type で判別する（例: `application/x-yaml` / `application/toml` / `application/json`）。判別不能なら YAML として試す、などでよい。
+- シリアライズは **YAML を正**とし、**それに互換な TOML / JSON** も受け付ける。
+- Content-Type で判別（`application/x-yaml` / `application/toml` / `application/json`）。判別不能なら YAML（先頭 `{` なら JSON）。
 
 ### 2. 出力
 
-- レスポンスには **メタ情報を付ける**（使った seed、exporter、水モデル、原子数、警告、`genice3` / `genice-core` 版など）。
-  - 載せ方（JSON ラップ vs `X-GenIce-*` ヘッダ vs multipart）は実装時に一つに決める。メタが必須なら JSON ラップが扱いやすい。
-- 各 exporter は **`dumps()` がどういう書式を出せるか宣言する**（例: `text/plain` の GRO、`application/json` の cage_survey、HTML の plotly）。メタ API と OpenAPI の双方からその宣言を読めるようにする。
-- クライアント（viewer 含む）は宣言された MIME / 種別を見て本文を解釈する。
+- **JSON ラップ**（確定）: `meta`（seed, unitcell, exporter, media_type, genice3_version, genice_core_version, warnings）+ `content` + `media_type`。
+- 各 exporter は `format_desc.media_type` を宣言。未設定時は `extension` から推定（`genice3.service.media_type`）。
 
 ### 3. エラー
 
-- **区別する**（少なくとも）:
-  - **400**: 設定のパース失敗・未知キー・バリデーション失敗
-  - **404**: 存在しない unitcell / exporter 名
-  - **422** または **500**: 生成・export 中の失敗（計算不能・内部エラー）。公開時に「クライアント起因 / サーバ起因」をどこで切るかは実装で揃える
-  - **413**: リクエスト過大（外部公開時の上限とセット。下記）
-- **ログの構造化**は Web API 本体とは別枠。裏セッションで準備中 → できたらここに載せる。
+- **400**: パース失敗・未知キー・バリデーション失敗
+- **404**: 存在しない unitcell / exporter 名
+- **422**: 生成・export 中の失敗（`GenerationError`）
+- **500**: 予期しない例外
+- **413**: 外部公開時の上限とセット（今回は未実装）
+- 構造化ログ: Web は JSON 既定（`GENICE_LOG_FORMAT`）。詳細は MEMO のオブザーバビリティ項。
 
 ### 4. seed
 
-- 省略時のデフォルトは **CLI / `GenIce3` と同じ `1`**。OpenAPI・マニュアル・メタ情報に **明示**する（「省略＝毎回ランダム」ではない）。
+- 省略時のデフォルトは **CLI / `GenIce3` と同じ `1`**。`meta.seed` と OpenAPI 説明に明示。
 
 ### WebUI と 3Dmol.js
 
-- ブラウザは `generate` のレスポンス本文（または JSON ラップ時はその中の構造テキスト）をそのまま viewer に渡す。別エンドポイントは不要。
-- **Plotly exporter**（トポロジ用 HTML）を返したい場合は、`generate` の exporter 選択で足りる。
+- ブラウザは `generate` の JSON の `content` を viewer に渡す（[`examples/web_client/ice3_gromacs_3dmol.html`](examples/web_client/ice3_gromacs_3dmol.html)）。
 
-### サブオプション query（実装方針）
+### サブオプション query
 
-- 固有オプションは各 **unitcell / exporter プラグインの `desc` / `format_desc`** が真実の源泉。Web API はそれを JSON に載せ替えるだけにし、**CLI と矛盾しない**。
-- `common_options` は CLI が unitcell 未実装時に消費する **共通キー**（`get_common_unitcell_option_names`）と揃え、UI では「よくある追加欄」として出す。
-- 未知のプラグイン名は **404**（ImportError）、不正な記号は **400**（ValueError）。
+- 固有オプションは各プラグインの `desc` / `format_desc` が真実の源泉。
+- 未知のプラグイン名は **404**、不正な記号は **400**。
 
 ### 運用
 
-- **上限**（最大原子数・最大実行秒・同時リクエスト数など）は、**外部向け HTTP サービスとして公開するときに定める**。手元・開発用途では必須にしない。
-- 大きい `--rep` を同期のままにするか、ジョブ ID＋ポーリングにするかも、公開形態とセットで決める。
-- **`/v1/` は付ける**（望ましい・採用）。
+- **上限**は外部向け HTTP サービスとして公開するときに定める。
+- **`/v1/` は付ける**（採用）。
 
 ---
 
 ## 「設定を YAML（等）一本にする」とは何か
 
-以前ここに書いてあった「注意」は分かりにくかったので、言い直す。
+「設定 DSL を HTTP 用に新しく作らない」という意味。CLI の `-Y`・MCP・Web が同じ設定オブジェクトを共有する。
 
-ここで言う「一本」は **アプリケーションの設定言語を HTTP 用に新しく作らない**、という意味である。CLI の `-Y`・将来の MCP・Web が、同じ設定オブジェクトを共有する。
+これと **別物**:
 
-これと **別物**なのが次の二つで、混同しやすい。
+1. **OpenAPI** … HTTP の地図（設定の中身表ではない）
+2. **設定ボディの検証** … CLI と同じ読み込み（`genice3.service` → `cli.runner`）に流す
 
-1. **OpenAPI（`/openapi.json`）**  
-   「どの URL に、何を POST し、何が返るか」という **HTTP の地図**。FastAPI が生成する。設定ファイルの中身（unitcell 名や `--rep`）の詳細表ではない。  
-   → 設定を YAML にしても OpenAPI は消えないし、置き換えにもならない。
-
-2. **設定ボディの検証**  
-   受け取った YAML/TOML/JSON を、GenIce3 既存の設定読み（CLI と同じパス）に流せば、**追加の検証ロジックを Web 専用に書かなくてよい**。  
-   必要なら、その結果から JSON Schema をメタ API やドキュメント用に出す、という順でよい（「先に JSON Schema を別実装する」は必須ではない）。
-
-ブラウザから別オリジンで POST する場合は **CORS** が要る。CSRF は Cookie 認証を付けない限り、多くの公開 API では問題にならない（トークン認証にするならそのとき考える）。
-
-**まとめ**: 設定は YAML（互換 TOML/JSON）一本。HTTP の説明は OpenAPI が担う。検証は CLI と同じ読み込みに寄せる。
+**まとめ**: 設定は YAML（互換 TOML/JSON）一本。HTTP の説明は OpenAPI。検証と生成は service 層。

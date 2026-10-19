@@ -21,6 +21,7 @@ format_desc = {
     "aliases": ["py", "python"],
     "application": "Python unitcell plugin",
     "extension": ".py",
+    "media_type": "text/x-python",
     "water": "none",
     "solute": "none",
     "hb": "graph",

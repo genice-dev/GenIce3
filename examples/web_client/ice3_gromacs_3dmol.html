@@ -46,7 +46,7 @@
   -->
   <h1>Ice III（単位胞 <code>3</code>）→ GenIce3 API → GROMACS → 3Dmol.js</h1>
   <p>
-    <code>POST /v1/generate</code> に YAML を送り、返ってきた <code>.gro</code> 相当のテキストを 3Dmol.js に渡します。
+    <code>POST /v1/generate</code> に YAML を送り、返却 JSON の <code>content</code>（<code>.gro</code> 相当）を 3Dmol.js に渡します。
   </p>
   <label>API ベース URL
     <input type="url" id="apiBase" value="http://127.0.0.1:8765" />
@@ -96,7 +96,7 @@
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        headers: { "Content-Type": "application/x-yaml; charset=utf-8" },
         body: ICE3_YAML,
       });
       const text = await res.text();
@@ -104,7 +104,18 @@
         showError("HTTP " + res.status + "\n\n" + text);
         return;
       }
-      gro = text;
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        showError("Expected JSON wrap {meta, content, media_type}, got:\n" + text.slice(0, 500));
+        return;
+      }
+      if (typeof data.content !== "string") {
+        showError("JSON response missing string field `content`:\n" + text.slice(0, 500));
+        return;
+      }
+      gro = data.content;
     } catch (e) {
       showError(String(e) + "\n\nAPI が起動しているか、上記 URL が正しいか確認してください。");
       return;

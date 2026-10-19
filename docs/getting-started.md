@@ -33,7 +33,7 @@ This is the current GenIce. Manual: [genice-dev.github.io/GenIce3](https://genic
   - Spot ions use `-A` / `-C` (spot anion/cation; **not** the old cage-assessment flag). Group guests and spot-cation cage reporting extended; unit-cell ion suboptions (e.g. `--group`) in YAML.
 - **Exporters and visualization**
   - Built-in and plugin exporters (GROMACS, CIF, LAMMPS, yaplot, plotly, py3Dmol, etc.); format functions and option parsing refined.
-  - Optional **Web API** (`genice3-web`) with client examples and tests.
+  - Optional **Web API** (`genice3[web]` / `genice3-web`) and **stdio MCP** (`genice3[mcp]` / `genice3-mcp`); shared `genice3.service` layer.
 - **Documentation and tooling**
   - Manual on GitHub Pages; plugin tables and citations generated from the repo (`make docs`, `make README.md`).
   - For a narrative of the GenIce3 development period and compatibility notes, see [RELEASE_NOTE.md](https://github.com/genice-dev/GenIce3/blob/main/RELEASE_NOTE.md) in the repository.
@@ -62,8 +62,7 @@ GenIce3 works well in interactive environments.
 - jinja2 >=3.1.4
 - cif2ice (>=0.4.1,<0.5.0)
 - genice-core (>=1.6.0,<2.0.0)
-- fastapi (>=0.135.3,<0.136.0)
-- uvicorn (>=0.44.0,<0.45.0)
+- Optional: `genice3[web]` (fastapi, uvicorn), `genice3[mcp]` (mcp)
 
 
 ## Installation

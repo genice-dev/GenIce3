@@ -18,6 +18,7 @@ format_desc = {
     "aliases": ["cage_survey"],
     "application": "JSON",
     "extension": ".json",
+    "media_type": "application/json",
     "water": "none",
     "solute": "none",
     "hb": "none",

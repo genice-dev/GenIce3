@@ -1,11 +1,12 @@
 """
-GenIce3 の薄い HTTP 層（FastAPI）。
+GenIce3 の薄い HTTP 層（FastAPI）。共有ロジックは ``genice3.service``。
 
 依存: ``pip install "genice3[web]"`` 後に ``genice3-web`` または
 ``uvicorn genice3.webapi:app`` で起動。
 
-入力は CLI の ``-Y`` と同系統の YAML 全文（unitcell / genice3 / exporter を含む）。
-出力は exporter 由来のプレーンテキスト（既定 ``text/plain; charset=utf-8``）。
+入力は CLI の ``-Y`` と同系統の設定（YAML 正、互換 TOML / JSON）。
+成功時の応答は常に JSON ラップ:
+``{"meta": {...}, "content": "...", "media_type": "..."}``。
 """
 
 from __future__ import annotations
@@ -13,16 +14,11 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from io import StringIO
 from logging import ERROR, INFO, getLogger
-from typing import Any
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from genice3.cli.engine import run_parsed_result
-from genice3.cli.meta_schema import exporter_options_schema, unitcell_options_schema
-from genice3.cli.options import extract_genice_args, validate_parsed_options
-from genice3.cli.runner import parsed_result_from_yaml_text, validate_result
 from genice3.logging_config import (
     bind_context,
     log_event,
@@ -30,11 +26,19 @@ from genice3.logging_config import (
     resolve_log_format,
     setup_logging,
 )
-from genice3.plugin import get_exporter_format_rows, scan
+from genice3.service import (
+    ServiceError,
+    generate,
+    get_exporter_options,
+    get_unitcell_options,
+    list_exporters,
+    list_unitcells,
+)
 
 try:
-    from fastapi import FastAPI, HTTPException, Request, Response
+    from fastapi import FastAPI, HTTPException, Request
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
 except ModuleNotFoundError as e:  # pragma: no cover
     raise ModuleNotFoundError(
         "The web API needs FastAPI. Install it with: pip install 'genice3[web]'"
@@ -47,38 +51,42 @@ _GENERATE_YAML_EXAMPLE = (
     "unitcell: 1h\n"
     "genice3:\n"
     "  rep: [1, 1, 1]\n"
+    "  seed: 1\n"
     "exporter: gromacs\n"
 )
 
 _OPENAPI_DESCRIPTION = """
 A thin HTTP wrapper around GenIce3, which builds hydrogen-disordered ice and
-clathrate hydrate structures. The configuration is the **same YAML that the
-`genice3` command line reads with `-Y`**.
+clathrate hydrate structures. The configuration is the **same schema as the
+`genice3` CLI `-Y` file** (YAML by default; TOML and JSON with the same keys
+are also accepted).
 
 ## Typical flow (for agents)
 
-1. **`GET /v1/meta/unitcells`** for the names of the available unit cells.
-2. **`GET /v1/meta/unitcells/{name}/options`** for the options of the chosen one:
-   `specific_options` are the options of that plugin, `common_options` are the keys
-   that most lattices accept. Build a form from these.
-3. **`GET /v1/meta/exporters`** and **`GET /v1/meta/exporters/{name}/options`** for the
-   output formats and their suboptions (`format_desc.suboptions`).
-4. **`POST /v1/generate`** with the **whole YAML as the request body** (UTF-8). The body
-   has the same shape as the `-Y` configuration file, with `unitcell`, `genice3`, and
-   `exporter` at the top level. A successful response is **`text/plain`**: the output of
-   the chosen exporter, for example the text of a GROMACS `.gro` file.
-5. If your client can send **only JSON**, post
-   `{"config_yaml": "<the same YAML string>"}` to **`POST /v1/generate/json`** instead;
-   it does the same thing.
+1. **`GET /v1/meta/unitcells`** for available unit cells.
+2. **`GET /v1/meta/unitcells/{name}/options`** for plugin and common options.
+3. **`GET /v1/meta/exporters`** and **`GET /v1/meta/exporters/{name}/options`**
+   (includes `media_type` for the exporter's `dumps()` output).
+4. **`POST /v1/generate`** with the configuration as the request body.
+   On success the body is **JSON**:
+   `{"meta": {...}, "content": "<structure text>", "media_type": "..."}`.
+   `meta.seed` defaults to **1** when omitted (same as the CLI / `GenIce3`).
+5. **`POST /v1/generate/json`** accepts a JSON object: either the config
+   mapping directly, `{"config": {...}}`, or legacy `{"config_yaml": "<yaml>"}`.
 
 ## Errors
 
-- **400**: the YAML could not be read, a required key is missing, an option was not
-  recognized, or validation failed. `detail` is JSON, either a string or an object.
-- **404**: a meta endpoint was given a plugin name that does not exist.
-- **500**: the construction or the export failed. `detail` carries the message.
+- **400**: parse / validation failure.
+- **404**: unknown unitcell or exporter name (meta or generate).
+- **422**: generation / export failure.
+- **500**: unexpected server error.
 
-## Background documents (for humans and for LLMs alike)
+## Limits
+
+Topological defects (H₃O⁺/OH⁻, Bjerrum) are **API-only** and not exposed here
+(same boundary as the CLI / YAML).
+
+## Background documents
 
 - Project summary: **https://genice-dev.github.io/GenIce3/for-ai-assistants/**
 - Full manual: **https://genice-dev.github.io/GenIce3**
@@ -87,11 +95,11 @@ clathrate hydrate structures. The configuration is the **same YAML that the
 _OPENAPI_TAGS = [
     {
         "name": "generate",
-        "description": "Build a structure from a configuration in YAML. The main entry is `POST /v1/generate`, which takes the raw body.",
+        "description": "Build a structure from a configuration. Success responses are JSON-wrapped.",
     },
     {
         "name": "meta",
-        "description": "The catalogue of unit cells and exporters, and their option schemas, for dynamic user interfaces and for agents.",
+        "description": "Catalogue of unit cells and exporters, and their option schemas.",
     },
     {
         "name": "health",
@@ -101,15 +109,36 @@ _OPENAPI_TAGS = [
 
 
 class GenerateJsonBody(BaseModel):
-    """Carries the whole YAML as `application/json`; the content is that of `/v1/generate`."""
+    """JSON 経路: 設定オブジェクト、またはレガシー ``config_yaml`` 文字列。"""
 
-    config_yaml: str = Field(
-        ...,
-        description="The whole YAML configuration, as one string, in the form the CLI reads with `-Y`.",
-        examples=[
-            "unitcell: 1h\ngenice3:\n  rep: [1, 1, 1]\nexporter: gromacs\n"
-        ],
+    config: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Configuration mapping (same keys as the YAML `-Y` file).",
     )
+    config_yaml: Optional[str] = Field(
+        default=None,
+        description="Legacy: whole YAML configuration as one string.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_bare_config(cls, data: Any) -> Any:
+        # トップレベルがそのまま設定（unitcell 等）の場合
+        if isinstance(data, dict) and "config" not in data and "config_yaml" not in data:
+            if "unitcell" in data or "genice3" in data or "exporter" in data:
+                return {"config": data}
+        return data
+
+    @model_validator(mode="after")
+    def _one_of(self) -> GenerateJsonBody:
+        if self.config is None and self.config_yaml is None:
+            raise ValueError("Provide `config` (object) or `config_yaml` (string)")
+        return self
+
+
+def _http_for_service_error(exc: ServiceError) -> HTTPException:
+    detail: Any = exc.detail
+    return HTTPException(status_code=exc.http_status, detail=detail)
 
 
 def create_app() -> FastAPI:
@@ -150,140 +179,63 @@ def create_app() -> FastAPI:
         "/v1/meta/unitcells",
         tags=["meta"],
         summary="The catalogue of unit cell plugins",
-        description=(
-            "`unitcells.system`, `.extra`, and `.local` are arrays of plugin names; "
-            "`descriptions` maps a name to its one-line description. "
-            "Pass a name from here to `GET .../unitcells/{name}/options`."
-        ),
     )
     def meta_unitcells() -> dict[str, Any]:
-        data = scan("unitcell")
-        return {
-            "unitcells": {
-                "system": data.get("system", []),
-                "extra": data.get("extra", []),
-                "local": data.get("local", []),
-            },
-            "descriptions": data.get("desc", {}),
-        }
+        return list_unitcells()
 
     @app.get(
         "/v1/meta/exporters",
         tags=["meta"],
         summary="The catalogue of exporter plugins, as table rows",
-        description=(
-            "`exporters` is an array of rows. `name` is the plain plugin name to use in "
-            "this API, `aliases` lists its other names, and `extension` and `suboptions` "
-            "describe the file it writes."
-        ),
     )
     def meta_exporters() -> dict[str, Any]:
-        rows = get_exporter_format_rows(markdown_name=False)
-        return {"exporters": rows}
+        return list_exporters()
 
     @app.get(
         "/v1/meta/unitcells/{name}/options",
         tags=["meta"],
         summary="The option schema of one unit cell",
-        description=(
-            "`specific_options` comes from the plugin's own `desc.options`, each with "
-            "`name`, `help`, `required`, and `example`. "
-            "`common_options` are the keys that most lattices accept (density, shift, "
-            "anion, cation, and so on), with hints for a user interface. "
-            "`examples` gives the same request written for the CLI, the Python API, and YAML."
-        ),
     )
     def meta_unitcell_options(name: str) -> dict[str, Any]:
         try:
-            return unitcell_options_schema(name)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        except ImportError as e:
-            raise HTTPException(status_code=404, detail=str(e)) from e
+            return get_unitcell_options(name)
+        except ServiceError as e:
+            raise _http_for_service_error(e) from e
 
     @app.get(
         "/v1/meta/exporters/{name}/options",
         tags=["meta"],
-        summary="The metadata of one exporter",
-        description="Its `format_desc`, including the `suboptions` string, and its `usage` text.",
+        summary="The metadata of one exporter (includes media_type)",
     )
     def meta_exporter_options(name: str) -> dict[str, Any]:
         try:
-            return exporter_options_schema(name)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        except ImportError as e:
-            raise HTTPException(status_code=404, detail=str(e)) from e
+            return get_exporter_options(name)
+        except ServiceError as e:
+            raise _http_for_service_error(e) from e
 
-    def _run_generate_from_yaml(body: str) -> Response:
+    def _run_generate(
+        source: Union[str, dict[str, Any]],
+        *,
+        content_type: Optional[str],
+        command_line: str,
+    ) -> JSONResponse:
         t0 = time.time()
         try:
-            result = parsed_result_from_yaml_text(body)
-        except ValueError as e:
+            result = generate(
+                source,
+                content_type=content_type,
+                command_line=command_line,
+            )
+        except ServiceError as e:
             log_event(
                 logger,
                 ERROR,
                 "run.error",
-                str(e),
+                e.message,
                 error_type=type(e).__name__,
-                error=str(e),
+                error=str(e.detail),
             )
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        ok, errors = validate_result(result)
-        if not ok:
-            log_event(
-                logger,
-                ERROR,
-                "run.error",
-                "validation failed",
-                error_type="ValidationError",
-                error=errors,
-            )
-            raise HTTPException(status_code=400, detail={"errors": errors})
-
-        uc_u = result.get("unitcell", {}).get("unprocessed") or {}
-        ex_u = result.get("exporter", {}).get("unprocessed") or {}
-        if uc_u or ex_u:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "message": "Some options were not recognized",
-                    "unitcell_unprocessed": list(uc_u.keys()),
-                    "exporter_unprocessed": list(ex_u.keys()),
-                },
-            )
-
-        base = result["base_options"]
-        try:
-            validate_parsed_options(base)
-        except ValueError as e:
-            log_event(
-                logger,
-                ERROR,
-                "run.error",
-                str(e),
-                error_type=type(e).__name__,
-                error=str(e),
-            )
-            raise HTTPException(status_code=400, detail=str(e)) from e
-
-        unitcell_name = result["unitcell"]["name"]
-        exporter_name = result["exporter"]["name"] or "gromacs"
-        seed = extract_genice_args(base).get("seed")
-        bind_context(unitcell=unitcell_name, exporter=exporter_name, seed=seed)
-        log_event(
-            logger,
-            INFO,
-            "run.start",
-            "Starting generation",
-            unitcell=unitcell_name,
-            exporter=exporter_name,
-            seed=seed,
-        )
-
-        buf = StringIO()
-        try:
-            run_parsed_result(result, buf, command_line="POST /v1/generate")
+            raise _http_for_service_error(e) from e
         except Exception as e:
             log_event(
                 logger,
@@ -295,6 +247,12 @@ def create_app() -> FastAPI:
             )
             raise HTTPException(status_code=500, detail=str(e)) from e
 
+        meta = result["meta"]
+        bind_context(
+            unitcell=meta.get("unitcell"),
+            exporter=meta.get("exporter"),
+            seed=meta.get("seed"),
+        )
         log_event(
             logger,
             INFO,
@@ -302,29 +260,27 @@ def create_app() -> FastAPI:
             "Generation finished",
             duration_ms=round((time.time() - t0) * 1000.0, 3),
             ok=True,
+            unitcell=meta.get("unitcell"),
+            exporter=meta.get("exporter"),
+            seed=meta.get("seed"),
         )
-        return Response(
-            content=buf.getvalue(),
-            media_type="text/plain; charset=utf-8",
-        )
+        return JSONResponse(content=result)
 
     @app.post(
         "/v1/generate",
         tags=["generate"],
-        summary="Build a structure from a raw YAML body",
+        summary="Build a structure from a raw config body (YAML / TOML / JSON)",
         description=(
-            "The **whole request body** is the YAML configuration, in UTF-8. Any "
-            "`Content-Type` is accepted, but `text/plain` or `application/x-yaml` is "
-            "what the OpenAPI schema declares. "
-            "On success the status is **200** and the body is **`text/plain`**: the output "
-            "of the exporter. "
-            "Confirming the unit cell name, its options, and the exporter through "
-            "`GET /v1/meta/...` beforehand avoids most 400s."
+            "The **whole request body** is the configuration in UTF-8. "
+            "`Content-Type` selects YAML / TOML / JSON (default: YAML). "
+            "On success the status is **200** and the body is **JSON** with "
+            "`meta`, `content`, and `media_type`. "
+            "Omitted `seed` defaults to **1**."
         ),
         openapi_extra={
             "requestBody": {
                 "required": True,
-                "description": "The whole YAML configuration in UTF-8, in the form the CLI reads with `-Y`.",
+                "description": "Configuration text (CLI `-Y` schema).",
                 "content": {
                     "text/plain": {
                         "schema": {"type": "string"},
@@ -334,29 +290,44 @@ def create_app() -> FastAPI:
                         "schema": {"type": "string"},
                         "example": _GENERATE_YAML_EXAMPLE,
                     },
+                    "application/toml": {
+                        "schema": {"type": "string"},
+                    },
+                    "application/json": {
+                        "schema": {"type": "object"},
+                    },
                 },
             },
         },
     )
-    async def generate(request: Request) -> Response:
+    async def generate_endpoint(request: Request) -> JSONResponse:
         try:
             raw = (await request.body()).decode("utf-8")
         except UnicodeDecodeError as e:
             raise HTTPException(status_code=400, detail="body must be UTF-8") from e
-        return _run_generate_from_yaml(raw)
+        return _run_generate(
+            raw,
+            content_type=request.headers.get("content-type"),
+            command_line="POST /v1/generate",
+        )
 
     @app.post(
         "/v1/generate/json",
         tags=["generate"],
-        summary="Build a structure from a YAML string wrapped in JSON",
-        description=(
-            "The same work as `POST /v1/generate`, for clients that can send **only JSON**. "
-            "Put in the field `config_yaml` the same YAML string that would be the body of "
-            "`/v1/generate`."
-        ),
+        summary="Build a structure from a JSON config object (or legacy config_yaml)",
     )
-    async def generate_json(payload: GenerateJsonBody) -> Response:
-        return _run_generate_from_yaml(payload.config_yaml)
+    async def generate_json(payload: GenerateJsonBody) -> JSONResponse:
+        if payload.config is not None:
+            source: Union[str, dict[str, Any]] = payload.config
+            ctype = "application/json"
+        else:
+            source = payload.config_yaml or ""
+            ctype = "application/x-yaml"
+        return _run_generate(
+            source,
+            content_type=ctype,
+            command_line="POST /v1/generate/json",
+        )
 
     return app
 

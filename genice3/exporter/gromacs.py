@@ -14,6 +14,7 @@ format_desc = {
     "aliases": ["g", "gromacs"],
     "application": "[Gromacs](http://www.gromacs.org)",
     "extension": ".gro",
+    "media_type": "text/plain",
     "water": "Atomic positions",
     "solute": "Atomic positions",
     "hb": "none",
