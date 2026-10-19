@@ -40,6 +40,8 @@ The [API examples](api-examples/index.md) show how to use GenIce3 from Python wi
 
 A concise, structured overview of GenIce3 for AI/LLM systems that need to explain the project or to drive it themselves: [For AI assistants](for-ai-assistants.md). A machine-readable index of this site, in the [llms.txt](https://llmstxt.org) convention, is at [/llms.txt](llms.txt).
 
+**Try the agent skill now:** [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) · `npx skills add genice-dev/GenIce3`
+
 ---
 
 ## Links
@@ -47,3 +49,4 @@ A concise, structured overview of GenIce3 for AI/LLM systems that need to explai
 - [Repository](https://github.com/genice-dev/GenIce3)
 - [Bug tracker](https://github.com/genice-dev/GenIce3/issues)
 - [Try on Colaboratory](https://colab.research.google.com/github/genice-dev/GenIce3/blob/main/API.ipynb)
+- [Try the agent skill (skills.sh)](https://skills.sh/genice-dev/GenIce3)

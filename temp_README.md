@@ -14,7 +14,8 @@ genice3 1h > ice.gro
 Python 3.11 or later. Output obeys the ice rules and a chosen net polarization (default zero); it is not energy-minimized. Relax with the intended force field before a production run.
 
 **Manual:** [genice-dev.github.io/GenIce3](https://genice-dev.github.io/GenIce3)  
-**For AI assistants:** [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt)
+**For AI assistants:** [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt)  
+**Agent skill (try it):** [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) · `npx skills add genice-dev/GenIce3`
 
 Version {{ version }}
 
@@ -25,6 +26,12 @@ Version {{ version }}
 ## Demo
 
 [Try GenIce3 on Google Colaboratory](https://colab.research.google.com/github/genice-dev/GenIce3/blob/main/API.ipynb).
+
+Coding agents (Cursor, Claude Code, Codex, …): open [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) or install in one step:
+
+```shell
+npx skills add genice-dev/GenIce3
+```
 
 ## Requirements
 

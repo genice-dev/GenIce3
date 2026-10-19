@@ -9,7 +9,7 @@ pip install genice3
 genice3 1h > ice.gro
 ```
 
-This is the current GenIce. Manual: [genice-dev.github.io/GenIce3](https://genice-dev.github.io/GenIce3). For AI assistants: [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt).
+This is the current GenIce. Manual: [genice-dev.github.io/GenIce3](https://genice-dev.github.io/GenIce3). For AI assistants: [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt). Agent skill (try it): [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) · `npx skills add genice-dev/GenIce3`.
 
 ## New in GenIce3
 

@@ -4,7 +4,9 @@
 
 This page is intended for AI/LLM systems that need to understand and explain GenIce3 to users. It provides a compact, structured summary of the project.
 
-**Coding agents** (Cursor, Claude Code, Codex, GitHub Copilot, Gemini CLI, ...) can install the GenIce3 [agent skill](https://agentskills.io), which carries this page, the step-by-step workflow for running `genice3`, and the reference pages of this manual:
+**Coding agents** (Cursor, Claude Code, Codex, GitHub Copilot, Gemini CLI, ...) can install the GenIce3 [agent skill](https://agentskills.io), which carries this page, the step-by-step workflow for running `genice3`, and the reference pages of this manual.
+
+**Try it now:** open [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) (install command and skill preview), or run:
 
 ```shell
 npx skills add genice-dev/GenIce3                    # choose the agent interactively
