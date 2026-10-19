@@ -21,6 +21,7 @@ from genice3.cli.option_def import (
 )
 from genice3.cli.validator import (
     validate_seed,
+    validate_log_format,
     validate_replication_factors,
     validate_depol_loop,
     validate_pol_loop,
@@ -46,6 +47,10 @@ _HELP_LIST = (
     "Use this to find the UNITCELL name, an exporter, or a molecule plugin."
 )
 _HELP_DEBUG = "Enable debug mode."
+_HELP_LOG_FORMAT = (
+    "Log format on stderr: text (default) or json (NDJSON). "
+    "Overrides the GENICE_LOG_FORMAT environment variable."
+)
 _HELP_POL_LOOP_1 = (
     "Max iterations for polarization convergence (stage 1). "
     "Satisfies ice rules while reducing polarization; very cheap but limited adjustment range. "
@@ -138,6 +143,15 @@ GENICE3_OPTION_DEFS: Tuple[OptionDef, ...] = (
         level="base",
         parse_type=OPTION_TYPE_FLAG,
         help_text=_HELP_DEBUG,
+    ),
+    OptionDef(
+        "log_format",
+        level="base",
+        parse_type=OPTION_TYPE_STRING,
+        metavar="text|json",
+        help_text=_HELP_LOG_FORMAT,
+        help_format="--log-format, --log_format {text|json}",
+        parse_validator=validate_log_format,
     ),
     OptionDef(
         "seed",
@@ -284,6 +298,7 @@ BASE_HELP_ORDER: Tuple[str, ...] = (
     "version",
     "list",
     "debug",
+    "log_format",
     "pol_loop_1",
     "pol_loop_2",
     "target_polarization",
@@ -657,6 +672,11 @@ def parse_base_options(options: Dict[str, Any]) -> Dict[str, Any]:
             or (isinstance(v, str) and v.lower() in ("true", "1", "yes", "on"))
         )
         unprocessed.pop("debug", None)
+    if "log_format" in options:
+        processed["log_format"] = str(
+            _normalize_single(options["log_format"])
+        ).strip().lower()
+        unprocessed.pop("log_format", None)
 
     for key in ("spot_cation", "spot_anion"):
         if key in options:

@@ -94,3 +94,4 @@ examples/api/mdanalysis/rdf.png
 examples/api/stat/PLAN.md
 examples/api/stat/PLAN.pdf
 MEMO.md
+*.ndjson

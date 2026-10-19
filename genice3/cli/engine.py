@@ -49,9 +49,23 @@ def run_parsed_result(
 
     exporter_processed["command_line"] = command_line if command_line is not None else ""
 
-    logger.info("Executing exporter: %s", exporter_name)
+    logger.info(
+        "Executing exporter: %s",
+        exporter_name,
+        extra={"event": "exporter.execute", "exporter": exporter_name},
+    )
     t0 = time.time()
     try:
         safe_import("exporter", exporter_name).dump(genice, file, **exporter_processed)
     finally:
-        logger.info("  %.4f sec for exporter %s", time.time() - t0, exporter_name)
+        duration_ms = round((time.time() - t0) * 1000.0, 3)
+        logger.info(
+            "  %.4f sec for exporter %s",
+            time.time() - t0,
+            exporter_name,
+            extra={
+                "event": "exporter.execute",
+                "exporter": exporter_name,
+                "duration_ms": duration_ms,
+            },
+        )

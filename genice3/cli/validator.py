@@ -29,6 +29,15 @@ def validate_seed(value: Any) -> None:
         raise ValueError(f"--seed must be an integer, got: {value}") from e
 
 
+def validate_log_format(value: Any) -> None:
+    """log_format は text または json であること"""
+    if value is None:
+        return
+    normalized = str(value).strip().lower()
+    if normalized not in ("text", "json"):
+        raise ValueError(f"--log-format must be 'text' or 'json', got: {value}")
+
+
 def validate_replication_factors(value: Any) -> None:
     """replication_factors は 1〜3 個の正の整数であること"""
     if value is None:

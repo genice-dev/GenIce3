@@ -83,7 +83,7 @@ with open("ice.gro", "w") as f:
 
 ## 5. Check the result and report it
 
-- On a nonzero exit status, read the `ERROR:` line on stderr; it says what to change.
+- On a nonzero exit status, read the `ERROR:` line on stderr; it says what to change. With `--log-format json` (or `GENICE_LOG_FORMAT=json`), look for an NDJSON line with `"event":"run.error"` instead.
 - Confirm the output file is not empty. In a `.gro` file the second line is the number of atoms.
 - Tell the user which seed was used, and that the structure obeys the ice rules but is **not energy-minimized**: it must be relaxed with the intended force field before a production run.
 - If the structure will be used in a publication, point the user to [reference/citation.md](reference/citation.md).

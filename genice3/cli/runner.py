@@ -32,6 +32,7 @@ except ImportError:
 _BASE_KEYS = frozenset(
     {
         "debug",
+        "log_format",
         "seed",
         "rep",
         "replication_factors",
@@ -283,6 +284,15 @@ def parse_argv(argv: List[str]) -> Dict[str, Any]:
             for short, long_name in get_short_to_long_option_names().items():
                 if short in parsed:
                     parsed.setdefault(long_name, parsed.pop(short))
+            # --log-format → log_format など、ハイフン区切りをアンダースコア名に寄せる
+            for key in list(parsed.keys()):
+                if "-" not in key:
+                    continue
+                underscored = key.replace("-", "_")
+                if underscored in parsed:
+                    parsed.pop(key)
+                else:
+                    parsed[underscored] = parsed.pop(key)
             validate_required_option_arguments(parsed)
         except ValueError as e:
             raise RuntimeError(f"Failed to parse the options: {e}") from e

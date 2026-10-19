@@ -1,8 +1,11 @@
-from logging import getLogger
+from logging import ERROR, INFO, getLogger
 import sys
+import time
+import uuid
 from importlib.metadata import version, PackageNotFoundError
 
 from genice3 import ConfigurationError, _setup_logging
+from genice3.logging_config import bind_context, log_event, reset_context
 from genice3.cli.runner import parse_argv, validate_result
 from genice3.plugin import PluginNotFoundError
 from genice3.cli.engine import run_parsed_result
@@ -152,82 +155,157 @@ def run(argv: list[str]) -> int:
     if "--list" in argv:
         return print_plugin_list(argv)
 
+    run_id = uuid.uuid4().hex[:8]
+    ctx_token = bind_context(run_id=run_id)
     _setup_logging(debug=False)
     logger = getLogger()
+    t0 = time.time()
 
     try:
-        result = parse_argv(argv)
-    except (PluginNotFoundError, ConfigurationError) as e:
-        # These name the valid alternatives; a traceback would only bury them.
-        logger.error(str(e))
-        return 1
-    except Exception as e:
-        logger.error(f"Failed to parse the command line: {e}")
-        import traceback
+        try:
+            result = parse_argv(argv)
+        except (PluginNotFoundError, ConfigurationError) as e:
+            # These name the valid alternatives; a traceback would only bury them.
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                str(e),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
+            return 1
+        except Exception as e:
+            logger.error(f"Failed to parse the command line: {e}")
+            import traceback
 
-        traceback.print_exc()
-        return 1
+            traceback.print_exc()
+            return 1
 
-    is_valid, errors = validate_result(result)
-    if not is_valid:
-        for error in errors:
-            logger.error(error)
-        return 1
+        is_valid, errors = validate_result(result)
+        if not is_valid:
+            for error in errors:
+                log_event(
+                    logger,
+                    ERROR,
+                    "run.error",
+                    error,
+                    error_type="ValidationError",
+                    error=error,
+                )
+            return 1
 
-    uc_unprocessed = result.get("unitcell", {}).get("unprocessed") or {}
-    ex_unprocessed = result.get("exporter", {}).get("unprocessed") or {}
-    if uc_unprocessed or ex_unprocessed:
-        parts = []
-        if uc_unprocessed:
-            parts.append(f"unitcell: {list(uc_unprocessed.keys())}")
-        if ex_unprocessed:
-            parts.append(f"exporter: {list(ex_unprocessed.keys())}")
-        logger.error("Unrecognized options; stopping: %s", ", ".join(parts))
-        return 1
+        uc_unprocessed = result.get("unitcell", {}).get("unprocessed") or {}
+        ex_unprocessed = result.get("exporter", {}).get("unprocessed") or {}
+        if uc_unprocessed or ex_unprocessed:
+            parts = []
+            if uc_unprocessed:
+                parts.append(f"unitcell: {list(uc_unprocessed.keys())}")
+            if ex_unprocessed:
+                parts.append(f"exporter: {list(ex_unprocessed.keys())}")
+            msg = "Unrecognized options; stopping: %s" % ", ".join(parts)
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                msg,
+                error_type="UnrecognizedOptions",
+                error=msg,
+            )
+            return 1
 
-    base_options = result["base_options"]
-
-    if base_options.get("debug"):
-        _setup_logging(debug=True)
+        base_options = result["base_options"]
+        debug = bool(base_options.get("debug"))
+        log_format = base_options.get("log_format")
+        _setup_logging(debug=debug, fmt=log_format)
         logger = getLogger()
 
-    try:
-        validate_parsed_options(base_options)
-    except ValueError as e:
-        logger.error(str(e))
-        return 1
+        try:
+            validate_parsed_options(base_options)
+        except ValueError as e:
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                str(e),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
+            return 1
 
-    genice_kwargs = extract_genice_args(base_options)
-    logger.debug(f"Settings: {genice_kwargs}")
+        genice_kwargs = extract_genice_args(base_options)
+        logger.debug(f"Settings: {genice_kwargs}")
 
-    unitcell_name = result["unitcell"]["name"]
-    unitcell_processed = result["unitcell"]["processed"]
-    exporter_name = result["exporter"]["name"] or "gromacs"
-    exporter_processed = result["exporter"]["processed"]
+        unitcell_name = result["unitcell"]["name"]
+        unitcell_processed = result["unitcell"]["processed"]
+        exporter_name = result["exporter"]["name"] or "gromacs"
+        exporter_processed = result["exporter"]["processed"]
+        seed = genice_kwargs.get("seed")
 
-    if unitcell_processed:
-        logger.info("unitcell %s options: %s", unitcell_name, unitcell_processed)
-    molecule_related = {
-        k: genice_kwargs.get(k)
-        for k in ("guests", "spot_guests", "spot_anions", "spot_cations")
-        if genice_kwargs.get(k)
-    }
-    if molecule_related:
-        logger.info("molecule-related options: %s", molecule_related)
-    if exporter_processed:
-        logger.info("exporter %s options: %s", exporter_name, exporter_processed)
+        bind_context(
+            unitcell=unitcell_name,
+            exporter=exporter_name,
+            seed=seed,
+        )
 
-    cmd = " ".join(["genice3", *argv])
-    try:
-        run_parsed_result(result, sys.stdout, command_line=cmd)
-    except (PluginNotFoundError, ConfigurationError) as e:
-        logger.error(str(e))
-        return 1
-    except Exception:
-        logger.exception("exporter.dump failed")
-        return 1
+        log_event(
+            logger,
+            INFO,
+            "run.start",
+            "Starting generation",
+            unitcell=unitcell_name,
+            exporter=exporter_name,
+            seed=seed,
+        )
 
-    return 0
+        if unitcell_processed:
+            logger.info("unitcell %s options: %s", unitcell_name, unitcell_processed)
+        molecule_related = {
+            k: genice_kwargs.get(k)
+            for k in ("guests", "spot_guests", "spot_anions", "spot_cations")
+            if genice_kwargs.get(k)
+        }
+        if molecule_related:
+            logger.info("molecule-related options: %s", molecule_related)
+        if exporter_processed:
+            logger.info("exporter %s options: %s", exporter_name, exporter_processed)
+
+        cmd = " ".join(["genice3", *argv])
+        try:
+            run_parsed_result(result, sys.stdout, command_line=cmd)
+        except (PluginNotFoundError, ConfigurationError) as e:
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                str(e),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
+            return 1
+        except Exception as e:
+            logger.exception(
+                "exporter.dump failed",
+                extra={
+                    "event": "run.error",
+                    "error_type": type(e).__name__,
+                    "error": str(e),
+                },
+            )
+            return 1
+
+        duration_ms = round((time.time() - t0) * 1000.0, 3)
+        log_event(
+            logger,
+            INFO,
+            "run.end",
+            "Generation finished",
+            duration_ms=duration_ms,
+            ok=True,
+        )
+        return 0
+    finally:
+        reset_context(ctx_token)
 
 
 def main() -> None:

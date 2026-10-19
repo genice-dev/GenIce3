@@ -11,7 +11,7 @@ Give the unit cell name as the first argument (see [Unit cells](unitcells.md) fo
 The `-Y` / `--config` option loads a YAML file. Keys correspond to command-line options; values are overridden by any options given on the command line. Top-level keys include:
 
 - **unitcell**: unit cell name (string) or `name` plus options (e.g. `shift`).
-- **genice3**: options such as `seed`, `depol_loop`, `replication_factors` (or `replication_matrix`), `debug`.
+- **genice3**: options such as `seed`, `depol_loop`, `replication_factors` (or `replication_matrix`), `debug`, `log_format` (`text` or `json`).
 - **exporter**: exporter name (string) or `name` plus options (e.g. `guest`).
 - **spot_anion** / **spot_cation**: water index → ion name (see [Doping and defects](doping-and-defects.md)).
 

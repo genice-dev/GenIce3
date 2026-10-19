@@ -179,12 +179,19 @@ class DependencyEngine:
         for param_name in sig.parameters:
             dependencies[param_name] = self.resolve(param_name, inputs)
 
-        # 4. 実行して結果を保存
-        self.logger.info(f"Executing: {target}")
+        # 4. 実行して結果を保存（所要時間は JSON ログの duration_ms にも載せる）
         now = time.time()
         result = func(**dependencies)
-        delta = time.time() - now
-        self.logger.debug(f"  {delta:.4f} sec for {target}")
+        delta_ms = (time.time() - now) * 1000.0
+        self.logger.info(
+            "Executing: %s",
+            target,
+            extra={
+                "event": "task.execute",
+                "task": target,
+                "duration_ms": round(delta_ms, 3),
+            },
+        )
         self.cache[target] = result
         return result
 

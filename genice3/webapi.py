@@ -11,15 +11,25 @@ GenIce3 の薄い HTTP 層（FastAPI）。
 from __future__ import annotations
 
 import os
+import time
+import uuid
 from io import StringIO
+from logging import ERROR, INFO, getLogger
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from genice3.cli.engine import run_parsed_result
 from genice3.cli.meta_schema import exporter_options_schema, unitcell_options_schema
-from genice3.cli.options import validate_parsed_options
+from genice3.cli.options import extract_genice_args, validate_parsed_options
 from genice3.cli.runner import parsed_result_from_yaml_text, validate_result
+from genice3.logging_config import (
+    bind_context,
+    log_event,
+    reset_context,
+    resolve_log_format,
+    setup_logging,
+)
 from genice3.plugin import get_exporter_format_rows, scan
 
 try:
@@ -29,6 +39,8 @@ except ModuleNotFoundError as e:  # pragma: no cover
     raise ModuleNotFoundError(
         "The web API needs FastAPI. Install it with: pip install 'genice3[web]'"
     ) from e
+
+logger = getLogger(__name__)
 
 
 _GENERATE_YAML_EXAMPLE = (
@@ -101,6 +113,9 @@ class GenerateJsonBody(BaseModel):
 
 
 def create_app() -> FastAPI:
+    # Web は既定で JSON ログ（GENICE_LOG_FORMAT=text で人間向けに戻せる）
+    setup_logging(debug=False, fmt=resolve_log_format(default="json"))
+
     app = FastAPI(
         title="GenIce3 Web API",
         version="0.1.0",
@@ -118,6 +133,14 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    @app.middleware("http")
+    async def bind_request_log_context(request: Request, call_next):
+        token = bind_context(run_id=uuid.uuid4().hex[:8])
+        try:
+            return await call_next(request)
+        finally:
+            reset_context(token)
 
     @app.get("/health", tags=["health"], summary="Liveness check")
     def health() -> dict[str, str]:
@@ -193,12 +216,29 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=str(e)) from e
 
     def _run_generate_from_yaml(body: str) -> Response:
+        t0 = time.time()
         try:
             result = parsed_result_from_yaml_text(body)
         except ValueError as e:
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                str(e),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail=str(e)) from e
         ok, errors = validate_result(result)
         if not ok:
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                "validation failed",
+                error_type="ValidationError",
+                error=errors,
+            )
             raise HTTPException(status_code=400, detail={"errors": errors})
 
         uc_u = result.get("unitcell", {}).get("unprocessed") or {}
@@ -217,14 +257,52 @@ def create_app() -> FastAPI:
         try:
             validate_parsed_options(base)
         except ValueError as e:
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                str(e),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+        unitcell_name = result["unitcell"]["name"]
+        exporter_name = result["exporter"]["name"] or "gromacs"
+        seed = extract_genice_args(base).get("seed")
+        bind_context(unitcell=unitcell_name, exporter=exporter_name, seed=seed)
+        log_event(
+            logger,
+            INFO,
+            "run.start",
+            "Starting generation",
+            unitcell=unitcell_name,
+            exporter=exporter_name,
+            seed=seed,
+        )
 
         buf = StringIO()
         try:
             run_parsed_result(result, buf, command_line="POST /v1/generate")
         except Exception as e:
+            log_event(
+                logger,
+                ERROR,
+                "run.error",
+                str(e),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
             raise HTTPException(status_code=500, detail=str(e)) from e
 
+        log_event(
+            logger,
+            INFO,
+            "run.end",
+            "Generation finished",
+            duration_ms=round((time.time() - t0) * 1000.0, 3),
+            ok=True,
+        )
         return Response(
             content=buf.getvalue(),
             media_type="text/plain; charset=utf-8",
