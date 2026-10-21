@@ -20,7 +20,7 @@
 - [x] **ドキュメント本文が英語のみで記述されている（原則）**
 - [x] 英語以外の記述が必要な場合は、例外理由を明記した（開発用 `docs/development.md` 等は日本語可）
 - [x] `make docs` → `make skill` を実行し、`make skill-check` が通る
-- [ ] プッシュ後、`npx skills add genice-dev/GenIce3 --list` で `genice3` skill が見つかる
+- [x] プッシュ後、`npx skills add genice-dev/GenIce3 --list` で `genice3` skill が見つかる
 
 ## 3. 機能互換性（要注意）
 
