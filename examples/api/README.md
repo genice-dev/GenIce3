@@ -8,14 +8,14 @@ Each subdirectory groups examples by topic, showing how to call GenIce3 from Pyt
 | [basic](basic.md) | Basic usage (reactive properties, simple structure generation) |
 | [cif_io](cif_io.md) | Reading from and writing to CIF files |
 | [doping](doping.md) | Ionic substitution and group (cation group) doping |
-| [exotic_ice](exotic_ice/README.md) | Exotic/nonstandard ice examples (e.g. cylindrical nanotube-like prism ice) |
+| [exotic_ice](exotic_ice.md) | Exotic/nonstandard ice examples (e.g. cylindrical nanotube-like prism ice) |
 | [guest_occupancy](guest_occupancy.md) | Guest placement and cage survey for clathrate hydrates |
 | [polarization](polarization.md) | Polarization and dipole optimization (`target_pol`, `pol_loop_1`) |
 | [unitcell_transform](unitcell_transform.md) | Extending the unit cell (`replication_matrix`) |
 | [topological_defects](topological_defects.md) | Topological defects (Bjerrum, H3O⁺, OH⁻) |
 | [stat](stat.md) | Structural statistics of the hydrogen-bond network (hydrogen-bond density) |
-| [mdanalysis](mdanalysis/README.md) | GRO → PDB via MDAnalysis (optional: `pip install MDAnalysis matplotlib`) |
-| [visualize](visualize/README.md) | GRO viewer with py3Dmol (optional: `pip install py3dmol`) |
+| [mdanalysis](mdanalysis.md) | GRO → PDB via MDAnalysis (optional: `pip install MDAnalysis matplotlib`) |
+| [visualize](visualize.md) | GRO viewer with py3Dmol (optional: `pip install py3dmol`) |
 | [tools](tools.md) | Helper scripts for YAML ↔ shell conversions used by the examples |
 
 Each subdirectory has its own `README.md` describing the example scripts it contains.
