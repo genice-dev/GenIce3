@@ -1,109 +1,141 @@
-# tests/auto — 回帰テスト（参照出力比較）
+# tests/identity — 回帰テスト（構造再現性）
 
-GenIce3 のプラグイン・オプション組み合わせで、出力が参照と一致することを確認する回帰テストです。
+同じ `(ice, options, --seed)` から、過去と同じ構造が出ることを確認する回帰テストです。
+論文で使った氷構造の再現性を守るのが主目的です。
 
-## 概要
+不正なオプション組み合わせでのエラー検証は対象外です。旧版で成功した組み合わせだけをコーパスに入れ、それを再実行します。
 
-- **A**: 参照出力を `reference/` ディレクトリに保存し、Git にコミット
-- **C**: `make update-reference` で参照を更新する運用
+## 設計の要点
 
-古い branch で prepare して参照を生成する方式から、参照をリポジトリに含める方式に変更しました。
+| 項目 | 方針 |
+|------|------|
+| コーパス | `corpus.json`（内容ベース ID）。リポジトリにコミットする |
+| 参照出力 | `reference/`（ローカルのみ、gitignore） |
+| ケース ID | `sha1(ice + options)[:12]`。`OPTION_CHOICES` の並び替えで壊れない |
+| サンプリング | `discover` は層化（ice / exporter / 各オプション次元を優先） |
+| 版間比較 | `make compare OLD=...`（reference 無しでも可） |
+| 資源上限 | 1 プロセスあたり **1 GiB**（`MEM_MB=1024`）、timeout 60s。`-j8` 想定 |
+
+タイムアウトやメモリ上限超えは成功扱いしません（コーパスに入れない／テスト失敗）。
+大量メモリを食う組み合わせは、identity の対象外として自然に落ちます。
 
 ## 前提条件
 
 - プロジェクトルートで `pip install -e .` または `poetry install` 済み
 - `genice3` および依存パッケージがインストール済み
 
-## 使い方
-
-### 初回セットアップ（参照がまだ無い場合）
+## ワークフロー
 
 ```bash
-cd tests/auto
+cd tests/identity
+
+# 1. 成功組み合わせを発見・拡張（層化。既存にマージするなら MERGE=1）
+make discover LIMIT=1000
+make discover LIMIT=200 MERGE=1
+
+# 2. 信頼できる版で参照を生成（ローカルのみ）
 make update-reference
-git add reference/
-git commit -m "Add regression test reference outputs"
-```
 
-### 回帰テストの実行
-
-```bash
-cd tests/auto
+# 3. 開発中の回帰
 make test
+
+# 4. リリース前・大きな変更時の版間比較
+make compare OLD=/path/to/old/GenIce3
+make compare OLD=/path/to/old/GenIce3 LIMIT=50
 ```
 
-現在の出力が `reference/` 内のファイルと一致するか `diff` で確認します。
-
-### 参照の更新（意図した変更を行った場合）
+初回だけ旧 `discoveries.json` がある場合:
 
 ```bash
-cd tests/auto
-make update-reference
-git add reference/
-git commit -m "Update regression reference outputs for ..."
+make migrate   # → corpus.json + reference/ のリネーム
 ```
 
-## 生成されるテストケース
+## コーパス形式（corpus.json）
 
-`mkmk.py` が以下から動的にテストケースを生成します。
+```json
+{
+  "schema_version": 1,
+  "structure_seed": 1,
+  "cases": [
+    {
+      "id": "7e7fbaba22cf",
+      "ice": "NON",
+      "target": "NON",
+      "genice_options": "--seed 1 --exporter yaplot ...",
+      "formatter": "yaplot",
+      "formatter_path": "../../genice3/exporter/yaplot.py",
+      "product": "NON_7e7fbaba22cf.yaplot",
+      "source": "discover",
+      "structure_seed": 1
+    }
+  ]
+}
+```
 
-- **unitcell**: `genice3.plugin.scan("unitcell")` の system プラグイン
-- **exporter**: `genice3/exporter/*.py`（raw, null, __init__, _KG を除く）
-- **オプション**: `--seed 1`, `--exporter gromacs :water_model 4site`（gromacs 時）, `--spot_cation 0=Na --spot_anion 2=Cl` など（括弧なし・`--exporter` / `:サブオプション` 形式）
+- `source`: `desc_test`（unitcell の `desc["test"]`） / `discover` / `manual`
+- `product`: `{ice}_{id}.{formatter}`
 
-各 unitcell に対して、exporter とオプションの組み合わせで `reference/{ice}_{i}.{exporter}` を生成・比較します。
+## オプション空間
 
-## 発見ベースの運用（discover / generate_rules）
+[`option_sets.py`](option_sets.py) の `OPTION_CHOICES` が試行空間です。
+物理的に意味のある組み合わせだけをユーザーが定義します。
+`discover` は実際に `genice3` を走らせ、成功したものだけをコーパスに残します。
 
-従来の `mkmk.py` は固定的なオプションでテストケースを生成します。
-一方、`discover.py` と `generate_rules.py` は、genice3 を実際に実行して成功した組み合わせのみを Makefile に含めます。
+## Makefile ターゲット
 
-### ワークフロー
+| ターゲット | 意味 |
+|------------|------|
+| `make discover` | 層化 discover → `corpus.json` |
+| `make update-reference` | `reference/` を並列生成 |
+| `make test` | 現行出力 vs `reference/` |
+| `make compare OLD=...` | 旧チェックアウトと現行を同じコーパスで比較 |
+| `make migrate` | 旧 `discoveries.json` → `corpus.json` |
+| `make clean` / `distclean` | 生成物の削除（`distclean` は `reference/` も削除） |
 
-1. **option_sets.py** に試すオプションセットを定義する（物理的制約のためユーザーが設定）
-2. **discover.py** を実行し、成功した (ice, options, formatter) を `discoveries.json` に記録
-3. **generate_rules.py** で `discoveries.json` から `Makefile.rules` を生成
+資源上限の変更例: `make test MEM_MB=1024 NTHREADS=8`（`Makefile.rules` を再生成してから）。
+macOS では `RLIMIT_AS` が効かないことがあり、その場合は timeout が主な安全弁です。
+
+失敗した `update-reference` は空の参照ファイルを残しません（一時ファイル経由で確定）。
+もし古い空ファイルが残っている場合:
 
 ```bash
-cd tests/auto
-make discover                              # 全組み合わせ
-make discover LIMIT=100                    # ランダムに 100 件だけ（formatter もランダム）
-python generate_rules.py -o Makefile.rules # Makefile.rules を上書き
-make update-reference
-make test
+make prune-empty-reference
+make update-reference -k
 ```
 
-`--limit` 指定時は (ice, option_set, formatter) をランダムサンプリング。`--seed 42` で再現可能。
+イオン近接などで ice-rule `AssertionError` になるケースはコーパスから外す:
 
-`discoveries.json` は意図的な変更時のみ更新し、`reference/` と同様にコミット可能です。
+```bash
+make prune-failed              # assertion のみ
+make prune-failed REASON=all   # 欠落 reference を広く除外
+```
 
-## この先の予定（未着手）
+個別の参照だけ作り直す場合:
 
-1. **Makefile.rules の生成**
-   - `discoveries.json` ができたら、`generate_rules.py` で `Makefile.rules` を生成
-   - 例: `python generate_rules.py -o Makefile.rules`
+```bash
+make reference/Struct64_470d0be5b7d1.gromacs
+# または明示的に:
+make -f Makefile.rules reference/Struct64_470d0be5b7d1.gromacs
+```
 
-2. **別 branch との結果の突き合わせ**
-   - 別の branch（例: main / 別 feature）で同様に discover を実行し、`discoveries.json` と `reference/` を生成
-   - 両 branch の discoveries や参照出力を比較し、差分を確認する作業が必要
+## アルゴリズム変更時
+
+意図したアルゴリズム変更で出力が変わる場合は:
+
+1. 差分を目視確認する（`make test` または `make compare`）
+2. 問題なければ `make update-reference` でローカル参照を更新
+
+同じ seed でも構造が変わる変更は、論文再現の観点で破壊的変更です。
+
+## exporter の決定性
+
+同一構造ならテキストも一致するよう、主要 exporter は waters / ions / edges をソートして出力します。
+順序だけ揺れる差分はバグとして扱います。
 
 ## 除外
 
 - `iceR` はテストから除外
-- unitcell の `desc["test"]` に定義がある場合、そのオプション組み合わせも使用
 
-## ログファイル
+## 関連ドキュメント
 
-各出力に対して `.log` ファイルも記録されます。
-
-- **update-reference** 時: `reference/{product}.log` に stderr を保存
-- **test** 時: `{product}.log` に stderr を保存（カレントディレクトリ、`make clean` で削除）
-
-エラーが出た場合、対応する `.log` を参照して原因を確認できます。
-
-## クリーンアップ
-
-```bash
-make clean    # *.diff, *.log を削除
-make distclean # 生成物一式を削除（reference/ は残す）
-```
+- [失敗分類（別目的）](docs/FAILURE_CLASSIFICATION.md) — バグ洗い出し用。identity 回帰とは別系統

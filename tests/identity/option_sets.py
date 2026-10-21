@@ -5,6 +5,9 @@ OPTION_CHOICES: 各次元から1つずつ選んで組み合わせる。
   各要素は [choice1, choice2, ...] で、空文字 "" はその次元を付加しない。
   "--exporter gromacs" など exporter を含む次元が必須（出力形式を決める）。
   新形式: 括弧なし、--exporter name、サブオプションは :key val。
+
+コーパスのケース ID はオプション文字列の内容ハッシュであり、
+ここの並びや OPTION_SETS の index には依存しない。
 """
 
 import itertools
