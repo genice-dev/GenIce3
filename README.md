@@ -17,7 +17,7 @@ Python 3.11 or later. Output obeys the ice rules and a chosen net polarization (
 **For AI assistants:** [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt)  
 **Agent skill (try it):** [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) · `npx skills add genice-dev/GenIce3`
 
-Version 3.0b8
+Version 3.0
 
 ## New in GenIce3
 

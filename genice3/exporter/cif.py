@@ -94,15 +94,15 @@ _atom_site_fract_z
     cell_matrix = genice.cell
     cell_inv = np.linalg.inv(cell_matrix)
 
-    # 原子を収集
+    # 原子を収集（site index 順で決定的な出力にする）
     atoms = []
-    for water in waters.values():
+    for _, water in sorted(waters.items()):
         for name, position in zip(water.labels, water.sites):
             atoms.append([water.name, name, position])
     for guest in guests:
         for name, position in zip(guest.labels, guest.sites):
             atoms.append([guest.name, name, position])
-    for ion in ions.values():
+    for _, ion in sorted(ions.items()):
         for name, position in zip(ion.labels, ion.sites):
             atoms.append([ion.name, name, position])
 

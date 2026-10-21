@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from importlib.metadata import version as package_version
 from logging import ERROR, INFO, getLogger
 from typing import Any, Optional, Union
 
@@ -147,7 +148,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="GenIce3 Web API",
-        version="0.1.0",
+        version=package_version("genice3"),
         description=_OPENAPI_DESCRIPTION.strip(),
         openapi_tags=_OPENAPI_TAGS,
     )

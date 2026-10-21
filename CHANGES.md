@@ -4,6 +4,7 @@ Auto-generated commit list (run `make changes` to refresh).
 
 GenIce3 fork point (last shared commit with the GenIce2 line): `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
+- 2026-10-21 af78b2d Release GenIce3 3.0b8
 - 2026-10-19 4e68e00 Add shared service layer for Web API JSON wrap and stdio MCP
 - 2026-10-19 5a7942f Clarify Web API design decisions in WebAPI.md
 - 2026-10-19 5862c5e Add structured JSON logging (NDJSON opt-in)

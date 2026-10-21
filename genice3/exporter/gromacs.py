@@ -44,19 +44,20 @@ def _to_gro(
     else:
         rotmat = np.eye(3)
 
-    # 分子種ごとにソートする必要がある。
+    # 分子種ごとにソートする必要がある（出力順序の決定性のため種名でソート）。
     molecules = defaultdict(list)
-    for water in waters.values():
+    for _, water in sorted(waters.items()):
         molecules[water.name].append(water)
     for guest in guests:
         molecules[guest.name].append(guest)
-    for ion in ions.values():
+    for _, ion in sorted(ions.items()):
         molecules[ion.name].append(ion)
 
     atoms = []
     residue_count = 1
     top_append = ""
-    for mol_name, mols in molecules.items():
+    for mol_name in sorted(molecules.keys()):
+        mols = molecules[mol_name]
         for mol in mols:
             for name, position in zip(mol.labels, mol.sites):
                 atoms.append([residue_count, mol.name, name, position])

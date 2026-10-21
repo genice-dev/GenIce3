@@ -49,13 +49,13 @@ def _to_lammps_data(
     else:
         rotmat = np.eye(3)
 
-    # 分子種ごとにソートする必要がある。
+    # 分子種ごとにソートする必要がある（種内も site index 順で決定的にする）。
     molecules = defaultdict(list)
-    for water in waters.values():
+    for _, water in sorted(waters.items()):
         molecules[water.name].append(water)
     for guest in guests:
         molecules[guest.name].append(guest)
-    for ion in ions.values():
+    for _, ion in sorted(ions.items()):
         molecules[ion.name].append(ion)
 
     # 原子タイプのマッピングを作成

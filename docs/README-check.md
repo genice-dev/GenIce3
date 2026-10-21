@@ -21,20 +21,15 @@
 
 ## 現状とずれている可能性がある点
 
-### 1. pyproject.toml の二重管理（version・dependencies）
+### 1. pyproject.toml の二重管理（version・dependencies）— 解消済み
 
-- **replacer が参照しているのは `[tool.poetry]`**（version, dependencies）。
-- **`[project]`** には別の version（3.0a4）と依存（genice-core>=1.3.1, cycless>=0.7 等）がある。
-- README / docs/getting-started の「Version」「Requirements」は **poetry 側** の値になる。
-- 運用で `[project]` を正とする場合、README と実ビルドの情報が食い違う可能性あり。
-- **提案**: version と dependencies を `[project]` に一本化し、replacer で `[project]` を読むようにするか、少なくとも poetry と project を手動で揃える。
+- 正は **`[project]`**。`scripts/replacer.py` も `[project]` を読む。
+- README / docs の Version・Requirements は `make README.md` / `make docs` で `[project]` から生成される。
 
-### 2. 設定ファイル（-C / YAML）のフォーマットが未記載
+### 2. 設定ファイル（`-Y` / YAML）のフォーマット
 
-- 旧 README では「-C で YAML を読める。フォーマットは manual 参照」だった。
-- 現在の docs には **「config ファイルの YAML フォーマット」の説明ページや節がない**。
-- cli.md の usage に "config file format" と出るが、manual 内にその説明がない。
-- **提案**: docs の CLI か Getting started に「設定ファイル」の短い節を追加し、例 YAML と主要キー（unitcell, rep, exporter, guest 等）を書く。
+- **対応済み:** `docs/cli.md` の「Config file」節（主要キーと最小例）。長い例は `examples/config_example.yaml`。
+- 生成元は `temp_docs/cli.md`。編集後は `make docs`。
 
 ### 3. 表記のゆれ（uathf / uathf6）
 
@@ -47,5 +42,4 @@
 
 ## 不足している情報（あった方がよいもの）
 
-- **-C / YAML 設定ファイルのフォーマット**（上記 2）。
 - 上記以外で、旧 README にあった実質的な説明が docs から抜けているものはなし。

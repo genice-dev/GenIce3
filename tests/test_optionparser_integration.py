@@ -8,7 +8,29 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from genice3.cli.runner import parse_argv, validate_result
+from genice3.cli.runner import (
+    flatten_yaml_config,
+    parse_argv,
+    parsed_result_from_merged,
+    validate_result,
+)
+
+
+def test_flatten_exporter_name_style():
+    """YAML の exporter: {name: gromacs, ...} を {gromacs: {...}} に正規化する"""
+    flat = flatten_yaml_config(
+        {
+            "unitcell": {"name": "1h"},
+            "exporter": {"name": "gromacs", "water_model": "tip4p"},
+            "genice3": {"seed": 7},
+        }
+    )
+    assert flat["unitcell"] == "1h"
+    assert flat["exporter"] == {"gromacs": {"water_model": "tip4p"}}
+    assert flat["seed"] == 7
+    result = parsed_result_from_merged(flat)
+    assert result["exporter"]["name"] == "gromacs"
+    assert result["exporter"]["processed"]["water_model"] == "tip4p"
 
 
 def test_basic_parsing():

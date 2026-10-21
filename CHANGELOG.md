@@ -4,6 +4,14 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.0
+
+* First **stable** release of the GenIce3 line (after `3.0a*` / `3.0b*`).
+* Deterministic exporter ordering (site index / molecule name / graph edges) for reproducible outputs.
+* YAML config: `exporter: {name: …, …}` is normalized like `unitcell` (`-Y` / `--config`).
+* Optional Web API and stdio MCP from the beta track remain available (`genice3[web]`, `genice3[mcp]`).
+* See [RELEASE_NOTE.md](RELEASE_NOTE.md) for the development narrative and compatibility notes.
+
 ### 3.0b8
 
 * Optional **stdio MCP** (`genice3[mcp]` / `genice3-mcp`) and **Web API** (`genice3[web]` / `genice3-web`) share `genice3.service` (YAML/TOML/JSON config, meta queries, generate).

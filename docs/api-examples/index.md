@@ -13,6 +13,7 @@ Each subdirectory groups examples by topic, showing how to call GenIce3 from Pyt
 | [polarization](polarization.md) | Polarization and dipole optimization (`target_pol`, `pol_loop_1`) |
 | [unitcell_transform](unitcell_transform.md) | Extending the unit cell (`replication_matrix`) |
 | [topological_defects](topological_defects.md) | Topological defects (Bjerrum, H3O⁺, OH⁻) |
+| [stat](stat.md) | Structural statistics of the hydrogen-bond network (hydrogen-bond density) |
 | [mdanalysis](mdanalysis/README.md) | GRO → PDB via MDAnalysis (optional: `pip install MDAnalysis matplotlib`) |
 | [visualize](visualize/README.md) | GRO viewer with py3Dmol (optional: `pip install py3dmol`) |
 | [tools](tools.md) | Helper scripts for YAML ↔ shell conversions used by the examples |

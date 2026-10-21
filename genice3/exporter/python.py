@@ -149,8 +149,11 @@ def _desc_to_python_source(brief: str, usage: str) -> str:
 
 
 def _format_graph_edges(G: nx.Graph) -> str:
-    """Format graph edges as Python list of tuples."""
-    edges = list(G.edges())
+    """Format graph edges as Python list of tuples (sorted for determinism)."""
+    if G.is_directed():
+        edges = sorted(G.edges())
+    else:
+        edges = sorted(tuple(sorted(e)) for e in G.edges())
     if not edges:
         return "[]"
     # 1 line per edge if many, else one line

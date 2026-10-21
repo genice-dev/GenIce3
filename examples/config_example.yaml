@@ -1,58 +1,28 @@
-# GenIce3 設定ファイルの例
-# このファイルはYAML形式でGenIce3のオプションを指定します。
-# コマンドライン引数で指定された値は、この設定ファイルの値を上書きします。
+# GenIce3 configuration file example (YAML).
+# Command-line options override values from this file.
 #
-# 全オプションの一覧は config_options_reference.yaml を参照してください。
+# See also: docs/cli.md (Config file) and examples/api/*/*.yaml
 
 genice3:
-  # 乱数シード
   seed: 42
-
-  # 分極収束 第1段階の最大反復回数
   pol_loop_1: 2000
-
-  # 単位セルの複製係数（a, b, c軸方向）
   replication_factors: [2, 2, 2]
-
-  # ケージの評価を行うかどうか
-  assess_cages: false
-
-  # デバッグモード
   debug: false
 
-  # 複製行列（9つの整数で3x3行列を指定）
-  # replication_matrix: [2, 0, 0, 0, 2, 0, 0, 0, 2]
-
 unitcell:
-  # 単位セルプラグイン名
   name: "1h"
-
-  # 単位セルのオプション（階層的に指定可能）
-  # シフト（分数座標）
+  # Fractional shift of the unit cell origin
   shift: [0.1, 0.1, 0.1]
 
+# Exporter: string name, {plugin: {options}}, or {name: plugin, ...options}
 exporter:
-  # エクスポータープラグイン名
   name: "gromacs"
+  water_model: tip4p
 
-  # エクスポーターのオプション（階層的に指定可能）
-  # ゲスト分子の指定（ケージタイプ: 分子名）
-  guest:
-    A12: "me"
-    A14: "0.5*co2+0.3*et"
-
-  # シフト
-  shift: [0.1, 0.1, 0.1]
-
-spot_anion:
-  # 特定の水分子をアニオンで置換
-  # キーは水分子のインデックス（文字列として指定）
-  "1": "Cl"
-  "35": "Br"
-
-spot_cation:
-  # 特定の水分子をカチオンで置換
-  # キーは水分子のインデックス（文字列として指定）
-  "1": "Na"
-  "35": "K"
-
+# Guests and spot ions are GenIce3-level keys (not exporter options)
+# guest:
+#   A12: me
+# spot_anion:
+#   "1": Cl
+# spot_cation:
+#   "0": Na

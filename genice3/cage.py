@@ -35,7 +35,7 @@ class CageSpec:
         return {
             "cage_type": self.cage_type,
             "faces": self.faces,
-            "nodes": [int(x) for x in self.graph],
+            "nodes": sorted(int(x) for x in self.graph),
         }
 
     def __repr__(self) -> str:

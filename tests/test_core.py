@@ -20,7 +20,7 @@ def test_genice3_initialization():
     """GenIce3の初期化テスト"""
     genice = GenIce3()
     assert genice is not None
-    assert genice.depol_loop == 1000  # デフォルト値
+    assert genice.pol_loop_1 == 1000  # デフォルト値
     # seedは__init__で使用されるが、インスタンス変数として保存されない
     # デフォルト値は1
     genice_with_seed = GenIce3(seed=42)
@@ -30,11 +30,11 @@ def test_genice3_initialization():
 def test_genice3_with_options():
     """オプション付きの初期化テスト"""
     genice = GenIce3(
-        depol_loop=500,
+        pol_loop_1=500,
         seed=42,
         replication_matrix=np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]]),
     )
-    assert genice.depol_loop == 500
+    assert genice.pol_loop_1 == 500
     assert np.array_equal(
         genice.replication_matrix, np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]])
     )

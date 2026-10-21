@@ -1,6 +1,6 @@
 [project]
 name="genice3"
-version = "3.0b8"
+version = "3.0"
 description = "Generate ice-rule-compliant ice and clathrate hydrate structures for molecular simulation. This is the current GenIce."
 readme = "README.md"
 license = {text = "MIT"}
@@ -24,7 +24,7 @@ keywords = [
     "LAMMPS",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",

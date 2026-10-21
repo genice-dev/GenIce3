@@ -63,6 +63,8 @@ def _cages_to_json(genice: GenIce3) -> str:
     data = cages.to_json_capable_data()
     if data is None:
         return ""
+    # キーはケージ index（挿入順）。sort_keys すると "10" < "2" になるので使わない。
+    # 各ケージ内の nodes は CageSpec.to_json_capable_data でソート済み。
     s = json.dumps(data, indent=4)
     return s if s.endswith("\n") else s + "\n"
 

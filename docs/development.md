@@ -87,7 +87,8 @@ AI エージェント向けの skill（[Agent Skills](https://agentskills.io) �
 
 ## リポジトリ内の配置
 
-- **本番テスト**: `tests/`（`tests/test_option_parser/`, `tests/identity/` など）。`make test` で実行。
+- **本番テスト**: `tests/`（`tests/test_option_parser/` など）。`make test` で実行。API 例の一括実行はルートで `make run-api-examples`。
+- **identity 回帰**（`tests/identity/`）: 論文構造の再現性用。**3.0 時点では改装中**で、次バージョン以降に利用予定。`make test` には含まれない。
 - **レガシー単位胞テスト**（GenIce2 比較など）: `tests/unitcell_legacy/`。`make unitcell-test` は `tests.unitcell_legacy.lattice_vs_unitcell` を利用。
 - **開発用スクリプト**: `scripts/`（例: `test_py3dmol_plugin.py`, `fix_engel_references.py`, `convert_symlinks.py`）。必要に応じて手動実行。
 - **設計メモ・試作コードのアーカイブ**: `docs_archive/`。参照用で、ビルドや本番コードには未使用。

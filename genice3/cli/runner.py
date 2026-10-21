@@ -66,7 +66,14 @@ def flatten_yaml_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if "genice3" in config:
         out.update(config["genice3"])
     if "exporter" in config:
-        out["exporter"] = config["exporter"]
+        ex = config["exporter"]
+        # unitcell と同様: {name: gromacs, water_model: ...} → {gromacs: {water_model: ...}}
+        if isinstance(ex, dict) and "name" in ex:
+            plugin = ex["name"]
+            subopts = {k: v for k, v in ex.items() if k != "name"}
+            out["exporter"] = {plugin: subopts}
+        else:
+            out["exporter"] = ex
     # 上で展開済みのセクション名は載せない（genice3 が残ると unitcell の未処理扱いになる）
     _section_keys = frozenset({"unitcell", "genice3", "exporter"})
     for k, v in config.items():

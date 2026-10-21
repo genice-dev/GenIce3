@@ -89,7 +89,7 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
         s += yp.Layer(5)
         s += yp.Color(4)
         # s += yp.Size(0.03)
-        for i, j in genice.graph.edges(data=False):
+        for i, j in sorted(genice.graph.edges(data=False)):
             # if i in waters and j in waters:  # edge may connect to the dopant
             O1, O2 = pos[i], pos[j]
             d = O2 - O1
@@ -106,13 +106,13 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
         guests = genice.guest_molecules()
         ions = genice.substitutional_ions()
 
-        atoms = serialize(list(waters.values()))
+        atoms = serialize([w for _, w in sorted(waters.items())])
 
         logger.info("  Total number of atoms: {0}".format(len(atoms)))
 
-        # prepare the reverse dict
+        # prepare the reverse dict（site index 順で決定的に）
         water_sites = defaultdict(dict)
-        for water_index, water in waters.items():
+        for water_index, water in sorted(waters.items()):
             for atom_name, position in zip(water.labels, water.sites):
                 if "O" in atom_name:
                     water_sites[water_index]["O"] = position
@@ -122,7 +122,7 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
                     else:
                         water_sites[water_index]["H1"] = position
         s += yp.Color(3)
-        for water_index, water in water_sites.items():
+        for water_index, water in sorted(water_sites.items()):
             O = water["O"]
             H0 = water["H0"]
             H1 = water["H1"]
@@ -146,7 +146,7 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
         s += yp.Color(4)
         s += yp.ArrowType(1)
         s += yp.Size(size_O)
-        for i, j in genice.digraph.edges(data=False):
+        for i, j in sorted(genice.digraph.edges(data=False)):
             if i in waters and j in waters:  # edge may connect to the dopant
                 O = water_sites[j]["O"]
                 H0 = water_sites[i]["H0"]
@@ -160,7 +160,9 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
                 if rr1 < rr0 and rr1 < 0.245**2:
                     s += yp.Arrow(H1, O)
 
-        gatoms = serialize(guests) + serialize(list(ions.values()))
+        gatoms = serialize(guests) + serialize(
+            [ion for _, ion in sorted(ions.items())]
+        )
         palettes = dict()
 
         s += yp.Layer(4)
