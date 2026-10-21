@@ -4,6 +4,11 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.0b8
+
+* Optional **stdio MCP** (`genice3[mcp]` / `genice3-mcp`) and **Web API** (`genice3[web]` / `genice3-web`) share `genice3.service` (YAML/TOML/JSON config, meta queries, generate).
+* MCP tools: `list_unitcells`, `list_exporters`, `get_unitcell_options`, `get_exporter_options`, `generate`. Setup: [docs/mcp.md](docs/mcp.md).
+
 ### 3.0b7
 
 * Reactive inputs (`unitcell`, `seed`, …) are declared with `Input` on `GenIce3`; setters, cache invalidation, and `_get_inputs` are no longer copied by hand.

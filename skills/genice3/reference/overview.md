@@ -72,6 +72,11 @@ ERROR: Unknown unitcell "iceXVII". Did you mean: iceXXI, XVII, XVI, XII, VII?
    - **Reactive pipeline**: Properties like `fixed_edges`, `digraph`, `orientations` are computed on demand from `unitcell`, `spot_*`, etc.  
    - Examples: [API examples](https://genice-dev.github.io/GenIce3/api-examples/) (with embedded code).
 
+3. **MCP (stdio)**: optional extra `genice3[mcp]`; entry point `genice3-mcp`.  
+   - Local tool bridge for MCP hosts (Cursor, Claude Desktop, …): list unit cells / exporters, inspect options, `generate` with the same config schema as CLI `-Y`.  
+   - Not a hosted URL; the client starts the process. Setup and limits: [MCP](https://genice-dev.github.io/GenIce3/mcp/).  
+   - Prefer the **agent skill** for teaching the CLI; prefer **MCP** when the user wants structures generated via tool calls in chat. Topological defects remain API-only.
+
 ## Plugin architecture
 
 - **Unit cells**: Plugins in `unitcell` (built-in and user-added); name passed as first CLI argument or `set_unitcell("Name", ...)`. Some unit cells require options: pass them as keyword arguments, e.g. `set_unitcell("CIF", file="path/to.cif")`, `set_unitcell("aeroice", length=3)` or `set_unitcell("xFAU", length=3)` (length = hexagonal prism length), `set_unitcell("zeolite", code="LTA")`. See [Unit cells](unitcells.md) for the list and suboption tables.
@@ -102,7 +107,7 @@ ERROR: Unknown unitcell "iceXVII". Did you mean: iceXXI, XVII, XVI, XII, VII?
 ## Where to find more
 
 - **Machine-readable index of this site**: [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt), in the [llms.txt](https://llmstxt.org) convention.
-- **Manual (this site)**: [Home](https://genice-dev.github.io/GenIce3/), [Getting started](https://genice-dev.github.io/GenIce3/getting-started/), [CLI](cli.md), [API examples](https://genice-dev.github.io/GenIce3/api-examples/).
+- **Manual (this site)**: [Home](https://genice-dev.github.io/GenIce3/), [Getting started](https://genice-dev.github.io/GenIce3/getting-started/), [CLI](cli.md), [API examples](https://genice-dev.github.io/GenIce3/api-examples/), [MCP](https://genice-dev.github.io/GenIce3/mcp/).
 - **Repository**: [github.com/genice-dev/GenIce3](https://github.com/genice-dev/GenIce3).
 - **Citation**: [Citation](citation.md); core algorithm in J. Comput. Chem. (2017) and J. Chem. Phys. (2024).
 

@@ -42,6 +42,7 @@ nav:
   - Plugins: plugins.md
   - Changes from GenIce2: changes-from-genice2.md
   - For AI assistants: for-ai-assistants.md
+  - MCP: mcp.md
   - API Examples:
     - Overview: api-examples/index.md
     - Basic: api-examples/basic.md

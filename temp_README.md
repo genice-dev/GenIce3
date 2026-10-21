@@ -33,6 +33,8 @@ Coding agents (Cursor, Claude Code, Codex, …): open [skills.sh/genice-dev/GenI
 npx skills add genice-dev/GenIce3
 ```
 
+Optional **MCP** (chat tool calls into GenIce3): `pip install "genice3[mcp]"`, then add `genice3-mcp` to the client’s MCP config. Setup: [MCP](https://genice-dev.github.io/GenIce3/mcp/).
+
 ## Requirements
 
 {% for item in tool.poetry.dependencies %}- {{ item }} {{ tool.poetry.dependencies[item] }}

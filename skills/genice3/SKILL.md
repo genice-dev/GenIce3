@@ -11,13 +11,13 @@ description: >-
 license: MIT
 compatibility: Requires Python 3.11 or later and the genice3 package from PyPI; installing it needs network access.
 metadata:
-  genice3-version: "3.0b7"
+  genice3-version: "3.0b8"
 ---
 <!-- Generated from temp_skill/SKILL.md by scripts/build_skill.py (make skill). Do not edit. -->
 
 # GenIce3
 
-GenIce3 builds ice and clathrate hydrate structures whose hydrogen-bond network obeys the ice rules and whose net polarization is driven to a target (zero by default). This skill was written for GenIce3 3.0b7. If `genice3 --version` reports another version, trust the program's own `--help`, `--list`, and `NAME?` output over this file.
+GenIce3 builds ice and clathrate hydrate structures whose hydrogen-bond network obeys the ice rules and whose net polarization is driven to a target (zero by default). This skill was written for GenIce3 3.0b8. If `genice3 --version` reports another version, trust the program's own `--help`, `--list`, and `NAME?` output over this file.
 
 ## 1. Make sure genice3 runs
 
@@ -83,7 +83,7 @@ with open("ice.gro", "w") as f:
 
 ## 5. Check the result and report it
 
-- On a nonzero exit status, read the `ERROR:` line on stderr; it says what to change. With `--log-format json` (or `GENICE_LOG_FORMAT=json`), look for an NDJSON line with `"event":"run.error"` instead.
+- On a nonzero exit status, read the `ERROR:` line on stderr; it says what to change.
 - Confirm the output file is not empty. In a `.gro` file the second line is the number of atoms.
 - Tell the user which seed was used, and that the structure obeys the ice rules but is **not energy-minimized**: it must be relaxed with the intended force field before a production run.
 - If the structure will be used in a publication, point the user to [reference/citation.md](reference/citation.md).

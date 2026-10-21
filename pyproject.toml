@@ -1,6 +1,6 @@
 [project]
 name="genice3"
-version = "3.0b7"
+version = "3.0b8"
 description = "Generate ice-rule-compliant ice and clathrate hydrate structures for molecular simulation. This is the current GenIce."
 readme = "README.md"
 license = {text = "MIT"}

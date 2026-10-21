@@ -17,7 +17,7 @@ Python 3.11 or later. Output obeys the ice rules and a chosen net polarization (
 **For AI assistants:** [for-ai-assistants](https://genice-dev.github.io/GenIce3/for-ai-assistants/) · [llms.txt](https://genice-dev.github.io/GenIce3/llms.txt)  
 **Agent skill (try it):** [skills.sh/genice-dev/GenIce3](https://skills.sh/genice-dev/GenIce3) · `npx skills add genice-dev/GenIce3`
 
-Version 3.0b7
+Version 3.0b8
 
 ## New in GenIce3
 
@@ -62,6 +62,8 @@ Coding agents (Cursor, Claude Code, Codex, …): open [skills.sh/genice-dev/GenI
 npx skills add genice-dev/GenIce3
 ```
 
+Optional **MCP** (chat tool calls into GenIce3): `pip install "genice3[mcp]"`, then add `genice3-mcp` to the client’s MCP config. Setup: [MCP](https://genice-dev.github.io/GenIce3/mcp/).
+
 ## Requirements
 
 - networkx >=2.0.dev20160901144005
@@ -75,7 +77,6 @@ npx skills add genice-dev/GenIce3
 - jinja2 >=3.1.4
 - cif2ice (>=0.4.1,<0.5.0)
 - genice-core (>=1.6.0,<2.0.0)
-- Optional: `genice3[web]` (fastapi, uvicorn), `genice3[mcp]` (mcp)
 
 
 ## Installation

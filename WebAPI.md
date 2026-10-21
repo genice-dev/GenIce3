@@ -52,6 +52,29 @@ URL は **`/v1/` を付ける**（破壊的変更時に `/v2/` を切れるよ�
 
 **MCP**: `genice3-mcp` は service の薄いラップ（stdio）。tools: `list_unitcells` / `list_exporters` / `get_unitcell_options` / `get_exporter_options` / `generate`。HTTP MCP は後回し。
 
+### 利用者向け手順（最小・マニュアルは大宣伝しない）
+
+探した人がつながれることだけを公式マニュアルに載せる。詳細の正本は [docs/mcp.md](docs/mcp.md)（GitHub Pages: [MCP](https://genice-dev.github.io/GenIce3/mcp/)）。
+
+1. **対象**: MCP 対応クライアント（Cursor / Claude Desktop 等）を既に使っていて、チャットから氷・包接水和物の構造を出したい人。一般ユーザー向けの前面宣伝はしない。
+2. **価値の言い方**: 「stdio MCP を実装した」ではなく、「Cursor や Claude から氷・包接水和物の構造を GRO/CIF 等で生成できる」。
+3. **Skill との分担**: CLI の覚え方・手順 → agent skill（`npx skills add genice-dev/GenIce3`）。チャットからツール呼び出しで生成 → MCP。併用可。
+4. **必須のコピペ**（`genice3-mcp` が PATH にある前提）:
+
+```json
+{
+  "mcpServers": {
+    "genice3": {
+      "command": "genice3-mcp"
+    }
+  }
+}
+```
+
+5. **インストール**: `pip install "genice3[mcp]"`（3.0b8 以降）。クライアントと同じ環境の PATH に `genice3-mcp` があること。手で起動して対話する用途ではない（stdio）。
+6. **できないこと**: トポロジカル欠陥（API 専用）。リモート HTTP MCP は未提供。
+7. **発見用（任意）**: 公式 MCP Registry への登録、研究室・講習・MD コミュニティ。X 単体は弱い（設定または Registry リンクがないと伝わらない）。
+
 ---
 
 ## 方針（確定）

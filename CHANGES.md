@@ -4,6 +4,23 @@ Auto-generated commit list (run `make changes` to refresh).
 
 GenIce3 fork point (last shared commit with the GenIce2 line): `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
+- 2026-10-19 4e68e00 Add shared service layer for Web API JSON wrap and stdio MCP
+- 2026-10-19 5a7942f Clarify Web API design decisions in WebAPI.md
+- 2026-10-19 5862c5e Add structured JSON logging (NDJSON opt-in)
+- 2026-10-19 3c04267 Document agent skill try-it links on README and docs
+- 2026-10-10 a5d4415 Distribute the agent skill from this repository
+- 2026-10-10 e665201 Update documentation for Bjerrum defects examples
+- 2026-10-10 17bdcfa Enhance Makefile and documentation for agent skill
+- 2026-09-29 b9e9a1b -
+- 2026-09-29 3a032c0 Implement hydrogen-bond density calculation and update documentation
+- 2026-09-02 6e12ae5 Update documentation for cage labels and add plugin aliases
+- 2026-08-25 d960ceb Update documentation and improve descriptions for GenIce3
+- 2026-08-25 c119fe7 Enhance molecule plugin listing functionality
+- 2026-08-25 38cc7a3 Improve error messages and enhance option parsing in CLI
+- 2026-08-25 d231b85 Update documentation and enhance plugin handling
+- 2026-08-25 8281b9b Enhance documentation and add machine-readable index
+- 2026-08-25 857c368 Refactor atoms_to_waters function for clarity and accuracy
+- 2026-08-25 7ac1ad4 Release GenIce3 3.0b7
 - 2026-08-25 ec2ff10 Add tests for Input descriptors and GenIce3 reactive inputs
 - 2026-08-24 2331015 Refactor GenIce3 properties and enhance Input handling
 - 2026-08-24 b72e8dd Implement Input descriptor and enhance reactive decorator
