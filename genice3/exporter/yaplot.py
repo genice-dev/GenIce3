@@ -5,14 +5,52 @@ import sys
 from collections import defaultdict
 from logging import getLogger
 from io import TextIOWrapper
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import numpy as np
-import yaplotlib as yp
+from yaplotlib import YaplotDocument
 
 from genice3.genice import GenIce3
 from genice3.exporter import parse_water_model_option
 from genice3.util import serialize
+
+
+# Bondi van der Waals radii (Å), normalized so O == 1.0.
+# Ref: Bondi, A. (1964). J. Phys. Chem. 68, 441–451.
+_VDW_ANGSTROM = {
+    "H": 1.20,
+    "He": 1.40,
+    "Li": 1.82,
+    "C": 1.70,
+    "N": 1.55,
+    "O": 1.52,
+    "F": 1.47,
+    "Ne": 1.54,
+    "Na": 2.27,
+    "Mg": 1.73,
+    "Si": 2.10,
+    "P": 1.80,
+    "S": 1.80,
+    "Cl": 1.75,
+    "Ar": 1.88,
+    "K": 2.75,
+    "Ca": 2.31,
+    "Br": 1.85,
+    "Kr": 2.02,
+    "I": 1.98,
+    "Xe": 2.16,
+}
+
+BUILTIN_RELATIVE_RADII: Dict[str, float] = {
+    el: r / _VDW_ANGSTROM["O"] for el, r in _VDW_ANGSTROM.items()
+}
+
+# yaplot Size for relative radius 1.0 (O at multiplier 1): half Bondi VdW in nm.
+# Full VdW (space-filling) is too bulky; ~1/5 is network-oriented; 1/2 is the default.
+DEFAULT_SCALE = (_VDW_ANGSTROM["O"] / 10.0) / 2.0  # 1.52 Å → 0.076 nm
+
+# Two-letter symbols we recognize when parsing atom labels (Na, Cl, …).
+_TWO_LETTER_ELEMENTS = {el for el in BUILTIN_RELATIVE_RADII if len(el) == 2}
 
 
 def _scalar(v: Any) -> Any:
@@ -22,16 +60,63 @@ def _scalar(v: Any) -> Any:
     return v
 
 
+def element_symbol(atom_name: str) -> str:
+    """
+    原子ラベル（OW, HW1, Na, CL, …）から元素記号を推定する。
+    """
+    letters = "".join(c for c in atom_name if c.isalpha())
+    if not letters:
+        return "?"
+    if len(letters) >= 2 and letters[1].islower():
+        return letters[0].upper() + letters[1]
+    pair = letters[:2].capitalize()
+    if pair in _TWO_LETTER_ELEMENTS:
+        return pair
+    return letters[0].upper()
+
+
+def atom_size(
+    element: str,
+    scale: float = DEFAULT_SCALE,
+    relatives: Optional[Mapping[str, float]] = None,
+) -> float:
+    """
+    表示半径 = scale × 内蔵相対半径 × ユーザー相対倍率。
+    未知元素の内蔵相対半径は 1.0 とする。
+    """
+    rel_map = relatives or {}
+    builtin = BUILTIN_RELATIVE_RADII.get(element, 1.0)
+    user = float(rel_map.get(element, 1.0))
+    return round(float(scale) * builtin * user, 12)
+
+
 def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    yaplot 固有: H（水素の表示半径係数）, water_model。
+    yaplot 固有: scale, 元素ごとの相対倍率 (H, O, C, …), radii dict, water_model。
     残りは unprocessed として返す。
     """
     processed: Dict[str, Any] = {}
     unprocessed = options.copy()
-    if "H" in unprocessed:
-        raw = _scalar(unprocessed.pop("H"))
-        processed["H"] = float(raw)
+
+    if "scale" in unprocessed:
+        processed["scale"] = float(_scalar(unprocessed.pop("scale")))
+
+    relatives: Dict[str, float] = {}
+    if "radii" in unprocessed:
+        raw = _scalar(unprocessed.pop("radii"))
+        if isinstance(raw, dict):
+            for key, val in raw.items():
+                relatives[str(key)] = float(_scalar(val))
+        else:
+            raise ValueError("yaplot option 'radii' must be a mapping of element → float")
+
+    for el in list(unprocessed.keys()):
+        if el in BUILTIN_RELATIVE_RADII:
+            relatives[el] = float(_scalar(unprocessed.pop(el)))
+
+    if relatives:
+        processed["radii"] = relatives
+
     if "water_model" in unprocessed:
         processed["water_model"] = _scalar(unprocessed.pop("water_model"))
     if "water" in unprocessed and "water_model" not in processed:
@@ -46,7 +131,20 @@ desc = {
 Usage: genice3 UNITCELL --exporter yaplot [:option value ...]
 
 options:
-    H=x   Set the radius of H to be x.
+    scale=x   Overall size unit (default: half Bondi VdW of O in nm ≈ 0.076).
+              Display radius = scale × built-in relative VdW × element multiplier.
+              Use scale≈0.152 for space-filling; smaller (e.g. 0.03) for HB networks.
+    H=x       Relative multiplier for H (also enables atomic water drawing
+              when x != 0). Built-in H/O ratio is used when x=1.
+    O=x       Relative multiplier for O (default 1).
+    C=x,N=x,… Relative multipliers for other elements (guests/ions).
+    radii={…} YAML-friendly dict of element multipliers (merged with above).
+    water_model=name
+              Water model (e.g. 4site, tip4p). Implies atomic water drawing.
+
+Built-in relative radii are Bondi VdW radii normalized so O == 1.
+Without H (or with H=0) and without water_model, only oxygen sites and the
+HB network are drawn (lattice overview).
 """,
 }
 
@@ -59,48 +157,62 @@ format_desc = {
     "solute": "Atomic positions",
     "hb": "o",
     "remarks": "It renders molecular configurations and the HB network.",
-    "suboptions": "H: radius of H atom (numeric).",
+    "suboptions": (
+        "scale: overall size; H/O/C/…: relative to built-in VdW radii (O=1); "
+        "radii: dict of multipliers; water_model: water model name. "
+        "H!=0 or water_model enables atomic water drawing."
+    ),
 }
 
 
-def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
-    "Draw the cell in Yaplot format."
+def dumps(genice: GenIce3, **options) -> str:
+    """Return the cell as Yaplot text (``.yap``)."""
     logger = getLogger()
 
-    size_O = 0.03
-    size_H = float(options.get("H", 0)) * size_O
+    scale = float(options.get("scale", DEFAULT_SCALE))
+    relatives: Dict[str, float] = dict(options.get("radii") or {})
 
-    s = yp.Layer(2)
+    # Direct dump(..., H=1, O=1.2) でも動くよう、元素キーを radii に取り込む。
+    for el in BUILTIN_RELATIVE_RADII:
+        if el in options and el not in relatives:
+            relatives[el] = float(_scalar(options[el]))
+
+    h_rel = relatives.get("H")
+    water_model_name = options.get("water_model") or options.get("water")
+    # Atomic water when H is a non-zero multiplier, or water_model is given.
+    show_atoms = (h_rel is not None and h_rel != 0.0) or (water_model_name is not None)
+
+    size_O = atom_size("O", scale=scale, relatives=relatives)
+    # H omitted with water_model → use built-in ratio (multiplier 1).
+    size_H = (
+        atom_size("H", scale=scale, relatives=relatives)
+        if show_atoms and (h_rel is None or h_rel != 0.0)
+        else 0.0
+    )
+
+    doc = YaplotDocument()
+    doc.globals.messages.append("Command line: " + " ".join(sys.argv))
+    frame = doc.new_frame()
+
     x, y, z = genice.cell
     for p, q, r in ((x, y, z), (y, z, x), (z, x, y)):
         for a in (np.zeros(3), p, q, p + q):
-            s += yp.Line(a, a + r)
+            frame.add("line", a, a + r, layer=2)
 
-    if size_H == 0:
-        # 水素のサイズ指定がない場合
-        # prepare the reverse dict
-        waters = defaultdict(dict)
+    if not show_atoms:
+        # 水素のサイズ指定がない場合: 格子点（酸素）と HB のみ
         pos = genice.lattice_sites
-        s += yp.Layer(4)
-        s += yp.Color(3)
-        s += yp.Size(0.03)
         for p in pos:
-            s += yp.Circle(p @ genice.cell)
-        s += yp.Layer(5)
-        s += yp.Color(4)
-        # s += yp.Size(0.03)
+            frame.add("circle", p @ genice.cell, layer=4, color=3, radius=size_O)
         for i, j in sorted(genice.graph.edges(data=False)):
-            # if i in waters and j in waters:  # edge may connect to the dopant
             O1, O2 = pos[i], pos[j]
             d = O2 - O1
             d -= np.floor(d + 0.5)
             O2 = O1 + d
-            s += yp.Line(O1 @ genice.cell, O2 @ genice.cell)
+            frame.add("line", O1 @ genice.cell, O2 @ genice.cell, layer=5, color=4)
 
     else:
-        # waterとwater_modelの両方をサポート（後方互換性のため）
-        water_model_name = options.get("water_model") or options.get("water", "4site")
-        water_model = parse_water_model_option(water_model_name)
+        water_model = parse_water_model_option(water_model_name or "4site")
 
         waters = genice.water_molecules(water_model=water_model)
         guests = genice.guest_molecules()
@@ -121,31 +233,21 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
                         water_sites[water_index]["H0"] = position
                     else:
                         water_sites[water_index]["H1"] = position
-        s += yp.Color(3)
+
         for water_index, water in sorted(water_sites.items()):
             O = water["O"]
             H0 = water["H0"]
             H1 = water["H1"]
-            s += yp.Layer(4)
-            s += yp.Color(3)
-            s += yp.Size(size_O)
-            s += yp.Circle(O)
+            frame.add("circle", O, layer=4, color=3, radius=size_O)
+            frame.add("line", O, H0, layer=4, color=3)
+            frame.add("line", O, H1, layer=4, color=3)
 
-            s += yp.Line(O, H0)
-            s += yp.Line(O, H1)
+            if size_H > 0:
+                frame.add("circle", H0, layer=4, color=3, radius=size_H)
+                frame.add("circle", H1, layer=4, color=3, radius=size_H)
 
-            s += yp.Size(size_H)
-            s += yp.Circle(H0)
-            s += yp.Circle(H1)
+            frame.add("text", O, text=f"{water_index}", layer=1, color=2)
 
-            s += yp.Color(2)
-            s += yp.Layer(1)
-            s += yp.Text(O, f"{water_index}")
-
-        s += yp.Layer(3)
-        s += yp.Color(4)
-        s += yp.ArrowType(1)
-        s += yp.Size(size_O)
         for i, j in sorted(genice.digraph.edges(data=False)):
             if i in waters and j in waters:  # edge may connect to the dopant
                 O = water_sites[j]["O"]
@@ -156,53 +258,53 @@ def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options):
                 rr0 = d0 @ d0
                 rr1 = d1 @ d1
                 if rr0 < rr1 and rr0 < 0.245**2:
-                    s += yp.Arrow(H0, O)
+                    frame.add(
+                        "stick", H0, O, layer=3, color=4, radius=size_O, arrow=1
+                    )
                 if rr1 < rr0 and rr1 < 0.245**2:
-                    s += yp.Arrow(H1, O)
+                    frame.add(
+                        "stick", H1, O, layer=3, color=4, radius=size_O, arrow=1
+                    )
 
         gatoms = serialize(guests) + serialize(
             [ion for _, ion in sorted(ions.items())]
         )
-        palettes = dict()
+        palettes: Dict[str, int] = {}
 
-        s += yp.Layer(4)
-        s += yp.ArrowType(1)
-        H = []
-        O = ""
         for molecule_name, atom_name, position in gatoms:
             if atom_name in palettes:
                 pal = palettes[atom_name]
             else:
                 pal = 4 + len(palettes)
                 palettes[atom_name] = pal
-            s += yp.Color(pal)
-            if atom_name[0] == "H":
-                s += yp.Size(size_H)
-            else:
-                s += yp.Size(size_O)
-            s += yp.Circle(position)
+            el = element_symbol(atom_name)
+            frame.add(
+                "circle",
+                position,
+                layer=4,
+                color=pal,
+                radius=atom_size(el, scale=scale, relatives=relatives),
+                arrow=1,
+            )
         for a, b in it.combinations(gatoms, 2):
             resname, atomname, position1 = a
             resname, atomname, position2 = b
             d = position1 - position2
             if d @ d < 0.16**2:
-                s += yp.Line(position1, position2)
+                frame.add("line", position1, position2, layer=4)
 
         cagespecs = genice.cages
 
-        s += yp.Layer(6)
-        s += yp.Size(size_O * 3)
         for i, (cagespec, position) in enumerate(
             zip(cagespecs.specs, cagespecs.positions)
         ):
-            s += yp.Color(5)
-            s += yp.Circle(position @ genice.cell)
-            s += yp.Color(2)
-            s += yp.Text(position @ genice.cell, f"{i}")
+            center = position @ genice.cell
+            frame.add("circle", center, layer=6, color=5, radius=size_O * 3)
+            frame.add("text", center, text=f"{i}", layer=6, color=2)
 
-            # for atom in cagespec.graph:
-            #     s += yp.Line(position, atom)
+    return doc.dumps()
 
-    s += "#" + "\n#Command line: " + " ".join(sys.argv) + "\n"
-    s += yp.NewPage()
-    file.write(s)
+
+def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options) -> None:
+    """Write the cell in Yaplot format."""
+    file.write(dumps(genice, **options))

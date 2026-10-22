@@ -71,7 +71,7 @@ Optional **MCP** (chat tool calls into GenIce3): `pip install "genice3[mcp]"`, t
 - pairlist >=1.0.0
 - cycless >=0.7
 - graphstat >=0.3.3
-- yaplotlib >=0.1.2
+- yaplotlib >=1.0.0,<2
 - openpyscad >=0.5.0
 - pyyaml >=6.0
 - jinja2 >=3.1.4

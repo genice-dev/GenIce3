@@ -31,6 +31,7 @@ CATEGORIES = [
     ("topological_defects", "Topological defects"),
     ("mdanalysis", "Using MDAnalysis"),
     ("visualize", "Visualization (py3Dmol)"),
+    ("yaplot", "Visualization (Yaplot 5.5)"),
 ]
 
 
@@ -103,6 +104,28 @@ def optional_py3dmol_dep_cells() -> list[dict]:
     return [md, code]
 
 
+def optional_yaplot_dep_cells() -> list[dict]:
+    """Install/refresh yaplotlib and fetch Yaplot 5.5 notebook helper (official recipe)."""
+    md = make_md_cell(
+        "### Optional: Yaplot 5.5\n\n"
+        "The **Visualization (Yaplot 5.5)** section embeds the WebAssembly Yaplot "
+        "viewer (<https://vitroid.github.io/Yaplot/>) via `yaplot_view.show`. "
+        "Run the next cell once (safe to re-run). This matches the [Yaplot README]"
+        "(https://github.com/vitroid/Yaplot#web-browser-and-google-colab) recipe. "
+        "GenIce3 already depends on `yaplotlib` ≥ 1.0 for the exporter; the "
+        "`pip install` line refreshes it when you want the latest from GitHub."
+    )
+    code = make_code_cell(
+        "# Official Yaplot-in-notebook setup (Colab / Jupyter)\n"
+        "%pip install -q --force-reinstall --no-deps git+https://github.com/vitroid/yaplotlib.git\n"
+        "!wget -q -N https://vitroid.github.io/Yaplot/yaplot_view.py\n"
+        "from yaplotlib import YaplotDocument  # noqa: F401 — sanity check\n"
+        "from yaplot_view import show  # noqa: F401\n"
+        "print(\"yaplot_view ready\")\n"
+    )
+    return [md, code]
+
+
 def setup_cells() -> list[dict]:
     """Cells to set cwd to repo root and reduce log noise (depol prints hundreds of INFO lines)."""
     md = make_md_cell(
@@ -159,9 +182,10 @@ def main() -> None:
     intro, nb_meta = load_existing_intro_and_metadata(API_NB)
     mdanalysis_dep = optional_mdanalysis_dep_cells()
     py3dmol_dep = optional_py3dmol_dep_cells()
+    yaplot_dep = optional_yaplot_dep_cells()
     setup = setup_cells()
     body_cells = build_cells_from_examples()
-    all_cells = intro + mdanalysis_dep + py3dmol_dep + setup + body_cells
+    all_cells = intro + mdanalysis_dep + py3dmol_dep + yaplot_dep + setup + body_cells
 
     nb = {"cells": all_cells, **nb_meta}
     API_NB.write_text(json.dumps(nb, indent=2, ensure_ascii=False), encoding="utf-8")

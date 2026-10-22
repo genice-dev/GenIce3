@@ -55,6 +55,7 @@ nav:
     - Tools: api-examples/tools.md
     - Using MDAnalysis: api-examples/mdanalysis.md
     - Visualization (py3Dmol): api-examples/visualize.md
+    - Visualization (Yaplot 5.5): api-examples/yaplot.md
   - Citation: citation.md
   - References: references.md
   - Contribute: contribute.md

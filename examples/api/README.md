@@ -16,6 +16,7 @@ Each subdirectory groups examples by topic, showing how to call GenIce3 from Pyt
 | [stat](stat.md) | Structural statistics of the hydrogen-bond network (hydrogen-bond density) |
 | [mdanalysis](mdanalysis.md) | GRO → PDB via MDAnalysis (optional: `pip install MDAnalysis matplotlib`) |
 | [visualize](visualize.md) | GRO viewer with py3Dmol (optional: `pip install py3dmol`) |
+| [yaplot](yaplot.md) | Yaplot 5.5 WASM viewer for `.yap` from the built-in exporter |
 | [tools](tools.md) | Helper scripts for YAML ↔ shell conversions used by the examples |
 
 Each subdirectory has its own `README.md` describing the example scripts it contains.
@@ -81,4 +82,4 @@ make visualize
 
 To generate `.sh` from YAML (or vice versa), use `tools/gen_sh_from_yaml.py` and `tools/gen_yaml_from_sh.py`.
 
-**API.ipynb** is generated from these examples (`make api-notebook`). It includes all categories except `tools` (those scripts rely on `__file__` and are meant to be run from the command line). After **Installation**, run **Optional: MDAnalysis** and/or **Optional: py3Dmol** if you use those sections (those packages are not part of the minimal Colab install). Then run **Setup** so paths like `cif/MEP.cif` resolve correctly.
+**API.ipynb** is generated from these examples (`make api-notebook`). It includes all categories except `tools` (those scripts rely on `__file__` and are meant to be run from the command line). After **Installation**, run **Optional: MDAnalysis**, **Optional: py3Dmol**, and/or **Optional: Yaplot 5.5** if you use those sections (py3dmol / the Yaplot helper are not part of the minimal Colab install). Then run **Setup** so paths like `cif/MEP.cif` resolve correctly.

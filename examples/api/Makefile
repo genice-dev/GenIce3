@@ -6,6 +6,7 @@
 # Optional examples (install deps with pip yourself, then):
 #   make -C examples/api mdanalysis   # pip install MDAnalysis matplotlib
 #   make -C examples/api visualize    # pip install py3dmol
+#   make -C examples/api yaplot       # needs network once for yaplot_view.py
 #
 # 実行時のカレントディレクトリは examples/api になるので、
 # .sh / .yaml 内の相対パス（例: --file ../cif/MEP.cif）は examples/api 基準。
@@ -55,7 +56,7 @@ compare: $(COMPARE_TARGETS)
 	-diff $*.py.log $*.yaml.log
 	-diff $*.py.log $*.sh.log
 
-.PHONY: all api_outs compare clean mdanalysis visualize
+.PHONY: all api_outs compare clean mdanalysis visualize yaplot
 
 # Needs MDAnalysis + matplotlib: pip install -r requirements-mdanalysis.txt (from this dir)
 mdanalysis:
@@ -64,6 +65,10 @@ mdanalysis:
 # Needs py3dmol: pip install -r requirements-py3dmol.txt (from this dir)
 visualize:
 	$(PYTHON) $(ROOT)/examples/api/visualize/16_py3dmol.py
+
+# Yaplot 5.5 inline helper (downloads yaplot_view.py on first run)
+yaplot:
+	$(PYTHON) $(ROOT)/examples/api/yaplot/17_yaplot55.py
 
 # Prepend venv bin to PATH so that 'python3' inside .sh resolves to the venv python.
 %.sh.out: %.sh Makefile

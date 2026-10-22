@@ -18,6 +18,7 @@ cages.py
 # root #######################
 /*.svg
 /*.yap
+/yaplot_view.py
 /*.scad
 /*.ngph
 /*.zip
