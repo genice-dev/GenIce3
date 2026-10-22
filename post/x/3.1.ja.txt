@@ -1,0 +1,4 @@
+GenIce3 3.1 を出しました。yaplot exporter は CPK 風の色・レイヤ名・起動時センタリング（Yaplot 5.6+）に対応。CS2 メタンクラスレートの Colab デモは Runtime → Run all だけです。
+
+https://colab.research.google.com/github/genice-dev/GenIce3/blob/main/demo_CS2.ipynb
+https://github.com/genice-dev/GenIce3/releases/tag/3.1

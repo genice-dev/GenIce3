@@ -4,6 +4,11 @@ Scope: GenIce3-related changes after `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
 ## Overview
 
+## 3.1
+
+Yaplot visualization polish: CPK-style colors, layer names, startup centering (Yaplot 5.6+), and a one-click Colab demo for CS2 methane hydrate (`demo_CS2.ipynb`). Depends on `yaplotlib` ≥ 1.0.
+
+
 After branching from the GenIce2 line, GenIce3 was redesigned around its API, option model, dependency engine, and plugin architecture. Version **3.0** is the first stable release of this line: ice-rule and polarization logic live in **genice-core**, while GenIce3 focuses on unit cells, guests, ions, exporters, and the CLI/Python API.
 
 ## Major Updates

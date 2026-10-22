@@ -1,0 +1,4 @@
+GenIce3 3.1 is out. The yaplot exporter now uses CPK-ish colors, named layers, and opens centered (with Yaplot 5.6+). Try the CS2 methane clathrate demo in Colab — Runtime → Run all.
+
+https://colab.research.google.com/github/genice-dev/GenIce3/blob/main/demo_CS2.ipynb
+https://github.com/genice-dev/GenIce3/releases/tag/3.1

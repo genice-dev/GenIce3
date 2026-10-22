@@ -4,6 +4,12 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.1
+
+* Yaplot exporter: CPK-ish atom colors, HB daggers, named layers, global `center` / `verbose`, lighter splat when hydrogens are shown; cage markers on a hidden layer.
+* Require `yaplotlib` ≥ 1.0; Colab demo `demo_CS2.ipynb` (sII + methane → Yaplot WASM).
+* API notebook / docs: Yaplot section without a pinned viewer minor version.
+
 ### 3.0
 
 * First **stable** release of the GenIce3 line (after `3.0a*` / `3.0b*`).
