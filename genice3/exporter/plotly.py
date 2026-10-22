@@ -6,22 +6,22 @@ from logging import getLogger
 
 import numpy as np
 import networkx as nx
-import plotly.graph_objects as go
 from genice3.genice import GenIce3
 
 
 desc = {
-    "ref": {"Codes": "https://github.com/vitroid/Yaplot"},
-    "brief": "Plot the topology with Matplotlib.",
+    "ref": {"Codes": "https://plotly.com/python/"},
+    "brief": "Plot the topology with Plotly.",
     "usage": """
 Usage: genice3 UNITCELL --exporter plotly [:option value ...]
+
+Requires the optional dependency ``plotly`` (``pip install plotly``).
 
 options:
     type=x  Set the plot type
             full or digraph: fully arranged.
             fixed: fixed edges and undecided edges.
             frame or graph: undirected graph
-    ax      matplotlib axes object
 """,
 }
 
@@ -34,11 +34,19 @@ format_desc = {
     "solute": "Atomic positions",
     "hb": "o",
     "suboptions": "type: full, digraph, fixed, frame, graph (plot layout).",
-    "remarks": "Interactive 3D visualization.",
+    "remarks": "Interactive 3D visualization. Optional dependency: plotly.",
 }
 
 
 def draw_graph(g: nx.Graph, pos: dict, fixed: nx.DiGraph = None, dopant: list = []):
+    # Lazy import so format_desc / docs generation works without plotly installed.
+    try:
+        import plotly.graph_objects as go
+    except ImportError as e:
+        raise ImportError(
+            "The plotly exporter requires plotly. Install with: pip install plotly"
+        ) from e
+
     # draw the graph with edges and labels in 3D
     pos = np.array([pos[i] for i in sorted(g.nodes())])
 

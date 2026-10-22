@@ -1,12 +1,11 @@
 """Generate ice with the yaplot exporter and show it with Yaplot (WASM).
 
-In the notebook, run the Optional: Yaplot cell first::
+``yaplotlib`` ships with GenIce3. In the notebook, run the Optional: Yaplot cell
+first (downloads ``yaplot_view.py`` if missing).
 
-    %pip install -q --force-reinstall --no-deps git+https://github.com/vitroid/yaplotlib.git
-    !wget -q -N https://vitroid.github.io/Yaplot/yaplot_view.py
-    from yaplot_view import show
+Standalone: place ``yaplot_view.py`` in cwd, or::
 
-Standalone: place ``yaplot_view.py`` in cwd before running this file.
+    curl -fsSL -o yaplot_view.py https://vitroid.github.io/Yaplot/yaplot_view.py
 """
 
 from genice3.genice import GenIce3

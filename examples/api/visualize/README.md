@@ -1,29 +1,35 @@
-# Example: GRO structure in py3Dmol
+# Example: Visualization (py3Dmol / Plotly / Yaplot)
 
-This category is included in **`API.ipynb`** via the `CATEGORIES` list in `scripts/build_api_notebook.py` (run `make api-notebook`). In the notebook, install **`py3dmol`** using the **Optional: py3Dmol** cell after **Installation**, then run **Setup** and the cells below.
+This category is included in **`API.ipynb`** via the `CATEGORIES` list in `scripts/build_api_notebook.py` (run `make api-notebook`). In the notebook, install the optional viewers you need (**Optional: py3Dmol**, **Optional: Plotly**, and/or **Optional: Yaplot**) after **Installation**, then run **Setup** and the cells below.
 
-**`py3dmol`** is **not** a core dependency of GenIce3. Install it explicitly when you use this example:
+Three ways to look at a generated structure (all optional beyond GenIce3 core):
+
+| Script | Viewer | Extra install |
+|--------|--------|---------------|
+| `16_py3dmol.py` | [py3Dmol](https://3dmol.csb.pitt.edu/) in Jupyter | `pip install py3dmol` |
+| `19_plotly.py` | [Plotly](https://plotly.com/python/) 3D HB network | `pip install plotly` |
+| `20_yaplot.py` | [Yaplot](https://vitroid.github.io/Yaplot/) WASM | `yaplot_view.py` helper only (`yaplotlib` is a GenIce3 core dep) |
+
+Or from `examples/api`:
 
 ```bash
-pip install py3dmol
+pip install -r requirements-py3dmol.txt
+pip install -r requirements-plotly.txt
 ```
 
-Or use the one-line list under `examples/api`:
-
-```bash
-pip install -r ../requirements-py3dmol.txt
-```
-
-(from `examples/api`)
-
-The sample builds a `.gro` string with GenIce3, loads it into a **py3Dmol** viewer (stick style, unit cell), and calls `show()` so the view appears in Jupyter / Colab. It is meant for notebooks; running the `.py` file from a plain terminal may not display a window.
+These samples call `show()` / embed a viewer so the scene appears in Jupyter / Colab. Running the `.py` files from a plain terminal may not open a window.
 
 ## Running standalone
 
-From the repository root (with `py3dmol` installed in the same environment as `genice3`):
+From the repository root:
 
 ```bash
 python examples/api/visualize/16_py3dmol.py
+python examples/api/visualize/19_plotly.py
+
+# Yaplot: fetch the notebook helper once
+curl -fsSL -o yaplot_view.py https://vitroid.github.io/Yaplot/yaplot_view.py
+python examples/api/visualize/20_yaplot.py
 ```
 
 Or from `examples/api`:
@@ -32,4 +38,4 @@ Or from `examples/api`:
 make visualize
 ```
 
-`make visualize` uses the Poetry venv’s Python from the repo root; install `py3dmol` into that venv first (e.g. `poetry run pip install py3dmol`).
+`make visualize` uses the Poetry venv’s Python from the repo root; install optional packages into that venv first.

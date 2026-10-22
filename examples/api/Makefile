@@ -5,8 +5,7 @@
 #
 # Optional examples (install deps with pip yourself, then):
 #   make -C examples/api mdanalysis   # pip install MDAnalysis matplotlib
-#   make -C examples/api visualize    # pip install py3dmol
-#   make -C examples/api yaplot       # needs network once for yaplot_view.py
+#   make -C examples/api visualize    # pip install py3dmol plotly; yaplot needs yaplot_view.py once
 #
 # 実行時のカレントディレクトリは examples/api になるので、
 # .sh / .yaml 内の相対パス（例: --file ../cif/MEP.cif）は examples/api 基準。
@@ -56,19 +55,18 @@ compare: $(COMPARE_TARGETS)
 	-diff $*.py.log $*.yaml.log
 	-diff $*.py.log $*.sh.log
 
-.PHONY: all api_outs compare clean mdanalysis visualize yaplot
+.PHONY: all api_outs compare clean mdanalysis visualize
 
 # Needs MDAnalysis + matplotlib: pip install -r requirements-mdanalysis.txt (from this dir)
 mdanalysis:
 	$(PYTHON) $(ROOT)/examples/api/mdanalysis/15_mdanalysis.py
 
-# Needs py3dmol: pip install -r requirements-py3dmol.txt (from this dir)
+# Needs py3dmol / plotly / yaplot_view.py — see visualize/README.md
 visualize:
 	$(PYTHON) $(ROOT)/examples/api/visualize/16_py3dmol.py
-
-# Yaplot 5.5 inline helper (downloads yaplot_view.py on first run)
-yaplot:
-	$(PYTHON) $(ROOT)/examples/api/yaplot/17_yaplot55.py
+	$(PYTHON) $(ROOT)/examples/api/visualize/19_plotly.py
+	@test -f $(ROOT)/yaplot_view.py || curl -fsSL -o $(ROOT)/yaplot_view.py https://vitroid.github.io/Yaplot/yaplot_view.py
+	$(PYTHON) $(ROOT)/examples/api/visualize/20_yaplot.py
 
 # Prepend venv bin to PATH so that 'python3' inside .sh resolves to the venv python.
 %.sh.out: %.sh Makefile
@@ -79,4 +77,4 @@ yaplot:
 	$(PYTHON) -m genice3.cli.genice --config $< > $@ 2> $<.log
 
 clean:
-	rm -f $(foreach d,basic cif_io doping exotic_ice guest_occupancy polarization topological_defects unitcell_transform mdanalysis visualize,$(d)/*.out $(d)/*.log)
+	rm -f $(foreach d,basic cif_io doping exotic_ice guest_occupancy polarization topological_defects unitcell_transform mdanalysis visualize stat,$(d)/*.out $(d)/*.log)

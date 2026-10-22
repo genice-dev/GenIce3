@@ -11,13 +11,13 @@ description: >-
 license: MIT
 compatibility: Requires Python 3.11 or later and the genice3 package from PyPI; installing it needs network access.
 metadata:
-  genice3-version: "3.1"
+  genice3-version: "3.1.1"
 ---
 <!-- Generated from temp_skill/SKILL.md by scripts/build_skill.py (make skill). Do not edit. -->
 
 # GenIce3
 
-GenIce3 builds ice and clathrate hydrate structures whose hydrogen-bond network obeys the ice rules and whose net polarization is driven to a target (zero by default). This skill was written for GenIce3 3.1. If `genice3 --version` reports another version, trust the program's own `--help`, `--list`, and `NAME?` output over this file.
+GenIce3 builds ice and clathrate hydrate structures whose hydrogen-bond network obeys the ice rules and whose net polarization is driven to a target (zero by default). This skill was written for GenIce3 3.1.1. If `genice3 --version` reports another version, trust the program's own `--help`, `--list`, and `NAME?` output over this file.
 
 ## 1. Make sure genice3 runs
 

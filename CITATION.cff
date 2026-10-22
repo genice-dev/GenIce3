@@ -14,8 +14,8 @@ authors:
 - family-names: "Matsumoto"
   given-names: "Masakazu"
   orcid: "https://orcid.org/0000-0002-6799-6813"
-version: 3.1
-date-released: 2026-10-22
+version: 3.1.1
+date-released: 2026-10-23
 license: MIT
 url: "https://genice-dev.github.io/GenIce3"
 repository-code: "https://github.com/genice-dev/GenIce3"

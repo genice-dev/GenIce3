@@ -4,6 +4,13 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.1.1
+
+* Restore `plotly` in the output-formats table; lazy-import so docs generation works without plotly installed.
+* Visualization API examples: add `19_plotly.py` and move Yaplot demo to `visualize/20_yaplot.py` (drop separate `yaplot/` category).
+* Notebook helpers: do not reinstall `yaplotlib` (core dependency); fetch `yaplot_view.py` when missing (Colab and local).
+* Document `set_replication_matrix` with the GenIce2 reshape figure in `unitcell_transform` examples / docs / `API.ipynb`.
+
 ### 3.1
 
 * Yaplot exporter: CPK-ish atom colors, HB daggers, named layers, global `center` / `verbose`, lighter splat when hydrogens are shown; cage markers on a hidden layer.

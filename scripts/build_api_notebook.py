@@ -3,7 +3,7 @@
 Build API.ipynb from examples/api: READMEs (markdown) and .py files (code) interleaved.
 
 - Preserves the first 3 cells of the existing API.ipynb (Colab badge, Installation).
-- Inserts optional third-party pip cells (MDAnalysis/matplotlib, py3Dmol) for sections that are not core deps.
+- Inserts optional third-party pip cells (MDAnalysis/matplotlib, py3Dmol, Plotly, Yaplot) for sections that are not core deps.
 - Inserts a Setup cell so the working directory is the repo root (needed for paths like cif/MEP.cif).
 - Skips the "tools" category (gen_sh_from_yaml, gen_yaml_from_sh use __file__ and are batch utilities).
 - For each other category: one markdown cell with "## Category" + README body, then per .py a "### Script name" markdown + code cell.
@@ -30,8 +30,7 @@ CATEGORIES = [
     ("unitcell_transform", "Unit cell transform"),
     ("topological_defects", "Topological defects"),
     ("mdanalysis", "Using MDAnalysis"),
-    ("visualize", "Visualization (py3Dmol)"),
-    ("yaplot", "Visualization (Yaplot)"),
+    ("visualize", "Visualization"),
 ]
 
 
@@ -90,10 +89,10 @@ def optional_mdanalysis_dep_cells() -> list[dict]:
 
 
 def optional_py3dmol_dep_cells() -> list[dict]:
-    """Install py3dmol before the Visualization section (not in genice3 core)."""
+    """Install py3dmol for Visualization / 16_py3dmol (not in genice3 core)."""
     md = make_md_cell(
         "### Optional: py3Dmol\n\n"
-        "The **Visualization (py3Dmol)** section needs **`py3dmol`**. It is **not** "
+        "The **Visualization** example `16_py3dmol.py` needs **`py3dmol`**. It is **not** "
         "installed with the minimal GenIce3 install above. On Colab or local Jupyter, "
         "run the next cell once (safe to re-run)."
     )
@@ -104,24 +103,42 @@ def optional_py3dmol_dep_cells() -> list[dict]:
     return [md, code]
 
 
-def optional_yaplot_dep_cells() -> list[dict]:
-    """Install/refresh yaplotlib and fetch Yaplot notebook helper (official recipe)."""
+def optional_plotly_dep_cells() -> list[dict]:
+    """Install plotly for Visualization / 19_plotly (not in genice3 core)."""
     md = make_md_cell(
-        "### Optional: Yaplot\n\n"
-        "The **Visualization (Yaplot)** section embeds the WebAssembly Yaplot "
-        "viewer (<https://vitroid.github.io/Yaplot/>) via `yaplot_view.show`. "
-        "Run the next cell once (safe to re-run). This matches the [Yaplot README]"
-        "(https://github.com/vitroid/Yaplot#web-browser-and-google-colab) recipe. "
-        "GenIce3 already depends on `yaplotlib` ≥ 1.0 for the exporter; the "
-        "`pip install` line refreshes it when you want the latest from GitHub."
+        "### Optional: Plotly\n\n"
+        "The **Visualization** example `19_plotly.py` needs **`plotly`**. It is **not** "
+        "installed with the minimal GenIce3 install above. On Colab or local Jupyter, "
+        "run the next cell once (safe to re-run)."
     )
     code = make_code_cell(
-        "# Official Yaplot-in-notebook setup (Colab / Jupyter)\n"
-        "%pip install -q --force-reinstall --no-deps git+https://github.com/vitroid/yaplotlib.git\n"
-        "!wget -q -N https://vitroid.github.io/Yaplot/yaplot_view.py\n"
-        "from yaplotlib import YaplotDocument  # noqa: F401 — sanity check\n"
+        "# Skip if you already have plotly in your environment\n"
+        "%pip install -q plotly\n"
+    )
+    return [md, code]
+
+
+def optional_yaplot_dep_cells() -> list[dict]:
+    """Fetch Yaplot notebook helper only (yaplotlib comes with GenIce3)."""
+    md = make_md_cell(
+        "### Optional: Yaplot\n\n"
+        "The **Visualization** example `20_yaplot.py` embeds the WebAssembly Yaplot "
+        "viewer (<https://vitroid.github.io/Yaplot/>) via `yaplot_view.show`. "
+        "`yaplotlib` is already a GenIce3 dependency; this cell only downloads the "
+        "small notebook helper. Run once (safe to re-run)."
+    )
+    code = make_code_cell(
+        "# Notebook helper for Yaplot WASM (yaplotlib is already installed with GenIce3)\n"
+        "from pathlib import Path\n"
+        "import urllib.request\n"
+        "\n"
+        "helper = Path(\"yaplot_view.py\")\n"
+        "if not helper.is_file():\n"
+        "    urllib.request.urlretrieve(\n"
+        "        \"https://vitroid.github.io/Yaplot/yaplot_view.py\", helper\n"
+        "    )\n"
         "from yaplot_view import show  # noqa: F401\n"
-        "print(\"yaplot_view ready\")\n"
+        "print(\"yaplot_view ready:\", helper.resolve())\n"
     )
     return [md, code]
 
@@ -153,6 +170,24 @@ def setup_cells() -> list[dict]:
     return [md, code]
 
 
+# GitHub raw base so README images render in Colab / local notebook viewers.
+_RAW_EXAMPLES = (
+    "https://raw.githubusercontent.com/genice-dev/GenIce3/main/examples/api"
+)
+
+
+def rewrite_readme_media_links(body: str, dir_name: str) -> str:
+    """Turn relative ``](foo.png)`` into absolute raw.githubusercontent.com URLs."""
+
+    def repl(m: re.Match[str]) -> str:
+        path = m.group(1)
+        if path.startswith(("http://", "https://", "/")):
+            return m.group(0)
+        return f"]({_RAW_EXAMPLES}/{dir_name}/{path})"
+
+    return re.sub(r"\]\(([^)]+)\)", repl, body)
+
+
 def build_cells_from_examples() -> list[dict]:
     cells = []
     for dir_name, display_name in CATEGORIES:
@@ -162,6 +197,7 @@ def build_cells_from_examples() -> list[dict]:
         readme = subdir / "README.md"
         if readme.exists():
             body = readme.read_text(encoding="utf-8", errors="replace").strip()
+            body = rewrite_readme_media_links(body, dir_name)
             cells.append(make_md_cell(f"## {display_name}\n\n{body}"))
         py_files = sorted(subdir.glob("*.py"))
         for py_path in py_files:
@@ -182,10 +218,13 @@ def main() -> None:
     intro, nb_meta = load_existing_intro_and_metadata(API_NB)
     mdanalysis_dep = optional_mdanalysis_dep_cells()
     py3dmol_dep = optional_py3dmol_dep_cells()
+    plotly_dep = optional_plotly_dep_cells()
     yaplot_dep = optional_yaplot_dep_cells()
     setup = setup_cells()
     body_cells = build_cells_from_examples()
-    all_cells = intro + mdanalysis_dep + py3dmol_dep + yaplot_dep + setup + body_cells
+    all_cells = (
+        intro + mdanalysis_dep + py3dmol_dep + plotly_dep + yaplot_dep + setup + body_cells
+    )
 
     nb = {"cells": all_cells, **nb_meta}
     API_NB.write_text(json.dumps(nb, indent=2, ensure_ascii=False), encoding="utf-8")

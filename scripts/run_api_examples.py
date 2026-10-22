@@ -33,7 +33,8 @@ _OPTIONAL_PY_REL = frozenset(
     {
         "examples/api/mdanalysis/15_mdanalysis.py",
         "examples/api/visualize/16_py3dmol.py",
-        "examples/api/yaplot/17_yaplot55.py",
+        "examples/api/visualize/19_plotly.py",
+        "examples/api/visualize/20_yaplot.py",
     }
 )
 

@@ -108,7 +108,8 @@ def main() -> None:
         out.write_text(index_readme.read_text(encoding="utf-8", errors="replace"), encoding="utf-8")
         print(f"  {out.relative_to(REPO_ROOT)}")
 
-    # Each subdir: README + sample code
+    # Each subdir: README + sample code (+ colocated images for MkDocs)
+    media_suffixes = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
     for subdir in sorted(EXAMPLES_API.iterdir()):
         if not subdir.is_dir():
             continue
@@ -122,6 +123,11 @@ def main() -> None:
             out_path.unlink()
         build_page(category, readme, out_path)
         print(f"  {out_path.relative_to(REPO_ROOT)}")
+        for media in sorted(subdir.iterdir()):
+            if media.is_file() and media.suffix.lower() in media_suffixes:
+                dest = DOCS_API_EXAMPLES / media.name
+                dest.write_bytes(media.read_bytes())
+                print(f"  {dest.relative_to(REPO_ROOT)} (from {category}/)")
 
 
 if __name__ == "__main__":

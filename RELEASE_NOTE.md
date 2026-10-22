@@ -4,6 +4,10 @@ Scope: GenIce3-related changes after `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
 ## Overview
 
+## 3.1.1
+
+Documentation and visualization examples patch: restore plotly in the formats table, unify py3Dmol / Plotly / Yaplot under `examples/api/visualize`, fix Yaplot notebook helper install, and document `set_replication_matrix` with the reshape figure.
+
 ## 3.1
 
 Yaplot visualization polish: CPK-style colors, layer names, startup centering (Yaplot 5.6+), and a one-click Colab demo for CS2 methane hydrate (`demo_CS2.ipynb`). Depends on `yaplotlib` ≥ 1.0.
