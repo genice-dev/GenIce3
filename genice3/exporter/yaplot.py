@@ -52,7 +52,55 @@ DEFAULT_SCALE = (_VDW_ANGSTROM["O"] / 10.0) / 2.0  # 1.52 Å → 0.076 nm
 # Yaplot 既定 fov は 45°。分子を見やすくするため 1/4。
 _DEFAULT_FOV_DEG = 45.0
 _EXPORT_FOV_DEG = _DEFAULT_FOV_DEG / 4.0
-_EXPORT_SPLAT = 3
+# splat: 格子概観は濃く、原子表示（水素あり）は軽く。
+_SPLAT_LATTICE = 3
+_SPLAT_ATOMIC = 1
+
+# Yaplot arrow types: 0=plain, 1=arrow, 2=dagger/dart
+_ARROW_DAGGER = 2
+
+# CPK-ish palette indices (0–2 = system black/gray/white; 5+ redefined).
+_COLOR_O = 5
+_COLOR_H = 6
+_COLOR_C = 7  # deep gray (not system 0)
+_COLOR_N = 8
+_COLOR_S = 9
+_COLOR_CL = 10
+_COLOR_BOND = 2  # covalent: white
+_COLOR_CELL = 0  # cell edges: black
+_COLOR_HB = 4
+_COLOR_TEXT = 2
+_COLOR_DEFAULT = 1
+_COLOR_CAGE = 5  # cage-center markers (hidden layer by default)
+
+# Layers (Yaplot 5.6: name via `layername` in the global block).
+_LAYER_LABELS = 1
+_LAYER_CELL = 2
+_LAYER_HB = 3
+_LAYER_ATOMS = 4
+_LAYER_NETWORK = 5
+_LAYER_CAGES = 6  # hidden by default (overlaps guests)
+
+_LAYER_NAMES: Dict[int, str] = {
+    _LAYER_LABELS: "labels",
+    _LAYER_CELL: "cell",
+    _LAYER_HB: "HB",
+    _LAYER_ATOMS: "atoms",
+    _LAYER_NETWORK: "HB network",
+    _LAYER_CAGES: "cage position",
+}
+
+_ELEMENT_COLORS: Dict[str, int] = {
+    "O": _COLOR_O,
+    "H": _COLOR_H,
+    "C": _COLOR_C,
+    "N": _COLOR_N,
+    "S": _COLOR_S,
+    "Cl": _COLOR_CL,
+    "F": _COLOR_CL,
+    "Br": _COLOR_CL,
+    "I": _COLOR_CL,
+}
 
 # Two-letter symbols we recognize when parsing atom labels (Na, Cl, …).
 _TWO_LETTER_ELEMENTS = {el for el in BUILTIN_RELATIVE_RADII if len(el) == 2}
@@ -60,6 +108,10 @@ _TWO_LETTER_ELEMENTS = {el for el in BUILTIN_RELATIVE_RADII if len(el) == 2}
 # Squared cutoffs (nm²) for HB arrow / guest bond heuristics.
 _HB_ARROW_CUTOFF2 = 0.245**2
 _GUEST_BOND_CUTOFF2 = 0.16**2
+
+
+def _element_color(element: str) -> int:
+    return _ELEMENT_COLORS.get(element, _COLOR_DEFAULT)
 
 
 def _scalar(v: Any) -> Any:
@@ -201,19 +253,72 @@ def _resolve_draw_options(options: Mapping[str, Any]) -> Tuple[
     return scale, relatives, show_atoms, size_O, size_H, water_model_name
 
 
-def _new_document() -> Tuple[YaplotDocument, YaplotFrame]:
+def _new_document(*, splat: int, hide: Tuple[int, ...] = ()) -> Tuple[YaplotDocument, YaplotFrame]:
     doc = YaplotDocument()
-    doc.globals.splat = _EXPORT_SPLAT
+    doc.globals.splat = splat
     doc.globals.fov = _EXPORT_FOV_DEG
+    doc.globals.verbose = 1
+    # Yaplot 5.6.1: start centered on the first frame (same as the `c` key).
+    if hasattr(doc.globals, "center"):
+        doc.globals.center = True
+    if hide:
+        doc.globals.hide = hide
+    # CPK-ish colors (0–2 stay system black/gray/white).
+    doc.globals.palettes[_COLOR_O] = (220, 40, 40)  # oxygen red
+    doc.globals.palettes[_COLOR_H] = (140, 210, 255)  # hydrogen light blue
+    doc.globals.palettes[_COLOR_C] = (55, 55, 55)  # carbon deep gray (≠ black 0)
+    doc.globals.palettes[_COLOR_N] = (40, 80, 220)  # nitrogen blue
+    doc.globals.palettes[_COLOR_S] = (240, 200, 40)  # sulfur yellow
+    doc.globals.palettes[_COLOR_CL] = (40, 200, 40)  # halogen green
     doc.globals.messages.append("Command line: " + " ".join(sys.argv))
     return doc, doc.new_frame()
+
+
+def _format_layername(layer: int, name: str) -> str:
+    """Yaplot 5.6 `layername` line (quote names that need it)."""
+    if any(c.isspace() for c in name) or '"' in name:
+        escaped = name.replace("\\", "\\\\").replace('"', '\\"')
+        return f'layername {layer} "{escaped}"'
+    return f"layername {layer} {name}"
+
+
+def _global_has_line(yap_text: str, keyword: str) -> bool:
+    """True if ``keyword`` is a whole line inside the leading global block."""
+    head = yap_text.split("\n\n", 1)[0]
+    return any(line == keyword or line.startswith(keyword + " ") for line in head.splitlines())
+
+
+def _patch_global_block(
+    yap_text: str,
+    names: Mapping[int, str],
+    *,
+    center: bool = True,
+) -> str:
+    """Add center / layername lines to the global block when missing.
+
+    yaplotlib may already emit ``center``; layer names still need injection.
+    """
+    inserts: List[str] = []
+    if center and not _global_has_line(yap_text, "center"):
+        inserts.append("center")
+    inserts.extend(
+        _format_layername(n, name) for n, name in sorted(names.items())
+    )
+    if not inserts:
+        return yap_text
+    block = "\n".join(inserts)
+    if yap_text.startswith("global\n"):
+        return "global\n" + block + "\n" + yap_text[len("global\n") :]
+    return block + "\n" + yap_text
 
 
 def _draw_cell_edges(frame: YaplotFrame, cell: np.ndarray) -> None:
     x, y, z = cell
     for p, q, r in ((x, y, z), (y, z, x), (z, x, y)):
         for a in (np.zeros(3), p, q, p + q):
-            frame.add("line", a, a + r, layer=2)
+            frame.add(
+                "line", a, a + r, layer=_LAYER_CELL, color=_COLOR_CELL
+            )
 
 
 def _draw_lattice_overview(
@@ -222,13 +327,25 @@ def _draw_lattice_overview(
     """Oxygen sites and undirected HB network (no atomic water)."""
     pos = genice.lattice_sites
     for p in pos:
-        frame.add("circle", p @ genice.cell, layer=4, color=3, radius=size_O)
+        frame.add(
+            "circle",
+            p @ genice.cell,
+            layer=_LAYER_ATOMS,
+            color=_COLOR_O,
+            radius=size_O,
+        )
     for i, j in sorted(genice.graph.edges(data=False)):
         O1, O2 = pos[i], pos[j]
         d = O2 - O1
         d -= np.floor(d + 0.5)
         O2 = O1 + d
-        frame.add("line", O1 @ genice.cell, O2 @ genice.cell, layer=5, color=4)
+        frame.add(
+            "line",
+            O1 @ genice.cell,
+            O2 @ genice.cell,
+            layer=_LAYER_NETWORK,
+            color=_COLOR_HB,
+        )
 
 
 def _index_water_sites(waters: Mapping[int, Any]) -> Dict[int, Dict[str, np.ndarray]]:
@@ -256,13 +373,25 @@ def _draw_waters(
         O = water["O"]
         H0 = water["H0"]
         H1 = water["H1"]
-        frame.add("circle", O, layer=4, color=3, radius=size_O)
-        frame.add("line", O, H0, layer=4, color=3)
-        frame.add("line", O, H1, layer=4, color=3)
+        frame.add(
+            "circle", O, layer=_LAYER_ATOMS, color=_COLOR_O, radius=size_O
+        )
+        frame.add("line", O, H0, layer=_LAYER_ATOMS, color=_COLOR_BOND)
+        frame.add("line", O, H1, layer=_LAYER_ATOMS, color=_COLOR_BOND)
         if size_H > 0:
-            frame.add("circle", H0, layer=4, color=3, radius=size_H)
-            frame.add("circle", H1, layer=4, color=3, radius=size_H)
-        frame.add("text", O, text=f"{water_index}", layer=1, color=2)
+            frame.add(
+                "circle", H0, layer=_LAYER_ATOMS, color=_COLOR_H, radius=size_H
+            )
+            frame.add(
+                "circle", H1, layer=_LAYER_ATOMS, color=_COLOR_H, radius=size_H
+            )
+        frame.add(
+            "text",
+            O,
+            text=f"{water_index}",
+            layer=_LAYER_LABELS,
+            color=_COLOR_TEXT,
+        )
 
 
 def _draw_hb_arrows(
@@ -272,6 +401,8 @@ def _draw_hb_arrows(
     water_sites: Mapping[int, Mapping[str, np.ndarray]],
     size_O: float,
 ) -> None:
+    # dagger (arrow=2); head size follows stick radius → half of O
+    stick_r = size_O * 0.5
     for i, j in sorted(genice.digraph.edges(data=False)):
         if i not in waters or j not in waters:
             continue  # edge may connect to the dopant
@@ -283,9 +414,25 @@ def _draw_hb_arrows(
         rr0 = d0 @ d0
         rr1 = d1 @ d1
         if rr0 < rr1 and rr0 < _HB_ARROW_CUTOFF2:
-            frame.add("stick", H0, O, layer=3, color=4, radius=size_O, arrow=1)
+            frame.add(
+                "stick",
+                H0,
+                O,
+                layer=_LAYER_HB,
+                color=_COLOR_HB,
+                radius=stick_r,
+                arrow=_ARROW_DAGGER,
+            )
         if rr1 < rr0 and rr1 < _HB_ARROW_CUTOFF2:
-            frame.add("stick", H1, O, layer=3, color=4, radius=size_O, arrow=1)
+            frame.add(
+                "stick",
+                H1,
+                O,
+                layer=_LAYER_HB,
+                color=_COLOR_HB,
+                radius=stick_r,
+                arrow=_ARROW_DAGGER,
+            )
 
 
 def _draw_guests_and_ions(
@@ -294,28 +441,27 @@ def _draw_guests_and_ions(
     scale: float,
     relatives: Mapping[str, float],
 ) -> None:
-    palettes: Dict[str, int] = {}
     for _molecule_name, atom_name, position in gatoms:
-        if atom_name in palettes:
-            pal = palettes[atom_name]
-        else:
-            pal = 4 + len(palettes)
-            palettes[atom_name] = pal
         el = element_symbol(atom_name)
         frame.add(
             "circle",
             position,
-            layer=4,
-            color=pal,
+            layer=_LAYER_ATOMS,
+            color=_element_color(el),
             radius=atom_size(el, scale=scale, relatives=relatives),
-            arrow=1,
         )
     for a, b in it.combinations(gatoms, 2):
         _resname, _atomname, position1 = a
         _resname, _atomname, position2 = b
         d = position1 - position2
         if d @ d < _GUEST_BOND_CUTOFF2:
-            frame.add("line", position1, position2, layer=4)
+            frame.add(
+                "line",
+                position1,
+                position2,
+                layer=_LAYER_ATOMS,
+                color=_COLOR_BOND,
+            )
 
 
 def _draw_cages(frame: YaplotFrame, genice: GenIce3, size_O: float) -> None:
@@ -324,8 +470,20 @@ def _draw_cages(frame: YaplotFrame, genice: GenIce3, size_O: float) -> None:
         zip(cagespecs.specs, cagespecs.positions)
     ):
         center = position @ genice.cell
-        frame.add("circle", center, layer=6, color=5, radius=size_O * 3)
-        frame.add("text", center, text=f"{i}", layer=6, color=2)
+        frame.add(
+            "circle",
+            center,
+            layer=_LAYER_CAGES,
+            color=_COLOR_CAGE,
+            radius=size_O * 3,
+        )
+        frame.add(
+            "text",
+            center,
+            text=f"{i}",
+            layer=_LAYER_CAGES,
+            color=_COLOR_TEXT,
+        )
 
 
 def _draw_atomic(
@@ -361,7 +519,10 @@ def dumps(genice: GenIce3, **options) -> str:
     scale, relatives, show_atoms, size_O, size_H, water_model_name = (
         _resolve_draw_options(options)
     )
-    doc, frame = _new_document()
+    splat = _SPLAT_ATOMIC if show_atoms else _SPLAT_LATTICE
+    # Cage layer is drawn in atomic mode but hidden by default (overlaps guests).
+    hide = (_LAYER_CAGES,) if show_atoms else ()
+    doc, frame = _new_document(splat=splat, hide=hide)
     _draw_cell_edges(frame, genice.cell)
 
     if show_atoms:
@@ -377,7 +538,7 @@ def dumps(genice: GenIce3, **options) -> str:
     else:
         _draw_lattice_overview(frame, genice, size_O)
 
-    return doc.dumps()
+    return _patch_global_block(doc.dumps(), _LAYER_NAMES, center=True)
 
 
 def dump(genice: GenIce3, file: TextIOWrapper = sys.stdout, **options) -> None:

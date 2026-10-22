@@ -1,8 +1,8 @@
-# Example: Yaplot 5.5 inline viewer
+# Example: Yaplot inline viewer
 
-This category is included in **`API.ipynb`** via the `CATEGORIES` list in `scripts/build_api_notebook.py` (run `make api-notebook`). In the notebook, run the **Optional: Yaplot 5.5** cell after **Installation**, then **Setup** and the cells below.
+This category is included in **`API.ipynb`** via the `CATEGORIES` list in `scripts/build_api_notebook.py` (run `make api-notebook`). In the notebook, run the **Optional: Yaplot** cell after **Installation**, then **Setup** and the cells below.
 
-GenIce3’s built-in **`yaplot`** exporter writes `.yap` text (needs **`yaplotlib` ≥ 1.0**). **Yaplot 5.5** is the WebAssembly viewer: <https://vitroid.github.io/Yaplot/>.
+GenIce3’s built-in **`yaplot`** exporter writes `.yap` text (needs **`yaplotlib` ≥ 1.0**). **Yaplot** is the WebAssembly viewer: <https://vitroid.github.io/Yaplot/>.
 
 Recommended setup (same as the [Yaplot README](https://github.com/vitroid/Yaplot#web-browser-and-google-colab)):
 

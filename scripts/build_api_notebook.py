@@ -31,7 +31,7 @@ CATEGORIES = [
     ("topological_defects", "Topological defects"),
     ("mdanalysis", "Using MDAnalysis"),
     ("visualize", "Visualization (py3Dmol)"),
-    ("yaplot", "Visualization (Yaplot 5.5)"),
+    ("yaplot", "Visualization (Yaplot)"),
 ]
 
 
@@ -105,10 +105,10 @@ def optional_py3dmol_dep_cells() -> list[dict]:
 
 
 def optional_yaplot_dep_cells() -> list[dict]:
-    """Install/refresh yaplotlib and fetch Yaplot 5.5 notebook helper (official recipe)."""
+    """Install/refresh yaplotlib and fetch Yaplot notebook helper (official recipe)."""
     md = make_md_cell(
-        "### Optional: Yaplot 5.5\n\n"
-        "The **Visualization (Yaplot 5.5)** section embeds the WebAssembly Yaplot "
+        "### Optional: Yaplot\n\n"
+        "The **Visualization (Yaplot)** section embeds the WebAssembly Yaplot "
         "viewer (<https://vitroid.github.io/Yaplot/>) via `yaplot_view.show`. "
         "Run the next cell once (safe to re-run). This matches the [Yaplot README]"
         "(https://github.com/vitroid/Yaplot#web-browser-and-google-colab) recipe. "
