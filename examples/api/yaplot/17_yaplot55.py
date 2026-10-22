@@ -16,5 +16,6 @@ from yaplot_view import show
 genice = GenIce3(seed=42)
 genice.set_unitcell("1h")
 
+# H=1 enables atomic water (built-in H/O VdW ratio); omit H for lattice-only view
 # Yaplot 5.5 WebAssembly viewer (click the canvas for keyboard focus)
-show(Exporter("yaplot").dumps(genice), height=480)
+show(Exporter("yaplot").dumps(genice, H=1), height=480)
