@@ -347,8 +347,14 @@ _genice3_logger = getLogger("GenIce3")
 
 @reactive
 def cell(unitcell: UnitCell, replication_matrix: np.ndarray) -> np.ndarray:
-    """Cell matrix of the expanded unit cell."""
-    return unitcell.cell @ replication_matrix
+    """Cell matrix of the expanded unit cell.
+
+    Each row of ``replication_matrix`` is the coefficients of a new lattice
+    vector in the original ``(a, b, c)`` basis, so the Cartesian cell is
+    ``replication_matrix @ unitcell.cell`` (same convention as the INFO log
+    and ``--replication_matrix`` help).
+    """
+    return replication_matrix @ unitcell.cell
 
 
 @reactive

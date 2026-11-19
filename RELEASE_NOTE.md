@@ -4,6 +4,10 @@ Scope: GenIce3-related changes after `a7e63b652a2cc324e84a55dced9892eba907ce84`
 
 ## Overview
 
+## 3.1.3
+
+Bug fix: the expanded cell used `unitcell.cell @ replication_matrix` instead of the documented row-wise `replication_matrix @ unitcell.cell`, so axis-swapping reshape matrices looked wrong (and after GROMACS reorientation could resemble a plain diagonal expand).
+
 ## 3.1.2
 
 Bugfix: `11alt` now accepts `--layers` / `layers=` for polarization stacking (`u`/`d`), the same way `eleven` and `one` handle their layer patterns.

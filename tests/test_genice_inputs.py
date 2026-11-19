@@ -83,3 +83,26 @@ def test_set_replication_matrix_matches_assignment():
     np.testing.assert_array_equal(
         genice.replication_matrix, np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]])
     )
+
+
+def test_replication_matrix_row_convention_swaps_axes():
+    """Rows of replication_matrix are a',b',c' in the original (a,b,c) basis."""
+    from cif2ice import cellshape
+
+    uc = UnitCell("11alt", layers="uu")
+    a0, b0, c0, *_ = cellshape(uc.cell)
+
+    # a'=c, b'=3b, c'=3a  → stacking (original a) becomes the long c' axis
+    R = np.array([[0, 0, 1], [0, 3, 0], [3, 0, 0]], dtype=int)
+    genice = GenIce3(replication_matrix=R)
+    genice.unitcell = uc
+    a, b, c, *_ = cellshape(genice.cell)
+    np.testing.assert_allclose(genice.cell, R @ uc.cell)
+    np.testing.assert_allclose([a, b, c], [c0, 3 * b0, 3 * a0], rtol=1e-6)
+
+    # Diagonal control: must stay distinct from the swap above
+    genice_diag = GenIce3(replication_matrix=np.diag([1, 3, 3]))
+    genice_diag.unitcell = uc
+    ad, bd, cd, *_ = cellshape(genice_diag.cell)
+    np.testing.assert_allclose([ad, bd, cd], [a0, 3 * b0, 3 * c0], rtol=1e-6)
+    assert not np.allclose([a, b, c], [ad, bd, cd])

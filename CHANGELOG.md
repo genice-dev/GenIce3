@@ -4,6 +4,10 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.1.3
+
+* Fix expanded cell: `replication_matrix @ unitcell.cell` (row-wise a′,b′,c′), so non-diagonal axis swaps match the documented convention and INFO log.
+
 ### 3.1.2
 
 * Fix `11alt` CLI/YAML options: accept `--layers` (e.g. `uuu`, `uuuddd`) via `parse_options`, matching `eleven` / `one`.
