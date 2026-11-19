@@ -2,7 +2,9 @@
 c軸方向に分極した強誘電体氷11の単位胞を、a軸方向に上向き(u)または下向き(d)に並べ、a軸方向に長い単位胞を生成する。
 uとdを切りかえるために、間に自動的に遷移層が挿入される。
 
-例えば、genice3 11alt[uuuddd] と指定すると、実際にはuとdの間に分極のない遷移層"_"をはさんだ_uuu_dddという形の結晶が生成する。
+CLI example: genice3 11alt --layers uuuddd
+
+例えば、--layers uuuddd と指定すると、実際にはuとdの間に分極のない遷移層をはさんだ /uuu\\ddd という形の結晶が生成する。
 """
 import genice3.unitcell
 import numpy as np
@@ -10,12 +12,49 @@ from cif2ice import cellvectors
 from genice3.util import density_in_g_cm3
 from logging import getLogger
 import networkx as nx
+from typing import Any, Dict, Tuple
 
 desc = {
     "ref": {},
     "brief": "A layered ferroelectric Ice XI.",
-    "test": ({"layers": "udud"},),
+    "options": [
+        {
+            "name": "layers",
+            "help": "Polarization stacking. 'u'=up, 'd'=down (e.g. uuu, uuuddd, udud). Default: uu.",
+            "required": False,
+            "example": "uuu",
+        },
+    ],
+    "test": ({"options": "--layers udud"},),
 }
+
+
+def _scalar(v: Any) -> Any:
+    if isinstance(v, (list, tuple)) and len(v) == 1:
+        return v[0]
+    return v
+
+
+def parse_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    11alt 固有: layers。
+    残りは基底 UnitCell.parse_options に渡す。
+    """
+    processed: Dict[str, Any] = {}
+    unprocessed = dict(options)
+    if "layers" in unprocessed:
+        raw = _scalar(unprocessed.pop("layers"))
+        layers = str(raw).strip().lower()
+        if not layers or not all(c in "ud" for c in layers):
+            raise ValueError(
+                "11alt unitcell --layers must be a non-empty string of 'u' (up) and 'd' (down), e.g. uuu"
+            )
+        processed["layers"] = layers
+    base_processed, base_unprocessed = genice3.unitcell.UnitCell.parse_options(
+        unprocessed
+    )
+    processed.update(base_processed)
+    return processed, base_unprocessed
 
 
 class UnitCell(genice3.unitcell.UnitCell):
@@ -37,18 +76,20 @@ class UnitCell(genice3.unitcell.UnitCell):
         )
         # c軸方向に上向きまたは下向きに分極した単位胞をa軸方向に重ねる。
 
-        if len(kwargs) == 0:
-            _layers = "uu"
-        elif "layers" in kwargs:
-            _layers = kwargs["layers"]
-        else:
+        _layers = kwargs.get("layers")
+        if _layers is None:
+            # 旧形式: 単一キーが "ud" の並びで値が True のとき
             for k, v in kwargs.items():
-                if v is not True:
-                    raise ValueError(f"Unknown option: {k}={v}")
-                _layers = k
-                # u, d以外の文字を含んでいればValueError
-                if any(c not in "ud" for c in _layers):
-                    raise ValueError(f"Invalid layer string: {_layers}")
+                if v is True and isinstance(k, str) and all(c in "udUD" for c in k):
+                    _layers = k.lower()
+                    break
+        if _layers is None or _layers == "":
+            _layers = "uu"
+        _layers = str(_layers).strip().lower()
+        if not _layers or not all(c in "ud" for c in _layers):
+            raise ValueError(
+                "11alt unitcell --layers must be a non-empty string of 'u' (up) and 'd' (down), e.g. uuu"
+            )
 
         # parse options
         last = _layers[-1]

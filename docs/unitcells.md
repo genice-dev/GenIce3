@@ -84,6 +84,35 @@ The following unit cells require additional options (e.g. file path, IZA code).
 - **YAML:** Under `unitcell:` set `name` and option keys (examples below).
 - Run `genice3 SYMBOL?` to show plugin usage.
 
+### 11alt
+
+A layered ferroelectric Ice XI.
+
+**CLI:**
+
+```
+genice3 11alt --layers uuu
+  --layers: Polarization stacking. 'u'=up, 'd'=down (e.g. uuu, uuuddd, udud). Default: uu.
+```
+
+**API:**
+
+```python
+UnitCell("11alt", layers='uuu')
+```
+
+**YAML:**
+
+```yaml
+unitcell:
+  name: 11alt
+  layers: uuu
+```
+
+| CLI option | Description |
+| ---------- | ----------- |
+| `--layers` | Polarization stacking. 'u'=up, 'd'=down (e.g. uuu, uuuddd, udud). Default: uu. |
+
 ### 11i
 
 Sixteen candidates for Ice XI.

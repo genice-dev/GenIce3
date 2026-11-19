@@ -4,6 +4,10 @@ Version-oriented summaries. GenIce3 entries cover the line after the GenIce2 for
 
 ## GenIce3
 
+### 3.1.2
+
+* Fix `11alt` CLI/YAML options: accept `--layers` (e.g. `uuu`, `uuuddd`) via `parse_options`, matching `eleven` / `one`.
+
 ### 3.1.1
 
 * Restore `plotly` in the output-formats table; lazy-import so docs generation works without plotly installed.
